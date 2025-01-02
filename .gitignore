@@ -1,0 +1,7 @@
+__pycache__/
+node_modules/
+.env
+
+# CUSTOM
+.notes/
+.project/

@@ -1,0 +1,137 @@
+# PROJECT-SPECIFIC CURSOR RULES
+
+## DEVELOPMENT METHODOLOGY
+
+We follow a structured development approach with these core principles:
+
+1. **PHASE SEPARATION**:
+   - Follow these development phases:
+     - **[ANALYSIS PHASE]**: Analyze project related input documents and persist summary in documentation.
+     - **[DESIGN PHASE]**: Design components and architecture based on requirements.
+     - **[IMPLEMENTATION PHASE]**: Write code to implement the designed functionality.
+     - **[REFACTOR PHASE]**: Improve code quality without altering behavior.
+   - **PREFIX**: All responses must begin with the phase prefix (e.g., `[DESIGN PHASE]`).
+
+2. **SHORT, ITERATIVE EXCHANGES**:
+   - Keep prompts and outputs small in scope (e.g., single components).
+   - Validate outputs after each step before proceeding to the next.
+
+---
+
+## AI ASSISTANCE GUIDELINES
+
+1. **CHECK FOR EXISTING IMPLEMENTATIONS**:
+   - Before implementing new functionality, confirm whether existing components meet the requirement.
+   - Reuse or extend existing components whenever possible to avoid duplication.
+
+2. **PRESERVE UNRELATED FUNCTIONALITY**:
+   - Ensure unrelated existing functionality is preserved.
+   - Validate changes through thorough review and verification.
+
+3. **FOCUS ON REQUIREMENTS**:
+   - Adhere strictly to requirements provided by the user.
+   - Avoid adjusting or altering requirements unless explicitly instructed.
+
+4. **EXPLANATION & DOCUMENTATION**:
+   - Provide clear explanations for every solution.
+   - Document component designs, purposes, and behaviors as Markdown output when requested.
+
+5. **PROACTIVE FEEDBACK**:
+   - Provide constructive feedback on:
+     - Product design decisions and their implications
+     - Architectural choices and their impact on scalability
+     - Code maintainability and potential technical debt
+     - Adherence to clean code principles and best practices
+   - Suggest improvements while respecting existing design decisions
+   - Highlight potential risks or areas for optimization
+
+---
+
+## CODING STANDARDS
+
+1. **STRICT TYPING**:
+   - Always use strict typing to ensure code reliability.
+   - Avoid generic types like `any`.
+
+2. **CONSISTENT NAMING**:
+   - Use clear, consistent naming conventions for variables, functions, and components.
+
+3. **MODULARITY**:
+   - Write reusable, modular code that adheres to single-responsibility principles.
+
+4. **DOCUMENTATION**:
+   - Create README.md files for components, usage, and architecture when requested.
+   - Include diagrams and markdown-friendly formats to support understanding.
+
+5. **ENVIRONMENT MANAGEMENT**:
+   - Use modern environment managers (e.g., pyenv, poetry for Python, nvm for Node.js) for dependency isolation.
+   - DO NOT install packages into global environment!
+   - Ensure reproducible development environments across different machines.
+   - Lock dependency versions to maintain consistency.
+   - Document environment setup steps in README.md.
+
+---
+
+## QUALITY ASSURANCE GUIDELINES
+
+1. **CLEAR ACCEPTANCE CRITERIA**:
+   - Ensure all functionality has clear, verifiable acceptance criteria.
+   - Document expected behavior and edge cases.
+
+2. **ISOLATION**:
+   - Components must remain independent, avoiding unnecessary coupling.
+   - Ensure changes don't have unintended side effects.
+
+3. **EDGE CASE HANDLING**:
+   - Handle edge cases and invalid inputs gracefully.
+   - Document error handling behavior.
+
+---
+
+## IMPLEMENTATION GUIDELINES
+
+1. **NO DUPLICATION**:
+   - Avoid duplicating logic or components. Reuse existing code when possible.
+
+2. **INTEGRATION VERIFICATION**:
+   - Verify component interactions work as expected.
+   - Ensure system-wide functionality remains intact.
+
+---
+
+## ENFORCED RULES FOR LLM RESPONSES
+
+1. **PHASE AWARENESS**:
+   - Prefix all responses with the current phase:
+     - `[ANALYSIS PHASE]`: Analyzing project related input documents and persisting summary in documentation.
+     - `[DESIGN PHASE]`: Designing components and architecture.
+     - `[IMPLEMENTATION PHASE]`: Writing code to implement functionality.
+     - `[REFACTOR PHASE]`: Improving code quality.
+
+2. **ITERATIVE TASKS**:
+   - Limit responses to small tasks or single components to avoid confusion and maintain focus.
+
+3. **CONSISTENT OUTPUT**:
+   - Ensure outputs (code, diagrams, documentation) follow the project's standards.
+
+4. **EXISTING FUNCTIONALITY CHECK**:
+   - Before suggesting or implementing code, confirm whether similar functionality already exists. Reuse or extend it if applicable.
+
+---
+
+## FINAL CHECKS & DOCUMENTATION
+
+1. **CONTINUOUS VALIDATION**:
+   - After completing a task, validate it through review and verification before proceeding.
+
+2. **GENERATE FINAL ARTIFACTS**:
+   - Provide summaries of components, architecture, and gaps in functionality at project milestones.
+   - Ensure README.md and documentation files are up-to-date.
+
+---
+
+## KEY REMINDERS
+
+1. **AVOID DUPLICATION**: Check for and reuse existing implementations before creating new functionality.
+
+2. **PRESERVE EXISTING FUNCTIONALITY**: Ensure changes do not break unrelated functionality.
