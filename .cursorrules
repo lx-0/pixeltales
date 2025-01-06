@@ -70,6 +70,12 @@ We follow a structured development approach with these core principles:
    - Lock dependency versions to maintain consistency.
    - Document environment setup steps in README.md.
 
+### LANGUAGE SPECIFIC RULES
+
+#### TYPESCRIPT
+
+- Use `npx shadcn@latest add <component>` to install new @Shadcn/ui components.
+
 ---
 
 ## QUALITY ASSURANCE GUIDELINES
