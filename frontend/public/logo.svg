@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="32" height="32" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Main Speech Bubble with soft gradient -->
+  <path d="M4 6H28V20H20V26H16V20H4V6Z" fill="url(#bubble-gradient)" />
+
+  <!-- Inner Speech Bubble -->
+  <path d="M6 8H26V18H18V24H14V18H6V8Z" fill="#F5F5FF" class="inner-bubble" />
+
+  <!-- Modern Circuit Pattern -->
+  <path d="M9 11H13V13H9V11Z" fill="#818CF8" class="circuit" />
+  <path d="M15 11H23V13H15V11Z" fill="#818CF8" class="circuit" />
+  <path d="M9 15H19V17H9V15Z" fill="#818CF8" class="circuit" />
+
+  <!-- Outer Glow Effect -->
+  <path d="M4 6H28V20H20V26H16V20H4V6Z" stroke="#4F46E5" stroke-width="1" stroke-opacity="0.5" />
+
+  <!-- Gradient Definition -->
+  <defs>
+    <linearGradient id="bubble-gradient" x1="16" y1="6" x2="16" y2="26" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#818CF8" />
+      <stop offset="100%" stop-color="#6366F1" />
+    </linearGradient>
+  </defs>
+</svg>
