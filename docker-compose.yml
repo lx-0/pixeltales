@@ -1,0 +1,65 @@
+name: pixeltales-dev
+
+services:
+  frontend:
+    container_name: pixeltales-frontend-dev
+    image: pixeltales-frontend-dev
+    build:
+      context: ./frontend
+      target: development
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+    volumes:
+      # Development volumes for hot reloading
+      - ./frontend:/app
+      - frontend-node-modules:/app/node_modules
+    environment:
+      - DOCKER_ENV=true
+      - VITE_BACKEND_URL=http://backend:${BACKEND_PORT:-8000}
+    depends_on:
+      - backend
+    command: npm run dev -- --host
+    networks:
+      - app-network
+    env_file: .env.development
+
+  backend:
+    container_name: pixeltales-backend-dev
+    image: pixeltales-backend-dev
+    build:
+      context: ./backend
+      target: development
+    working_dir: /workspace
+    ports:
+      - '${BACKEND_PORT:-8000}:8000'
+    volumes:
+      # Development volumes for hot reloading
+      - ./backend:/workspace
+      # Persistent storage for SQLite database
+      - ./data/sqlite:/data/sqlite:rw
+      # Keep poetry virtual environment
+      - backend-venv-dev:/opt/venv
+    environment:
+      - ENV=development
+      - FRONTEND_PORT=${FRONTEND_PORT:-5173}
+      - BACKEND_PORT=${BACKEND_PORT:-8000}
+      - BACKEND_CORS_ORIGINS=["http://localhost:${FRONTEND_PORT:-5173}"]
+      - DB_TYPE=${DB_TYPE:-sqlite}
+      - SQLITE_URL=${SQLITE_URL:-sqlite+aiosqlite:////data/sqlite/pixeltales.db}
+      - PYTHONPATH=/workspace
+      - VIRTUAL_ENV=/opt/venv/.venv
+      - PATH=/opt/venv/.venv/bin:${PATH}
+    env_file: .env.development
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    name: pixeltales-network-dev
+    driver: bridge
+
+volumes:
+  frontend-node-modules:
+    name: pixeltales-node-modules-dev
+  backend-venv-dev:
+    name: pixeltales-venv-dev
