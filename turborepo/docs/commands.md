@@ -129,3 +129,11 @@ pnpm --filter backend run nest generate service my-new-service
 ```
 
 *(Note: The second approach might require the CLI tool to be listed as a dependency within that specific package.)*
+
+## Database
+
+- **Run migrations:**
+
+```bash
+pnpm --filter @pixeltales/database run migrate
+```
