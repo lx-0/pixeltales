@@ -1,14 +1,32 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalDependencies": ["tsconfig.base.json"],
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "@pixeltales/contracts#build": {
+      "outputs": ["dist/**"],
+      "dependsOn": []
+    },
+    "backend#build": {
+      "dependsOn": ["@pixeltales/contracts#build"],
+      "outputs": ["dist/**"]
+    },
+    "frontend#build": {
+      "dependsOn": ["@pixeltales/contracts#build"],
       "outputs": ["dist/**"]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
-    "lint": {}
+    "lint": {
+      "dependsOn": ["@pixeltales/contracts#build"]
+    },
+    "clean": {
+      "cache": false
+    }
   }
 }
