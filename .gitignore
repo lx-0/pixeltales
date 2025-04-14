@@ -12,7 +12,15 @@
 *.db
 *.sqlite3
 
+# Cache
+.cache/
+.mypy_cache/
+
 # CUSTOM
 .notes/
+.archive/
 .project/
 data/
+
+.cursorrules
+.cursorignore
