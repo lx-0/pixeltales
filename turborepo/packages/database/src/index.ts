@@ -1,88 +1,81 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
-import { schema } from './schema';
+import * as schema from './db-schema';
+import { SceneConfig } from './schemas';
 
 // === Schema Export ===
-export * from './schema';
+export * from './db-schema';
+export * from './schemas';
 
 // === TypeScript Type Exports ===
-export type SceneConfig = typeof schema.sceneConfigsTable.$inferSelect;
-export type NewSceneConfig = typeof schema.sceneConfigsTable.$inferInsert;
-export type Scene = typeof schema.scenesTable.$inferSelect;
-export type NewScene = typeof schema.scenesTable.$inferInsert;
-export type SceneStateSnapshot = typeof schema.sceneStateSnapshotsTable.$inferSelect;
-export type NewSceneStateSnapshot = typeof schema.sceneStateSnapshotsTable.$inferInsert;
-export type Character = typeof schema.charactersTable.$inferSelect;
-export type NewCharacter = typeof schema.charactersTable.$inferInsert;
-export type Message = typeof schema.messagesTable.$inferSelect;
-export type NewMessage = typeof schema.messagesTable.$inferInsert;
+export type DBSceneConfig = typeof schema.sceneConfigsTable.$inferSelect;
+export type DBSceneConfigPopulated = Omit<DBSceneConfig, 'config'> & {
+  config: SceneConfig;
+};
+export type NewDBSceneConfig = typeof schema.sceneConfigsTable.$inferInsert;
+export type DBScene = typeof schema.scenesTable.$inferSelect;
+export type NewDBScene = typeof schema.scenesTable.$inferInsert;
+export type DBSceneStateSnapshot = typeof schema.sceneStateSnapshotsTable.$inferSelect;
+export type NewDBSceneStateSnapshot = typeof schema.sceneStateSnapshotsTable.$inferInsert;
+export type DBCharacter = typeof schema.charactersTable.$inferSelect;
+export type NewDBCharacter = typeof schema.charactersTable.$inferInsert;
+export type DBMessage = typeof schema.messagesTable.$inferSelect;
+export type NewDBMessage = typeof schema.messagesTable.$inferInsert;
 
 // === Zod Schema Exports ===
 
 // -- Scene Config Schemas --
-export const selectSceneConfigSchema: z.ZodObject<any> = createSelectSchema(
-  schema.sceneConfigsTable,
-  {
-    createdAt: z.date(),
-  },
-);
-export const insertSceneConfigSchema: z.ZodObject<any> = createInsertSchema(
-  schema.sceneConfigsTable,
-  {
-    id: z.string().uuid(),
-    createdAt: z.date(),
-  },
-);
+export const selectSceneConfigSchema = createSelectSchema(schema.sceneConfigsTable, {
+  createdAt: z.number(),
+});
+export const insertSceneConfigSchema = createInsertSchema(schema.sceneConfigsTable, {
+  id: z.string().uuid(),
+  createdAt: z.number().optional(),
+});
 
 // -- Scene Schemas --
-export const selectSceneSchema: z.ZodObject<any> = createSelectSchema(schema.scenesTable, {
-  createdAt: z.date(),
-  startedAt: z.date(),
-  endedAt: z.date().nullable(),
-  isActive: z.boolean(),
+export const selectSceneSchema = createSelectSchema(schema.scenesTable, {
+  createdAt: z.number(),
+  // startedAt: z.number(),
+  // endedAt: z.number().nullable(),
+  // isActive: z.boolean(),
 });
-export const insertSceneSchema: z.ZodObject<any> = createInsertSchema(schema.scenesTable, {
+export const insertSceneSchema = createInsertSchema(schema.scenesTable, {
   id: z.string().uuid(),
-  createdAt: z.date().optional(),
-  startedAt: z.date(),
-  endedAt: z.date().optional().nullable(),
-  isActive: z.boolean().optional(),
+  createdAt: z.number().optional(),
+  // startedAt: z.number(),
+  // endedAt: z.number().optional().nullable(),
+  // isActive: z.boolean().optional(),
 });
 
 // -- Scene State Snapshot Schemas --
-export const selectSceneStateSnapshotSchema: z.ZodObject<any> = createSelectSchema(
-  schema.sceneStateSnapshotsTable,
-  {
-    timestamp: z.date(),
-  },
-);
-export const insertSceneStateSnapshotSchema: z.ZodObject<any> = createInsertSchema(
-  schema.sceneStateSnapshotsTable,
-  {
-    id: z.string().uuid(),
-    timestamp: z.date().optional(),
-  },
-);
+export const selectSceneStateSnapshotSchema = createSelectSchema(schema.sceneStateSnapshotsTable, {
+  timestamp: z.number(),
+});
+export const insertSceneStateSnapshotSchema = createInsertSchema(schema.sceneStateSnapshotsTable, {
+  id: z.string().uuid(),
+  timestamp: z.number().optional(),
+});
 
 // -- Character Schemas --
-export const selectCharacterSchema: z.ZodObject<any> = createSelectSchema(schema.charactersTable);
-export const insertCharacterSchema: z.ZodObject<any> = createInsertSchema(schema.charactersTable, {
+export const selectCharacterSchema = createSelectSchema(schema.charactersTable);
+export const insertCharacterSchema = createInsertSchema(schema.charactersTable, {
   id: z.string(),
   color: z.string().optional().nullable(),
 });
 
 // -- Message Schemas --
-export const selectMessageSchema: z.ZodObject<any> = createSelectSchema(schema.messagesTable, {
-  timestamp: z.date(),
+export const selectMessageSchema = createSelectSchema(schema.messagesTable, {
+  timestamp: z.number(),
   calculatedSpeakingTime: z.number().nullable(),
   conversationRating: z.number().int().nullable(),
   endConversation: z.boolean().nullable(),
   tokenCount: z.number().int().nullable(),
   cost: z.number().nullable(),
 });
-export const insertMessageSchema: z.ZodObject<any> = createInsertSchema(schema.messagesTable, {
+export const insertMessageSchema = createInsertSchema(schema.messagesTable, {
   id: z.string().uuid(),
-  timestamp: z.date().optional(),
+  timestamp: z.number().optional(),
   sceneId: z.string(),
   characterId: z.string(),
   calculatedSpeakingTime: z.number().optional().nullable(),

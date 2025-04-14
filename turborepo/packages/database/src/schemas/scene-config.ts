@@ -1,0 +1,44 @@
+import { z } from 'zod';
+import { CharacterConfigSchema } from './character';
+import { CommentSchema } from './user';
+
+export const SceneConfigStatusEnum = ['proposed', 'active', 'rejected'] as const;
+export type SceneConfigStatus = (typeof SceneConfigStatusEnum)[number];
+
+// Define SceneConfig separately, as it might differ from DB record slightly
+export const SceneConfigSchema = z.object({
+  name: z.string().min(3).max(50).describe('Scene name (3-50 characters)'),
+  description: z.string().min(10).max(5000).describe('Scene description (10-5000 characters)'),
+  start_character_id: z.string().describe('ID of the character who starts the conversation'),
+  characters_config: z
+    .record(z.string(), CharacterConfigSchema)
+    .describe('Configuration for each character in the scene, keyed by character ID'),
+  status: z
+    .enum(SceneConfigStatusEnum)
+    .describe('Current status of the scene configuration (proposed, active, or rejected)'),
+  proposer_name: z
+    .string()
+    .min(2)
+    .max(50)
+    .optional()
+    .nullable()
+    .describe('Name of the person proposing the scene (2-50 characters)'),
+  proposed_at: z
+    .string()
+    .datetime()
+    .optional()
+    .nullable()
+    .describe('ISO format datetime when the scene was proposed'),
+  votes: z
+    .number()
+    .int()
+    .optional()
+    .default(0)
+    .describe('Number of votes the scene proposal has received'),
+  comments: z
+    .array(CommentSchema)
+    .optional()
+    .default([])
+    .describe('Comments on the scene proposal'),
+});
+export type SceneConfig = z.infer<typeof SceneConfigSchema>;

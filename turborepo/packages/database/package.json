@@ -6,20 +6,16 @@
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
   "scripts": {
-    "build": "tsup src/index.ts src/schema.ts --format cjs,esm --dts",
-    "dev": "tsup src/index.ts src/schema.ts --format cjs,esm --dts --watch",
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
     "lint": "eslint .",
-    "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/migrate.ts",
-    "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
     "clean": "rimraf dist .turbo src/db/migrations"
   },
   "dependencies": {
     "better-sqlite3": "^11.1.2",
     "dotenv": "^16.4.5",
-    "drizzle-orm": "^0.41.0",
     "drizzle-zod": "^0.7.1",
+    "drizzle-orm": "^0.41.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -36,11 +32,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    },
-    "./schema": {
-      "types": "./dist/schema.d.ts",
-      "import": "./dist/schema.mjs",
-      "require": "./dist/schema.js"
     }
   }
 }

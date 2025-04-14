@@ -61,7 +61,7 @@ export interface CharacterState extends CharacterBase {
 
 export interface SceneState {
   scene_id: number;
-  scene_config_id: number;
+  config_id: number;
   characters: Record<string, CharacterState>;
   messages: Array<Message>;
   started_at: number; // Unix timestamp (Epoch time)

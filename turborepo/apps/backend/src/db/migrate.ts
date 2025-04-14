@@ -8,16 +8,16 @@ import path from 'node:path';
 console.log('🚀 Starting database migration...');
 
 // --- Database Connection ---
-// Similar logic as in the provider to find the DB path
-const defaultDbPathRelativeToProjectRoot = '../data/sqlite/pixeltales.db';
-const dbPathSetting = process.env.DATABASE_URL ?? defaultDbPathRelativeToProjectRoot;
+// Path relative to CWD (apps/backend/)
+const defaultDbPathRelativeToBackendRoot = '../data/sqlite/pixeltales.db';
+const dbPathSetting = process.env.DATABASE_URL ?? defaultDbPathRelativeToBackendRoot;
 
 let dbPath: string;
 if (path.isAbsolute(dbPathSetting)) {
   dbPath = dbPathSetting;
 } else {
-  // Resolve relative to CWD (assuming script is run from turborepo/packages/database)
-  dbPath = path.resolve(process.cwd(), '..', '..', dbPathSetting);
+  // Resolve relative to CWD (which is apps/backend when running script)
+  dbPath = path.resolve(process.cwd(), dbPathSetting);
 }
 
 console.log(`Database path resolved to: ${dbPath}`);
@@ -43,8 +43,8 @@ try {
 const db = drizzle(sqlite);
 
 // --- Migration Execution ---
-// This points migrationsFolder to turborepo/packages/database/src/db/migrations
-const migrationsFolder = path.resolve(__dirname, 'db/migrations');
+// Path relative to THIS script file (apps/backend/src/db/migrate.ts)
+const migrationsFolder = path.resolve(__dirname, '../../packages/database/src/db/migrations');
 console.log(`Looking for migrations in: ${migrationsFolder}`);
 
 if (!fs.existsSync(migrationsFolder)) {

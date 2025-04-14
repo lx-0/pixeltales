@@ -76,6 +76,7 @@ This file lists the most common commands you'll need during development in the P
 
     ```bash
     turbo run build --filter=@pixeltales/contracts
+    npx turbo run build --filter=@pixeltales/database
     ```
 
 ## Linting & Formatting

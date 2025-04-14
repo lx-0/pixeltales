@@ -1,6 +1,6 @@
 import { FactoryProvider, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import * as schema from '@pixeltales/database/schema';
+import { dbSchema } from '@pixeltales/database';
 import BetterSqlite3 from 'better-sqlite3';
 import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import { symlinkPathRelativeToConfig } from 'drizzle.config';
@@ -9,7 +9,7 @@ import * as path from 'node:path';
 
 export const DRIZZLE_INSTANCE = 'DRIZZLE_INSTANCE';
 
-export type DrizzleSqliteDatabase = BetterSQLite3Database<typeof schema>;
+export type DrizzleSqliteDatabase = BetterSQLite3Database<typeof dbSchema>;
 
 export const DrizzleProvider: FactoryProvider<DrizzleSqliteDatabase> = {
   provide: DRIZZLE_INSTANCE,
@@ -53,7 +53,7 @@ export const DrizzleProvider: FactoryProvider<DrizzleSqliteDatabase> = {
       sqlite.pragma('journal_mode = WAL');
       logger.log('WAL mode enabled', 'DrizzleProvider');
 
-      const db = drizzle(sqlite, { schema, logger: true });
+      const db = drizzle(sqlite, { schema: dbSchema, logger: true });
       logger.log('Drizzle instance created successfully', 'DrizzleProvider');
       return db;
     } catch (error) {

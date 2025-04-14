@@ -1,11 +1,6 @@
 import { relations, sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-// --- Enums / Literals (aus Pydantic-Modellen abgeleitet) ---
-// Es ist oft besser, diese im 'contracts'-Paket zu definieren und hier zu importieren,
-// aber für die reine Schema-Definition sind sie hier als Referenz.
-// export const SceneConfigStatusEnum = ['proposed', 'active', 'rejected'] as const;
-
 // --- Tables ---
 
 export const sceneConfigsTable = sqliteTable(
@@ -16,7 +11,7 @@ export const sceneConfigsTable = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    configJson: text('config_json').notNull(), // Store SceneConfigBase + system_prompt as JSON string
+    config: text('config').notNull(), // Store SceneConfigBase + system_prompt as JSON string
     votes: integer('votes').default(0).notNull(),
     status: text('status', { enum: ['proposed', 'active', 'rejected'] })
       .default('proposed')
@@ -40,17 +35,17 @@ export const scenesTable = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    sceneConfigId: text('scene_config_id')
+    sceneConfigId: text('config_id')
       .notNull()
       .references(() => sceneConfigsTable.id, { onDelete: 'cascade' }), // FK
-    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
-    endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
-    isActive: integer('is_active', { mode: 'boolean' }).default(false).notNull(), // For currently active scene
+    // startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
+    // endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
+    // isActive: integer('is_active', { mode: 'boolean' }).default(false).notNull(), // For currently active scene
   },
   (table) => [
     index('scene_created_at_idx').on(table.createdAt),
     index('scene_config_id_idx').on(table.sceneConfigId),
-    index('scene_is_active_idx').on(table.isActive),
+    // index('scene_is_active_idx').on(table.isActive),
   ],
 );
 
@@ -61,7 +56,7 @@ export const sceneStateSnapshotsTable = sqliteTable(
     timestamp: integer('timestamp', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    stateJson: text('state_json').notNull(), // Store SceneState as JSON string
+    state: text('state').notNull(), // Store SceneState as JSON string
     sceneId: text('scene_id')
       .notNull()
       .references(() => scenesTable.id, { onDelete: 'cascade' }), // FK
@@ -99,15 +94,15 @@ export const messagesTable = sqliteTable(
       .notNull()
       .references(() => charactersTable.id, { onDelete: 'cascade' }),
     modelUsed: text('model_used'),
-    content: text('content').notNull(), // Hauptnachricht
-    thoughts: text('thoughts'), // Agent thoughts
-    mood: text('mood'),
-    moodEmoji: text('mood_emoji'),
-    recipient: text('recipient'),
-    reactionOnPrevious: text('reaction_on_previous'),
-    calculatedSpeakingTime: real('calculated_speaking_time'), // Use real for float
+    content: text('content'), // Hauptnachricht
+    thoughts: text('thoughts').notNull(), // Agent thoughts
+    mood: text('mood').notNull(),
+    moodEmoji: text('mood_emoji').notNull(),
+    recipient: text('recipient').notNull(),
+    reactionOnPrevious: text('reaction_on_previous_message'),
+    calculatedSpeakingTime: real('calculated_speaking_time').notNull(), // Use real for float
     conversationRating: integer('conversation_rating'),
-    endConversation: integer('end_conversation', { mode: 'boolean' }).default(false),
+    endConversation: integer('end_conversation', { mode: 'boolean' }).default(false).notNull(),
     tokenCount: integer('token_count'),
     cost: real('cost'),
   },
@@ -157,7 +152,7 @@ export const messagesRelations = relations(messagesTable, ({ one }) => ({
   }),
 }));
 
-export const schema = {
+export const dbSchema = {
   sceneConfigsTable,
   scenesTable,
   sceneStateSnapshotsTable,

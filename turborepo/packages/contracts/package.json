@@ -12,12 +12,12 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
-    "@pixeltales/database": "workspace:*",
     "zod": "^3.24.2"
   },
   "devDependencies": {
-    "rimraf": "^6.0.1",
+    "@pixeltales/database": "workspace:^",
     "eslint": "^9.24.0",
+    "rimraf": "^6.0.1",
     "tsup": "^8.2.3",
     "typescript": "^5.5.4"
   },

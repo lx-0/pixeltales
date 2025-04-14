@@ -3,10 +3,14 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core'; // Import APP_FILTER token
 import { LoggerModule } from 'nestjs-pino';
 import { IncomingMessage, ServerResponse } from 'node:http'; // Import types for customLogLevel
+import { AppConfigModule } from './app-config/app-config.module'; // Import renamed module
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'; // Import the filter
 import { DbModule } from './db/db.module';
+import { EventsModule } from './events/events.module';
+import { ScenesModule } from './scenes/scenes.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -80,7 +84,11 @@ import { DbModule } from './db/db.module';
         };
       },
     }),
-    DbModule, // Import our database module
+    DbModule,
+    AppConfigModule, // Use renamed module
+    ScenesModule,
+    EventsModule, // Import our database module
+    ScheduleModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
