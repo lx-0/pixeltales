@@ -6,7 +6,7 @@ import {
   NewDBSceneStateSnapshot,
   SceneState,
 } from '@pixeltales/contracts';
-import { DBSceneConfig, dbSchema } from '@pixeltales/database';
+import { DBSceneConfig, dbSchema, SceneStateSchema } from '@pixeltales/database';
 import { desc, eq } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../../db/drizzle.provider';
@@ -131,7 +131,26 @@ export class SceneStateService {
       .limit(1)
       .get();
 
-    return latestSnapshot?.state ?? null;
+    if (!latestSnapshot) {
+      this.logger.warn(`No snapshot found for scene ${sceneId}`);
+      return null;
+    }
+
+    const stateParseResult = SceneStateSchema.safeParse(
+      JSON.parse(latestSnapshot.state as unknown as string),
+    );
+
+    if (!stateParseResult.success || !stateParseResult.data) {
+      this.logger.error(
+        stateParseResult.error.issues,
+        `Failed to parse state for scene ${sceneId}`,
+      );
+      return null;
+    }
+
+    this.currentState = stateParseResult.data;
+
+    return this.currentState;
   }
 
   async saveSnapshot(sceneId: number): Promise<void> {

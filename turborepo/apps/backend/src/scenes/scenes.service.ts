@@ -11,7 +11,7 @@ import { dbSchema } from '@pixeltales/database';
 import { eq, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../db/drizzle.provider';
-import { DEFAULT_SYSTEM_PROMPT } from '../scene/scene.const';
+import { DEFAULT_SCENE_CONFIG, DEFAULT_SYSTEM_PROMPT } from '../scene/scene.const';
 
 @Injectable()
 export class ScenesService {
@@ -266,12 +266,46 @@ export class ScenesService {
         return await this.getById(fallbackConfig.id);
       }
 
-      // 3. No config found at all
-      this.logger.error('No scene configs found in the database at all.');
-      return null;
+      // 3. No config found at all - use default config
+      return await this.getDefaultConfig();
     } catch (error) {
       this.logger.error(error, 'Error getting next scene config');
       throw new InternalServerErrorException('Failed to get next scene config');
+    }
+  }
+
+  private async getDefaultConfig(): Promise<DBSceneConfig> {
+    this.logger.warn('No scene configs found in database, using hard-coded default config');
+
+    // Create a default record in the database with the default config
+    const defaultRecord: typeof dbSchema.sceneConfigsTable.$inferInsert = {
+      config: DEFAULT_SCENE_CONFIG,
+      status: 'active',
+      votes: 0,
+    };
+
+    try {
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      const insertedDefault = await this.db
+        .insert(dbSchema.sceneConfigsTable)
+        .values(defaultRecord)
+        .returning()
+        .get();
+
+      this.logger.info(`Created default scene config with ID: ${insertedDefault.id}`);
+      return insertedDefault;
+    } catch (err) {
+      this.logger.error({ err }, 'Failed to save default config to database');
+
+      // Return a synthetic record not saved to DB as last resort
+      return {
+        id: 0,
+        config: DEFAULT_SCENE_CONFIG,
+        status: 'active',
+        votes: 0,
+        systemPrompt: DEFAULT_SCENE_CONFIG.system_prompt,
+        createdAt: new Date(),
+      };
     }
   }
 }

@@ -1,3 +1,4 @@
+import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { Inject, Injectable } from '@nestjs/common';
 import {
   CharacterAction,
@@ -134,38 +135,56 @@ export class ConversationOrchestratorService {
       return null;
     }
 
-    await this._setCharacterAction(characterId, 'thinking', undefined);
-
-    this.logger.info(`Generating message for ${characterId}...`);
-    // TODO: Replace MOCK with actual LangChain call using this.llmService
-    await new Promise((resolve) => setTimeout(resolve, 1500)); // Simulate LLM delay
-    const mockContent = `Hello ${recipientId || 'world'}! This is ${characterId} (${sceneState.messages.length + 1}).`;
-    const mockThoughts = 'Thinking about what to say next...';
-    const mockMood = 'curious';
-    const mockMoodEmoji = '🤔';
-    const mockEnd = Math.random() < 0.05;
-    const speakingTimeMs = mockContent.length * 50 + 1000;
-    const nowTimestamp = Date.now();
-
-    const newMessageData: NewDBMessage & { content: string } = {
-      id: randomUUID(),
-      sceneId: sceneState.scene_id, // Use scene_id from state
-      characterId: characterId,
-      content: mockContent,
-      timestamp: new Date(nowTimestamp),
-      thoughts: mockThoughts,
-      mood: mockMood,
-      moodEmoji: mockMoodEmoji,
-      modelUsed: characterConfig.llm_config.model_name,
-      recipient: recipientId ?? '',
-      calculatedSpeakingTime: speakingTimeMs / 1000,
-      endConversation: mockEnd,
-      conversationRating: null,
-      tokenCount: null,
-      cost: null,
-    };
-
     try {
+      // Set character to thinking state
+      await this._setCharacterAction(characterId, 'thinking', undefined);
+      this.logger.info(`Generating message for ${characterId}...`);
+
+      // Prepare conversation history
+      const history = this._prepareConversationHistory(sceneState, characterId);
+
+      // Prepare system message with context
+      const systemVars = this._prepareSystemMessage(
+        sceneState,
+        sceneConfig,
+        characterId,
+        recipientId,
+      );
+
+      // Generate response using LLM service
+      const response = await this.llmService.generateResponse(characterId, {
+        ...systemVars,
+        history: history,
+      });
+
+      this.logger.debug(`Generated response for ${characterId}: ${JSON.stringify(response)}`);
+
+      // Calculate speaking time based on content length
+      const content = response.content || '';
+      const speakingTimeMs = this._calculateSpeakingTime(content.length);
+      const nowTimestamp = Date.now();
+
+      // Prepare message for database
+      const newMessageData: NewDBMessage & { content: string } = {
+        id: randomUUID(),
+        sceneId: sceneState.scene_id,
+        characterId: characterId,
+        content: content,
+        timestamp: new Date(nowTimestamp),
+        thoughts: response.thoughts,
+        mood: response.mood,
+        moodEmoji: response.mood_emoji,
+        modelUsed: characterConfig.llm_config.model_name,
+        recipient: response.recipient || recipientId || '',
+        reactionOnPrevious: response.reaction_on_previous_message || null,
+        calculatedSpeakingTime: speakingTimeMs / 1000,
+        endConversation: response.end_conversation,
+        conversationRating: response.conversation_rating,
+        tokenCount: null, // TODO: Add token counting
+        cost: null, // TODO: Add cost calculation
+      };
+
+      // Save message to database
       // eslint-disable-next-line @typescript-eslint/await-thenable
       const insertedMessage: DBMessage = await this.db
         .insert(dbSchema.messagesTable)
@@ -174,23 +193,116 @@ export class ConversationOrchestratorService {
         .get();
       this.logger.info(`Saved message ${insertedMessage.id} from ${characterId}`);
 
+      // Update character state
       this.sceneStateService.updateCharacterState(characterId, {
-        current_mood: mockMood,
-        end_conversation_requested: mockEnd,
-        end_conversation_requested_at: mockEnd ? nowTimestamp : undefined,
-        end_conversation_requested_validity_duration: mockEnd
+        current_mood: response.mood,
+        end_conversation_requested: response.end_conversation,
+        end_conversation_requested_at: response.end_conversation ? nowTimestamp : undefined,
+        end_conversation_requested_validity_duration: response.end_conversation
           ? END_CONVERSATION_REQUEST_VALIDITY_S
           : undefined,
       });
 
+      // Set character to speaking state
       await this._setCharacterAction(characterId, 'speaking', speakingTimeMs);
 
       return insertedMessage;
     } catch (error) {
-      this.logger.error(`Failed to save message for character ${characterId}`, error);
+      this.logger.error(`Failed to generate or save message for character ${characterId}`, error);
       await this._setCharacterAction(characterId, 'idle', undefined);
       return null;
     }
+  }
+
+  /**
+   * Prepare conversation history for LLM context
+   */
+  private _prepareConversationHistory(
+    sceneState: SceneState,
+    characterId: string,
+  ): Array<HumanMessage | AIMessage> {
+    const history: Array<HumanMessage | AIMessage> = [];
+    const contextWindow = 20; // Keep last 20 messages for context
+
+    // Extract recent messages
+    const recentMessages = sceneState.messages.slice(-contextWindow);
+
+    // Convert to LangChain message format
+    for (const msg of recentMessages) {
+      if (msg.character !== characterId) {
+        // Message from other characters -> Human message from this character's perspective
+        history.push(new HumanMessage(msg.content || ''));
+      } else {
+        // Message from this character -> AI message from this character's perspective
+        history.push(new AIMessage(msg.content || ''));
+      }
+    }
+
+    return history;
+  }
+
+  /**
+   * Prepare system message with context
+   */
+  private _prepareSystemMessage(
+    sceneState: SceneState,
+    sceneConfig: DBSceneConfig,
+    characterId: string,
+    recipientId: string | null,
+  ): Record<string, string> {
+    // Get character info
+    const character = sceneState.characters[characterId];
+    if (!character) {
+      this.logger.warn(`Character ${characterId} not found in scene state, using defaults`);
+      return {
+        character_name: characterId,
+        character_visual: 'Unknown character',
+        character_role: 'Unknown role',
+        message_recipient: recipientId || '',
+        scene_description: sceneConfig.config.description,
+        input:
+          sceneState.messages.length === 0
+            ? 'Start a conversation.'
+            : 'Continue the conversation naturally.',
+        conversation_length: sceneState.messages.length.toString(),
+        current_time: new Date().toLocaleTimeString(),
+      };
+    }
+
+    // Get scene description and character descriptions
+    const charactersDescription = Object.values(sceneState.characters)
+      .map((char) => `- ${char?.visual || 'A character'}`)
+      .join('\n');
+
+    const sceneDescription = `${sceneConfig.config.description}\n\nCharacters:\n${charactersDescription}`;
+
+    // Determine if this is the first message or a continuation
+    const input =
+      sceneState.messages.length === 0
+        ? 'Start a conversation.'
+        : 'Continue the conversation naturally.';
+
+    // Return template variables
+    return {
+      character_name: character.name,
+      character_visual: character.visual || '',
+      character_role: character.role || '',
+      message_recipient: recipientId || '',
+      scene_description: sceneDescription,
+      input: input,
+      conversation_length: sceneState.messages.length.toString(),
+      current_time: new Date().toLocaleTimeString(),
+    };
+  }
+
+  /**
+   * Calculate speaking time based on message length
+   */
+  private _calculateSpeakingTime(messageLength: number): number {
+    const baseSpeakingTime = 5000; // 5 seconds base time
+    const charSpeakingTime = 50; // 50ms per character
+
+    return baseSpeakingTime + messageLength * charSpeakingTime;
   }
 
   private _get_next_speaker(sceneState: SceneState, sceneConfig: DBSceneConfig): string | null {
@@ -319,7 +431,7 @@ export class ConversationOrchestratorService {
       mood: dbMessage.mood,
       mood_emoji: dbMessage.moodEmoji,
       reaction_on_previous_message: dbMessage.reactionOnPrevious,
-      timestamp: dbMessage.timestamp.getTime(),
+      timestamp: dbMessage.timestamp.toISOString(),
       unix_timestamp: dbMessage.timestamp.getTime(),
       calculated_speaking_time: dbMessage.calculatedSpeakingTime,
       conversation_rating: dbMessage.conversationRating,

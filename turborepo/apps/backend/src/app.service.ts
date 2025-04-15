@@ -23,4 +23,19 @@ export class AppService {
     const dbType = this.db ? 'SQLite (via Drizzle)' : 'undefined';
     return `Hello World! 👋 Connected DB: ${dbType}`;
   }
+
+  getHealth() {
+    this.logger.debug('Health check requested');
+    const dbConnected = !!this.db;
+
+    return {
+      status: 'healthy',
+      version: process.env.npm_package_version || '1.0.0',
+      timestamp: new Date().toISOString(),
+      database: {
+        connected: dbConnected,
+        type: 'SQLite (via Drizzle)',
+      },
+    };
+  }
 }

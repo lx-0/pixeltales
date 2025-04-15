@@ -1,7 +1,7 @@
 import z from 'zod';
 
 export const MessageSchema = z.object({
-  timestamp: z.number(),
+  timestamp: z.string(),
   character: z.string(),
   recipient: z.string().describe('The recipient of the message - from the eyes of the character'),
   content: z.string().optional().nullable(),
