@@ -45,60 +45,37 @@ export class ScenesController {
 
   @Get('/:sceneConfigId')
   async getSceneConfig(
-    @Param('sceneConfigId') sceneConfigId: string,
+    @Param('sceneConfigId') sceneConfigId: number,
   ): Promise<SceneConfigResponse> {
     this.logger.info(`[${ScenesController.name}] Getting scene config: ${sceneConfigId}`);
     const scene = await this.scenesService.getById(sceneConfigId);
     if (!scene) {
       throw new NotFoundException('Scene config not found');
     }
-    const parsed = SceneConfigResponseSchema.safeParse(scene);
-    if (!parsed.success) {
-      this.logger.error(
-        `Failed to parse scene config response for ID ${sceneConfigId}`,
-        parsed.error,
-      );
-      throw new Error('Internal server error parsing response');
-    }
-    return parsed.data;
+    return scene;
   }
 
   @Post('/propose')
   async proposeScene(@Body() sceneConfigDto: CreateSceneConfigDTO): Promise<SceneConfigResponse> {
     this.logger.info(`[${ScenesController.name}] Proposing new scene: ${sceneConfigDto.name}`);
-    const newSceneConfig = await this.scenesService.createProposal(sceneConfigDto);
-    const parsed = SceneConfigResponseSchema.safeParse(newSceneConfig);
-    if (!parsed.success) {
-      this.logger.error('Failed to parse propose scene response', parsed.error);
-      throw new Error('Internal server error parsing response');
-    }
-    return parsed.data;
+    return this.scenesService.createProposal(sceneConfigDto);
   }
 
   @Post('/:sceneConfigId/vote')
   @HttpCode(HttpStatus.OK)
   async voteScene(
-    @Param('sceneConfigId') sceneConfigId: string,
+    @Param('sceneConfigId') sceneConfigId: number,
     @Body() payload: VotePayload,
   ): Promise<SceneConfigResponse> {
     this.logger.info(
       `[${ScenesController.name}] Voting on scene ${sceneConfigId}: ${payload.vote}`,
     );
-    const updatedScene = await this.scenesService.vote(sceneConfigId, payload.vote);
-    const parsed = SceneConfigResponseSchema.safeParse(updatedScene);
-    if (!parsed.success) {
-      this.logger.error(
-        `Failed to parse vote scene response for ID ${sceneConfigId}`,
-        parsed.error,
-      );
-      throw new Error('Internal server error parsing response');
-    }
-    return parsed.data;
+    return this.scenesService.vote(sceneConfigId, payload.vote);
   }
 
   @Post('/:sceneConfigId/reject')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async rejectScene(@Param('sceneConfigId') sceneConfigId: string): Promise<void> {
+  async rejectScene(@Param('sceneConfigId') sceneConfigId: number): Promise<void> {
     this.logger.info(`[${ScenesController.name}] Rejecting scene ${sceneConfigId}`);
     await this.scenesService.reject(sceneConfigId);
   }
@@ -106,7 +83,7 @@ export class ScenesController {
   @Post('/:sceneConfigId/comment')
   @HttpCode(HttpStatus.NO_CONTENT)
   async addComment(
-    @Param('sceneConfigId') sceneConfigId: string,
+    @Param('sceneConfigId') sceneConfigId: number,
     @Body() payload: CommentPayload,
   ): Promise<void> {
     this.logger.info(

@@ -13,7 +13,8 @@
     "incremental": true,
     "paths": {
       "@pixeltales/database/schema": ["../../packages/database/dist/schema.d.ts"],
-      "@pixeltales/database": ["../../packages/database/dist/index.d.ts"]
+      "@pixeltales/database": ["../../packages/database/dist/index.d.ts"],
+      "@pixeltales/utils": ["../../packages/utils/dist/index.d.ts"]
     },
     "lib": ["es2022"],
     "skipLibCheck": true

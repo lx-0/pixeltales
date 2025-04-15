@@ -6,18 +6,12 @@ import {
   InternalServerErrorException,
   NotFoundException,
 } from '@nestjs/common';
-import {
-  CreateSceneConfigDTO,
-  DBSceneConfig,
-  DBSceneConfigPopulated,
-  SceneConfig,
-  SceneConfigSchema,
-} from '@pixeltales/contracts';
+import { CreateSceneConfigDTO, DBSceneConfig, SceneConfig } from '@pixeltales/contracts';
 import { dbSchema } from '@pixeltales/database';
-import { randomUUID } from 'crypto';
 import { eq, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../db/drizzle.provider';
+import { DEFAULT_SYSTEM_PROMPT } from '../scene/scene.const';
 
 @Injectable()
 export class ScenesService {
@@ -40,12 +34,12 @@ export class ScenesService {
         .all();
       return proposals;
     } catch (error) {
-      this.logger.error('Error fetching proposed scenes', error);
+      this.logger.error(error, 'Error fetching proposed scenes');
       throw new InternalServerErrorException('Failed to fetch proposed scenes');
     }
   }
 
-  async getById(id: string): Promise<DBSceneConfigPopulated | null> {
+  async getById(id: number): Promise<DBSceneConfig | null> {
     this.logger.debug(`Fetching scene config by id: ${id}`);
     try {
       // eslint-disable-next-line @typescript-eslint/await-thenable
@@ -53,36 +47,25 @@ export class ScenesService {
         .select()
         .from(dbSchema.sceneConfigsTable)
         .where(eq(dbSchema.sceneConfigsTable.id, id))
-        .get(); // .get() returns one or undefined
+        .get();
 
       if (!result) {
         this.logger.error(`Scene config ${id} not found`);
         return null;
       }
 
-      const configParseResult = SceneConfigSchema.safeParse(JSON.parse(result.config));
-
-      if (!configParseResult.success) {
-        this.logger.error(
-          `Invalid config structure in DB for scene ${id}`,
-          configParseResult.error.flatten(),
-        );
-        throw new InternalServerErrorException('Invalid scene config data in database.');
-      }
-
-      return { ...result, config: configParseResult.data };
+      return result;
     } catch (error) {
-      this.logger.error(`Error fetching scene config by id ${id}`, error);
+      this.logger.error(error, `Error fetching scene config by id ${id}`);
       throw new InternalServerErrorException('Failed to fetch scene config');
     }
   }
 
   async createProposal(dto: CreateSceneConfigDTO): Promise<DBSceneConfig> {
     this.logger.debug(`Creating scene config proposal: ${dto.name}`);
-    const newId = randomUUID();
 
     // Prepare the JSON data, matching the structure expected by SceneConfigBase Pydantic model
-    const configDataForJson = {
+    const configDataForJson: SceneConfig = {
       name: dto.name,
       description: dto.description,
       start_character_id: dto.start_character_id,
@@ -92,11 +75,11 @@ export class ScenesService {
       proposed_at: new Date().toISOString(),
       votes: 0,
       comments: [],
+      system_prompt: DEFAULT_SYSTEM_PROMPT,
     };
 
     const newRecord: typeof dbSchema.sceneConfigsTable.$inferInsert = {
-      id: newId,
-      config: JSON.stringify(configDataForJson), // Store the whole config as JSON
+      config: configDataForJson,
       status: 'proposed', // Also store status directly in DB column for easier querying
       // votes, systemPrompt, createdAt have DB defaults
     };
@@ -117,12 +100,12 @@ export class ScenesService {
       this.logger.info(`Created scene proposal ${inserted.id} - ${dto.name}`);
       return inserted;
     } catch (error) {
-      this.logger.error('Error creating scene proposal', error);
+      this.logger.error(error, 'Error creating scene proposal');
       throw new InternalServerErrorException('Failed to create scene proposal');
     }
   }
 
-  async vote(id: string, voteValue: number): Promise<DBSceneConfig> {
+  async vote(id: number, voteValue: number): Promise<DBSceneConfig> {
     this.logger.debug(`Voting on scene config ${id}: ${voteValue}`);
     const sceneConfig = await this.getById(id);
     if (!sceneConfig) {
@@ -143,12 +126,12 @@ export class ScenesService {
       this.logger.info(`Vote updated for scene ${id}`);
       return updated;
     } catch (error) {
-      this.logger.error(`Error voting on scene config ${id}`, error);
+      this.logger.error(error, `Error voting on scene config ${id}`);
       throw new InternalServerErrorException('Failed to vote on scene');
     }
   }
 
-  async reject(id: string): Promise<void> {
+  async reject(id: number): Promise<void> {
     this.logger.debug(`Rejecting scene config ${id}`);
     const sceneConfig = await this.getById(id);
     if (!sceneConfig) {
@@ -166,12 +149,12 @@ export class ScenesService {
         .where(eq(dbSchema.sceneConfigsTable.id, id));
       this.logger.info(`Scene config ${id} rejected.`);
     } catch (error) {
-      this.logger.error(`Error rejecting scene config ${id}`, error);
+      this.logger.error(error, `Error rejecting scene config ${id}`);
       throw new InternalServerErrorException('Failed to reject scene');
     }
   }
 
-  async addComment(id: string, user: string, commentText: string): Promise<DBSceneConfig> {
+  async addComment(id: number, user: string, commentText: string): Promise<DBSceneConfig> {
     this.logger.debug(`Adding comment to scene config ${id} by ${user}`);
     const sceneConfig = await this.getById(id);
     if (!sceneConfig) {
@@ -182,32 +165,16 @@ export class ScenesService {
     }
 
     try {
-      // Parse and validate the JSON blob using the Zod schema
-      let currentConfigData: SceneConfig;
-      try {
-        const validationResult = SceneConfigSchema.safeParse(sceneConfig.config);
-        if (!validationResult.success) {
-          this.logger.error(
-            `Invalid config structure in DB for scene ${id}`,
-            validationResult.error.flatten(),
-          );
-          throw new InternalServerErrorException('Invalid scene config data in database.');
-        }
-        currentConfigData = validationResult.data;
-      } catch (parseError) {
-        this.logger.error(`Failed to parse config for scene ${id}`, parseError);
-        throw new InternalServerErrorException('Corrupted scene config data in database.');
-      }
-
       const newComment = {
         user: user,
         comment: commentText,
         timestamp: new Date().toISOString(),
       };
       // Add comment to the typed data object
-      currentConfigData.comments = [...(currentConfigData.comments ?? []), newComment];
-
-      const updatedConfig = JSON.stringify(currentConfigData); // Stringify the validated/updated object
+      const updatedConfig = {
+        ...sceneConfig.config,
+        comments: [...sceneConfig.config.comments, newComment],
+      };
 
       // eslint-disable-next-line @typescript-eslint/await-thenable
       const updated = await this.db
@@ -222,8 +189,89 @@ export class ScenesService {
     } catch (error) {
       // Handle potential DB errors or re-throw other errors
       if (error instanceof HttpException) throw error; // Don't repack known HTTP errors
-      this.logger.error(`Error adding comment to scene config ${id}`, error);
+      this.logger.error(error, `Error adding comment to scene config ${id}`);
       throw new InternalServerErrorException('Failed to add comment');
+    }
+  }
+
+  async getNextConfig(configId?: number): Promise<DBSceneConfig | null> {
+    if (configId) {
+      this.logger.debug(`Getting specific scene config by id: ${configId}`);
+      return await this.getById(configId);
+    }
+
+    this.logger.debug('Getting next scene config (highest voted or default)...');
+    try {
+      // 1. Find highest-voted proposed config
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      const highestVotedProposal = await this.db
+        .select({
+          id: dbSchema.sceneConfigsTable.id,
+          config: dbSchema.sceneConfigsTable.config, // Need config to update status within JSON
+        })
+        .from(dbSchema.sceneConfigsTable)
+        .where(eq(dbSchema.sceneConfigsTable.status, 'proposed'))
+        .orderBy(sql`${dbSchema.sceneConfigsTable.votes} DESC`)
+        .limit(1)
+        .get();
+
+      if (highestVotedProposal) {
+        this.logger.info(`Found highest-voted proposal: ${highestVotedProposal.id}`);
+        // Activate it (update status column and inside JSON)
+        const configData = highestVotedProposal.config;
+        configData.status = 'active'; // Update status in parsed object
+
+        // eslint-disable-next-line @typescript-eslint/await-thenable
+        await this.db
+          .update(dbSchema.sceneConfigsTable)
+          .set({
+            status: 'active',
+            config: configData,
+          })
+          .where(eq(dbSchema.sceneConfigsTable.id, highestVotedProposal.id));
+        this.logger.info(`Activated scene config proposal: ${highestVotedProposal.id}`);
+        // Fetch the fully populated version again after update
+        return await this.getById(highestVotedProposal.id);
+      }
+
+      // 2. No proposed config found, find default (latest active, then latest overall)
+      this.logger.info('No proposed configs found, looking for default (latest active/overall).');
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      let fallbackConfig = await this.db
+        .select({ id: dbSchema.sceneConfigsTable.id })
+        .from(dbSchema.sceneConfigsTable)
+        .where(eq(dbSchema.sceneConfigsTable.status, 'active'))
+        .orderBy(sql`${dbSchema.sceneConfigsTable.createdAt} DESC`)
+        .limit(1)
+        .get();
+
+      if (fallbackConfig) {
+        this.logger.info(`Found latest active config as default: ${fallbackConfig.id}`);
+        return await this.getById(fallbackConfig.id);
+      }
+
+      // If no active found, get the latest overall
+      // eslint-disable-next-line @typescript-eslint/await-thenable
+      fallbackConfig = await this.db
+        .select({ id: dbSchema.sceneConfigsTable.id })
+        .from(dbSchema.sceneConfigsTable)
+        .orderBy(sql`${dbSchema.sceneConfigsTable.createdAt} DESC`)
+        .limit(1)
+        .get();
+
+      if (fallbackConfig) {
+        this.logger.info(`Found latest overall config as default: ${fallbackConfig.id}`);
+        // If this one is proposed, we might consider activating it?
+        // For now, just return it as is.
+        return await this.getById(fallbackConfig.id);
+      }
+
+      // 3. No config found at all
+      this.logger.error('No scene configs found in the database at all.');
+      return null;
+    } catch (error) {
+      this.logger.error(error, 'Error getting next scene config');
+      throw new InternalServerErrorException('Failed to get next scene config');
     }
   }
 }

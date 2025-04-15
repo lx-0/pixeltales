@@ -1,4 +1,4 @@
-import { Logger } from '@nestjs/common';
+import { Inject, Logger, forwardRef } from '@nestjs/common';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
@@ -24,8 +24,11 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   private readonly logger = new Logger(EventsGateway.name);
 
-  // TODO: Inject SceneManagerService later
-  constructor(private readonly sceneManager: SceneManagerService) {}
+  // Inject SceneManagerService using forwardRef
+  constructor(
+    @Inject(forwardRef(() => SceneManagerService))
+    private readonly sceneManager: SceneManagerService,
+  ) {}
 
   afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway Initialized 🔌');

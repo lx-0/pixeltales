@@ -1,7 +1,6 @@
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod';
 import { z } from 'zod';
 import * as schema from './db-schema';
-import { SceneConfig } from './schemas';
 
 // === Schema Export ===
 export * from './db-schema';
@@ -9,9 +8,6 @@ export * from './schemas';
 
 // === TypeScript Type Exports ===
 export type DBSceneConfig = typeof schema.sceneConfigsTable.$inferSelect;
-export type DBSceneConfigPopulated = Omit<DBSceneConfig, 'config'> & {
-  config: SceneConfig;
-};
 export type NewDBSceneConfig = typeof schema.sceneConfigsTable.$inferInsert;
 export type DBScene = typeof schema.scenesTable.$inferSelect;
 export type NewDBScene = typeof schema.scenesTable.$inferInsert;

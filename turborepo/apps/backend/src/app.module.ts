@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER } from '@nestjs/core'; // Import APP_FILTER token
+import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { IncomingMessage, ServerResponse } from 'node:http'; // Import types for customLogLevel
 import { AppConfigModule } from './app-config/app-config.module'; // Import renamed module
@@ -10,7 +11,6 @@ import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'; //
 import { DbModule } from './db/db.module';
 import { EventsModule } from './events/events.module';
 import { ScenesModule } from './scenes/scenes.module';
-import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [

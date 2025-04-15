@@ -40,5 +40,6 @@ export const SceneConfigSchema = z.object({
     .optional()
     .default([])
     .describe('Comments on the scene proposal'),
+  system_prompt: z.string().min(0).max(5000).describe('System prompt for the scene'),
 });
 export type SceneConfig = z.infer<typeof SceneConfigSchema>;

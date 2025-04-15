@@ -3,8 +3,8 @@ import { CharacterStateSchema } from './character';
 import { MessageSchema } from './conversation';
 
 export const SceneStateSchema = z.object({
-  scene_id: z.string(),
-  config_id: z.string(),
+  scene_id: z.number(),
+  scene_config_id: z.number(), // TODO v2: rename to `config_id`
   characters: z.record(z.string(), CharacterStateSchema),
   messages: z.array(MessageSchema),
   started_at: z.number(),

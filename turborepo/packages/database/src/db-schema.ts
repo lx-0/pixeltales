@@ -1,25 +1,22 @@
 import { relations, sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+import { SceneConfig, SceneState } from './schemas';
 
 // --- Tables ---
 
 export const sceneConfigsTable = sqliteTable(
   'scene_configs',
   {
-    // id: integer('id').primaryKey(), // Legacy war int
-    id: text('id').primaryKey(), // Neu: UUID als Text
+    id: integer('id').primaryKey(), // TODO v2: UUID als Text
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    config: text('config').notNull(), // Store SceneConfigBase + system_prompt as JSON string
+    config: text('config').$type<SceneConfig>().notNull(),
     votes: integer('votes').default(0).notNull(),
     status: text('status', { enum: ['proposed', 'active', 'rejected'] })
       .default('proposed')
       .notNull(),
-    systemPrompt: text('system_prompt').notNull().default(''),
-    // proposerName: text('proposer_name'), // War Teil der JSON-Config
-    // proposedAt: integer('proposed_at', { mode: 'timestamp_ms' }), // War Teil der JSON-Config?
-    // comments: json('comments') // War Teil der JSON-Config?
+    systemPrompt: text('system_prompt').notNull().default(''), // TODO v2: remove as already in `config`
   },
   (table) => [
     index('scene_config_created_at_idx').on(table.createdAt),
@@ -30,14 +27,13 @@ export const sceneConfigsTable = sqliteTable(
 export const scenesTable = sqliteTable(
   'scenes',
   {
-    // id: integer('id').primaryKey(), // Legacy war int
-    id: text('id').primaryKey(), // Neu: UUID als Text
+    id: integer('id').primaryKey(), // TODO v2: UUID als Text
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    sceneConfigId: text('config_id')
+    sceneConfigId: integer('config_id')
       .notNull()
-      .references(() => sceneConfigsTable.id, { onDelete: 'cascade' }), // FK
+      .references(() => sceneConfigsTable.id, { onDelete: 'cascade' }),
     // startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
     // endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
     // isActive: integer('is_active', { mode: 'boolean' }).default(false).notNull(), // For currently active scene
@@ -52,15 +48,17 @@ export const scenesTable = sqliteTable(
 export const sceneStateSnapshotsTable = sqliteTable(
   'scene_state_snapshots',
   {
-    id: text('id').primaryKey(), // Neu: UUID als Text
+    id: integer('id').primaryKey(), // TODO v2: UUID als Text
     timestamp: integer('timestamp', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    state: text('state').notNull(), // Store SceneState as JSON string
-    sceneId: text('scene_id')
+    state: text('state').$type<SceneState>().notNull(),
+    configId: integer('config_id')
       .notNull()
-      .references(() => scenesTable.id, { onDelete: 'cascade' }), // FK
-    // config_id war redundant, kann über sceneId -> scenesTable -> sceneConfigId geholt werden
+      .references(() => sceneConfigsTable.id),
+    sceneId: integer('scene_id')
+      .notNull()
+      .references(() => scenesTable.id),
   },
   (table) => [
     index('snapshot_timestamp_idx').on(table.timestamp),
@@ -72,7 +70,7 @@ export const sceneStateSnapshotsTable = sqliteTable(
 export const charactersTable = sqliteTable(
   'characters',
   {
-    id: text('id').primaryKey(), // Character ID like "bob", "alice"
+    id: text('id').primaryKey(), // Character ID like "bob", "alice" // TODO v2: UUID als Text
     name: text('name').notNull(),
     color: text('color'), // Optional? Based on Pydantic model
   },
@@ -87,7 +85,7 @@ export const messagesTable = sqliteTable(
     timestamp: integer('timestamp', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    sceneId: text('scene_id')
+    sceneId: integer('scene_id')
       .notNull()
       .references(() => scenesTable.id, { onDelete: 'cascade' }),
     characterId: text('character_id')
