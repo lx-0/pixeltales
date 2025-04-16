@@ -6,7 +6,6 @@ import { DBSceneConfig, dbSchema, NewDBScene } from '@pixeltales/database';
 import { PinoLogger } from 'nestjs-pino';
 import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../../db/drizzle.provider';
 import { EventsGateway } from '../../events/events.gateway'; // To emit updates
-import { LlmService } from '../../llm/llm.service';
 import { ScenesService } from '../../scenes/scenes.service'; // Assuming DB access logic is here
 import { ConversationOrchestratorService } from '../conversation-orchestrator/conversation-orchestrator.service';
 import { SceneStateService } from '../scene-state/scene-state.service';
@@ -31,7 +30,6 @@ export class SceneManagerService implements OnModuleInit {
     private readonly configService: ConfigService,
     @Inject(DRIZZLE_INSTANCE) private readonly db: DrizzleSqliteDatabase,
     private readonly scenesService: ScenesService, // For complex DB operations
-    private readonly llmService: LlmService,
     private readonly logger: PinoLogger,
     private readonly schedulerRegistry: SchedulerRegistry, // Inject SchedulerRegistry
     private readonly sceneStateService: SceneStateService,
@@ -167,7 +165,7 @@ export class SceneManagerService implements OnModuleInit {
       // Ensure loop is started for the new scene
       this.startConversationLoop();
     } catch (error: unknown) {
-      this.logger.error('Failed to start new scene:', error);
+      this.logger.error(error, 'Failed to start new scene:');
       this.activeScene = null;
       this.activeSceneConfig = null;
       this.sceneStateService.setCurrentState(null);
@@ -258,7 +256,7 @@ export class SceneManagerService implements OnModuleInit {
       try {
         await this.sceneStateService.saveSnapshot(this.activeScene.id);
       } catch (e) {
-        this.logger.error('Failed to save snapshot during emitStateUpdate', e);
+        this.logger.error(e, 'Failed to save snapshot during emitStateUpdate');
         // Continue with emit even if save fails?
       }
     }
@@ -271,7 +269,7 @@ export class SceneManagerService implements OnModuleInit {
         this.gateway.server.emit('scene_state', validatedState);
       }
     } catch (validationError) {
-      this.logger.error('Current scene state failed validation before emit:', validationError);
+      this.logger.error(validationError, 'Current scene state failed validation before emit:');
       // Consider stopping the loop or other recovery action
     }
   }
@@ -316,8 +314,8 @@ export class SceneManagerService implements OnModuleInit {
             return; // Exit this interval callback
           } catch (restartError: unknown) {
             this.logger.error(
-              'Failed to restart scene after cooldown. Stopping loop.',
               restartError,
+              'Failed to restart scene after cooldown. Stopping loop.',
             );
             this.stopConversationLoop();
             return;
@@ -348,7 +346,7 @@ export class SceneManagerService implements OnModuleInit {
           this.logger.warn('State became null after conversation step? This should not happen.');
         }
       } catch (error) {
-        this.logger.error('Error during conversation step execution. Stopping loop.', error);
+        this.logger.error(error, 'Error during conversation step execution. Stopping loop.');
         this.stopConversationLoop();
       }
     };
@@ -364,7 +362,7 @@ export class SceneManagerService implements OnModuleInit {
         try {
           await stepFn();
         } catch (e) {
-          this.logger.error('Unhandled error in scheduled stepFn execution. Stopping loop.', e);
+          this.logger.error(e, 'Unhandled error in scheduled stepFn execution. Stopping loop.');
           this.stopConversationLoop();
         }
       })();
@@ -378,7 +376,7 @@ export class SceneManagerService implements OnModuleInit {
         `Conversation loop successfully started with interval ${LOOP_INTERVAL_MS}ms.`,
       );
     } catch (error) {
-      this.logger.error('Failed to add interval to scheduler registry', error);
+      this.logger.error(error, 'Failed to add interval to scheduler registry');
       clearInterval(interval);
       this.isLoopRunning = false;
     }
@@ -400,7 +398,7 @@ export class SceneManagerService implements OnModuleInit {
         );
       }
     } catch (err) {
-      this.logger.warn('Error trying to delete conversation loop interval', { err });
+      this.logger.warn(err, 'Error trying to delete conversation loop interval');
     }
     this.isLoopRunning = false;
     if (this.conversationLoopTimeout) {

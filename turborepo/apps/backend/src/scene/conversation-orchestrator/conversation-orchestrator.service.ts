@@ -95,7 +95,7 @@ export class ConversationOrchestratorService {
             messages: [...(currentState.messages ?? []), parsedMessage.data],
           });
         } else {
-          this.logger.error('Mapped message failed Zod validation', parsedMessage.error.flatten());
+          this.logger.error(parsedMessage.error.flatten(), 'Mapped message failed Zod validation');
         }
       } else {
         this.logger.error(`Failed to generate or save message for ${nextSpeakerId}`);
@@ -111,8 +111,9 @@ export class ConversationOrchestratorService {
       // 5. Handle end conversation requests
       await this._handle_end_conversation_requests(finalStateCheck);
     } catch (error) {
-      this.logger.error('Error in conversation step', error);
-      throw error;
+      // Log the actual error object for better debugging
+      this.logger.error({ err: error }, 'Error caught in conversation step');
+      throw error; // Re-throw the error to propagate it
     }
   }
 

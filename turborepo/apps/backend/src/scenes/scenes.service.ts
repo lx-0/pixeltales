@@ -7,7 +7,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateSceneConfigDTO, DBSceneConfig, SceneConfig } from '@pixeltales/contracts';
-import { dbSchema } from '@pixeltales/database';
+import { dbSchema, SceneConfigSchema } from '@pixeltales/database';
 import { eq, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../db/drizzle.provider';
@@ -54,7 +54,18 @@ export class ScenesService {
         return null;
       }
 
-      return result;
+      const configParseResult = SceneConfigSchema.safeParse(
+        JSON.parse(result.config as unknown as string),
+      );
+      if (!configParseResult.success) {
+        this.logger.error(
+          { configParseResult },
+          `Error parsing scene config ${id} - invalid config`,
+        );
+        return null;
+      }
+
+      return { ...result, config: configParseResult.data };
     } catch (error) {
       this.logger.error(error, `Error fetching scene config by id ${id}`);
       throw new InternalServerErrorException('Failed to fetch scene config');
