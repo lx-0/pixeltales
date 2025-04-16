@@ -32,8 +32,9 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   afterInit(_server: Server) {
     this.logger.log('WebSocket Gateway Initialized 🔌');
-    // Maybe pass server instance to scene manager if needed?
-    // this.sceneManager.setServer(server);
+    // Register this gateway instance with the SceneManagerService
+    this.sceneManager.registerGateway(this);
+    this.logger.log('Gateway registered with SceneManagerService');
   }
 
   handleConnection(client: Socket /*, ...args: any[] */) {

@@ -9,7 +9,7 @@ console.log('🚀 Starting database migration...');
 
 // --- Database Connection ---
 // Path relative to CWD (apps/backend/)
-const defaultDbPathRelativeToBackendRoot = '../data/sqlite/pixeltales.db';
+const defaultDbPathRelativeToBackendRoot = '../../../data/sqlite/pixeltales.db';
 const dbPathSetting = process.env.DATABASE_URL ?? defaultDbPathRelativeToBackendRoot;
 
 let dbPath: string;
@@ -25,8 +25,8 @@ console.log(`Database path resolved to: ${dbPath}`);
 // Ensure directory exists
 const dbDir = path.dirname(dbPath);
 if (!fs.existsSync(dbDir)) {
-  console.error(`❌ Error: Database directory does not exist: ${dbDir}`);
-  process.exit(1);
+  console.log(`Database directory does not exist, creating: ${dbDir}`);
+  fs.mkdirSync(dbDir, { recursive: true });
 }
 console.log(`Database directory exists: ${dbDir}`);
 
@@ -43,8 +43,8 @@ try {
 const db = drizzle(sqlite);
 
 // --- Migration Execution ---
-// Path relative to THIS script file (apps/backend/src/db/migrate.ts)
-const migrationsFolder = path.resolve(__dirname, '../../packages/database/src/db/migrations');
+// Path to migrations folder - should be relative to THIS file
+const migrationsFolder = path.resolve(__dirname, 'migrations');
 console.log(`Looking for migrations in: ${migrationsFolder}`);
 
 if (!fs.existsSync(migrationsFolder)) {
@@ -52,7 +52,7 @@ if (!fs.existsSync(migrationsFolder)) {
 } else {
   try {
     console.log('Applying migrations...');
-    migrate(db, { migrationsFolder: migrationsFolder });
+    migrate(db, { migrationsFolder });
     console.log('✅ Migrations applied successfully!');
   } catch (error) {
     console.error('❌ Error applying migrations:', error);

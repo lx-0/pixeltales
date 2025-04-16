@@ -4,6 +4,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { DBScene, SceneStateSchema } from '@pixeltales/contracts'; // Import necessary types/schemas
 import { DBSceneConfig, dbSchema, NewDBScene } from '@pixeltales/database';
 import { PinoLogger } from 'nestjs-pino';
+import { CharactersService } from '../../characters/characters.service';
 import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../../db/drizzle.provider';
 import { EventsGateway } from '../../events/events.gateway'; // To emit updates
 import { ScenesService } from '../../scenes/scenes.service'; // Assuming DB access logic is here
@@ -13,6 +14,7 @@ import { SceneStateService } from '../scene-state/scene-state.service';
 const CONVERSATION_LOOP_INTERVAL = 'CONVERSATION_LOOP_INTERVAL';
 const LOOP_INTERVAL_MS = 500; // Check loop every 500ms
 const NEW_CONVERSATION_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
+const ALWAYS_RUN_CONVERSATION = false; // Set to true to always run the conversation regardless of visitor count
 
 @Injectable()
 export class SceneManagerService implements OnModuleInit {
@@ -34,6 +36,7 @@ export class SceneManagerService implements OnModuleInit {
     private readonly schedulerRegistry: SchedulerRegistry, // Inject SchedulerRegistry
     private readonly sceneStateService: SceneStateService,
     private readonly conversationOrchestratorService: ConversationOrchestratorService,
+    private readonly charactersService: CharactersService,
   ) {
     this.logger.setContext(SceneManagerService.name);
   }
@@ -41,12 +44,17 @@ export class SceneManagerService implements OnModuleInit {
   async onModuleInit() {
     this.logger.info('Initializing SceneManagerService...');
     await this.loadActiveScene();
-    if (this.activeScene && this.activeSceneConfig) {
-      // Only start loop if scene loaded successfully
+
+    // Only start the conversation loop if ALWAYS_RUN_CONVERSATION is true
+    if (this.activeScene && this.activeSceneConfig && ALWAYS_RUN_CONVERSATION) {
+      this.logger.info(
+        'ALWAYS_RUN_CONVERSATION is enabled, starting conversation loop immediately',
+      );
       this.startConversationLoop();
+    } else if (this.activeScene && this.activeSceneConfig) {
+      this.logger.info('Scene loaded, waiting for visitors to start conversation loop');
     } else {
       this.logger.error('SceneManager initialization failed: Could not load active scene.');
-      // Optionally throw an error or handle differently
     }
   }
 
@@ -83,6 +91,9 @@ export class SceneManagerService implements OnModuleInit {
         }
         this.activeSceneConfig = sceneConfigRecord;
         this.logger.info(`Loaded config ${sceneConfigRecord.id} for scene ${this.activeScene.id}`);
+
+        // Ensure all characters from config exist in the database
+        await this.charactersService.ensureCharactersExistInDatabase(sceneConfigRecord);
 
         // 2. Load the latest snapshot using SceneStateService
         const loadedState = await this.sceneStateService.loadLatestSnapshotForScene(
@@ -156,6 +167,9 @@ export class SceneManagerService implements OnModuleInit {
         this.activeVisitors.size, // Pass current visitor count
       );
 
+      // Ensure all characters exist in the database
+      await this.charactersService.ensureCharactersExistInDatabase(targetConfig);
+
       // Save initial snapshot using SceneStateService
       await this.sceneStateService.saveSnapshot(this.activeScene.id);
 
@@ -181,14 +195,18 @@ export class SceneManagerService implements OnModuleInit {
 
     if (!currentState || !this.activeScene) {
       this.logger.warn('Cannot process visitor add: No active scene or state.');
-      // Maybe try to load/start a scene here?
       return;
     }
 
-    const needsResume = !currentState.conversation_active && this.activeVisitors.size > 0;
+    // Check if this is the first visitor (or if we're already running due to ALWAYS_RUN_CONVERSATION)
+    const needsResume =
+      !currentState.conversation_active &&
+      (this.activeVisitors.size > 0 || ALWAYS_RUN_CONVERSATION);
+
+    // Always update the visitor count
     this.sceneStateService.updateState({
       visitor_count: this.activeVisitors.size,
-      conversation_active: true,
+      conversation_active: needsResume,
     });
 
     // Get updated state for emission
@@ -198,7 +216,9 @@ export class SceneManagerService implements OnModuleInit {
     }
 
     if (needsResume) {
-      this.logger.info('First visitor joined, ensuring conversation loop is running.');
+      this.logger.info(
+        'Starting conversation loop due to visitor join or ALWAYS_RUN_CONVERSATION setting',
+      );
       this.startConversationLoop();
     }
   }
@@ -213,22 +233,32 @@ export class SceneManagerService implements OnModuleInit {
       return;
     }
 
-    const shouldPause = this.activeVisitors.size === 0;
+    // Only pause if there are no visitors AND ALWAYS_RUN_CONVERSATION is false
+    const shouldPause = this.activeVisitors.size === 0 && !ALWAYS_RUN_CONVERSATION;
+
     this.sceneStateService.updateState({
       visitor_count: this.activeVisitors.size,
       conversation_active: !shouldPause,
     });
 
     if (shouldPause) {
-      this.logger.info('Last visitor left, pausing conversation loop.');
+      this.logger.info(
+        'Last visitor left and ALWAYS_RUN_CONVERSATION is false, pausing conversation loop.',
+      );
       this.stopConversationLoop();
       // Save snapshot on pause
       await this.sceneStateService.saveSnapshot(this.activeScene.id);
     } else {
+      if (this.activeVisitors.size === 0 && ALWAYS_RUN_CONVERSATION) {
+        this.logger.info(
+          'Last visitor left but ALWAYS_RUN_CONVERSATION is true, keeping conversation active.',
+        );
+      }
+
       // Emit update to remaining visitors
       const updatedState = this.sceneStateService.getCurrentState();
       if (updatedState) {
-        await this.emitStateUpdate(null, true); // Save snapshot on visitor leave too?
+        await this.emitStateUpdate(null, true);
       }
     }
   }
@@ -279,106 +309,142 @@ export class SceneManagerService implements OnModuleInit {
       this.logger.warn('Cannot start conversation loop: Missing active scene or config.');
       return;
     }
+
     if (this.isLoopRunning) {
       this.logger.warn('Attempted to start loop, but it is already running.');
       return;
     }
-    this.logger.info('Starting conversation loop interval...');
-    // Stop any potential previous loop JUST IN CASE (redundant if logic elsewhere is correct)
+
+    // Check if we have any visitors or if ALWAYS_RUN_CONVERSATION is true
+    if (this.activeVisitors.size === 0 && !ALWAYS_RUN_CONVERSATION) {
+      this.logger.info(
+        'No visitors connected and ALWAYS_RUN_CONVERSATION is false, not starting conversation loop.',
+      );
+      return;
+    }
+
+    this.logger.info('Starting sequential conversation loop...');
+
+    // Stop any potential previous loop JUST IN CASE
     this.stopConversationLoop();
 
-    const stepFn = async () => {
-      // Get current data at the beginning of each step
-      const currentScene = this.activeScene;
-      const currentConfig = this.activeSceneConfig;
-      const currentState = this.sceneStateService.getCurrentState();
+    // Mark as running and start the first iteration
+    this.isLoopRunning = true;
+    this.scheduleNextStep();
+  }
 
-      // Essential data check
-      if (!currentScene || !currentConfig || !currentState) {
-        this.logger.error('Loop step failed: Missing essential scene data. Stopping loop.');
-        this.stopConversationLoop();
-        return;
-      }
+  private scheduleNextStep() {
+    if (!this.isLoopRunning) {
+      this.logger.debug('Loop no longer running, not scheduling next step.');
+      return;
+    }
 
-      // --- Restart Logic ---
-      if (currentState.conversation_ended) {
-        const endedAt = currentState.ended_at ?? 0;
-        if (Date.now() > endedAt + NEW_CONVERSATION_COOLDOWN_MS) {
-          this.logger.info(
-            `Conversation cooldown (${NEW_CONVERSATION_COOLDOWN_MS / 1000}s) ended. Restarting scene...`,
-          );
-          try {
-            // startNewScene will stop the current loop and start a new one
-            await this.startNewScene();
-            // No need to emit or return here, new loop takes over.
-            return; // Exit this interval callback
-          } catch (restartError: unknown) {
-            this.logger.error(
-              restartError,
-              'Failed to restart scene after cooldown. Stopping loop.',
-            );
-            this.stopConversationLoop();
-            return;
-          }
-        }
-        // Cooldown not met, ensure loop remains stopped
-        this.logger.trace('Conversation ended, waiting for cooldown. Loop should be stopped.');
-        if (this.isLoopRunning) this.stopConversationLoop(); // Ensure it's stopped
-        return;
-      }
-
-      // --- Active Check ---
-      if (!currentState.conversation_active) {
-        this.logger.trace('Conversation not active. Loop step skipped. Pausing loop.');
-        this.stopConversationLoop(); // Pause the loop if no visitors
-        return;
-      }
-
-      // --- Execute Orchestrator Step ---
-      try {
-        await this.conversationOrchestratorService.runConversationStep(currentState, currentConfig);
-        // Emit state AFTER the orchestrator step completes (save snapshot handled within orchestrator/state service? No, let's save here)
-        const finalState = this.sceneStateService.getCurrentState();
-        if (finalState) {
-          // Let's save snapshot after each successful step for now
-          await this.emitStateUpdate(null, true);
-        } else {
-          this.logger.warn('State became null after conversation step? This should not happen.');
-        }
-      } catch (error) {
-        this.logger.error(error, 'Error during conversation step execution. Stopping loop.');
-        this.stopConversationLoop();
-      }
-    };
-
-    // Schedule the interval
-    const interval = setInterval(() => {
+    // Use timeout instead of interval for better control
+    this.conversationLoopTimeout = setTimeout(() => {
       if (!this.isLoopRunning) {
-        clearInterval(interval);
+        this.logger.debug('Loop stopped before executing scheduled step.');
         return;
       }
-      // Wrap async stepFn call
-      (async () => {
+
+      // Wrap the async execution in an IIFE to avoid the Promise return lint error
+      void (async () => {
         try {
-          await stepFn();
-        } catch (e) {
-          this.logger.error(e, 'Unhandled error in scheduled stepFn execution. Stopping loop.');
+          await this.executeConversationStep();
+
+          // Only schedule next step if loop is still running
+          if (this.isLoopRunning) {
+            this.scheduleNextStep();
+          }
+        } catch (error) {
+          this.logger.error(error, 'Error in conversation step. Stopping loop.');
           this.stopConversationLoop();
         }
       })();
     }, LOOP_INTERVAL_MS);
+  }
 
-    // Register interval
-    try {
-      this.schedulerRegistry.addInterval(CONVERSATION_LOOP_INTERVAL, interval);
-      this.isLoopRunning = true;
-      this.logger.info(
-        `Conversation loop successfully started with interval ${LOOP_INTERVAL_MS}ms.`,
+  private async executeConversationStep(): Promise<void> {
+    // Get current data at the beginning of the step
+    const currentScene = this.activeScene;
+    const currentConfig = this.activeSceneConfig;
+    const currentState = this.sceneStateService.getCurrentState();
+
+    // Essential data check
+    if (!currentScene || !currentConfig || !currentState) {
+      this.logger.error('Loop step failed: Missing essential scene data. Stopping loop.');
+      this.stopConversationLoop();
+      return;
+    }
+
+    // --- Restart Logic ---
+    if (currentState.conversation_ended) {
+      const endedAt = currentState.ended_at ?? 0;
+      if (Date.now() > endedAt + NEW_CONVERSATION_COOLDOWN_MS) {
+        this.logger.info(
+          `Conversation cooldown (${NEW_CONVERSATION_COOLDOWN_MS / 1000}s) ended. Restarting scene...`,
+        );
+        try {
+          // startNewScene will stop the current loop and start a new one
+          await this.startNewScene();
+          return;
+        } catch (restartError: unknown) {
+          this.logger.error(restartError, 'Failed to restart scene after cooldown. Stopping loop.');
+          this.stopConversationLoop();
+          return;
+        }
+      }
+      // Cooldown not met, ensure loop remains stopped
+      this.logger.trace('Conversation ended, waiting for cooldown. Stopping loop.');
+      this.stopConversationLoop();
+      return;
+    }
+
+    // --- Active Check ---
+    // Only pause if there are no visitors AND ALWAYS_RUN_CONVERSATION is false
+    if (
+      !currentState.conversation_active &&
+      !(this.activeVisitors.size > 0 || ALWAYS_RUN_CONVERSATION)
+    ) {
+      this.logger.trace(
+        'Conversation not active and no visitors or ALWAYS_RUN_CONVERSATION is false. Pausing loop.',
       );
-    } catch (error) {
-      this.logger.error(error, 'Failed to add interval to scheduler registry');
-      clearInterval(interval);
-      this.isLoopRunning = false;
+      this.stopConversationLoop();
+      return;
+    }
+
+    // Check if any character is still speaking or thinking
+    const activeCharacters = Object.values(currentState.characters)
+      .filter(
+        (char) =>
+          (char.action === 'speaking' || char.action === 'thinking') &&
+          typeof char.action_started_at === 'number' &&
+          typeof char.action_estimated_duration === 'number' &&
+          Date.now() < char.action_started_at + char.action_estimated_duration * 1000,
+      )
+      .map((char) => ({
+        name: char.name,
+        action: char.action,
+      }));
+    const hasActiveSpeakers = activeCharacters.length > 0;
+
+    if (hasActiveSpeakers) {
+      this.logger.debug(
+        { active: activeCharacters },
+        'Characters are still active (speaking/thinking). Skipping generation step.',
+      );
+      return;
+    }
+
+    // --- Execute Orchestrator Step ---
+    this.logger.debug('Executing conversation orchestrator step...');
+    await this.conversationOrchestratorService.runConversationStep(currentState, currentConfig);
+
+    // Emit state AFTER the orchestrator step completes
+    const finalState = this.sceneStateService.getCurrentState();
+    if (finalState) {
+      await this.emitStateUpdate(null, true);
+    } else {
+      this.logger.warn('State became null after conversation step? This should not happen.');
     }
   }
 
@@ -387,24 +453,16 @@ export class SceneManagerService implements OnModuleInit {
       // Avoid redundant logging if already stopped
       return;
     }
-    this.logger.info('Attempting to stop conversation loop...');
-    try {
-      if (this.schedulerRegistry.doesExist('interval', CONVERSATION_LOOP_INTERVAL)) {
-        this.schedulerRegistry.deleteInterval(CONVERSATION_LOOP_INTERVAL);
-        this.logger.info('Conversation loop interval deleted from registry.');
-      } else {
-        this.logger.info(
-          'Conversation loop interval did not exist in registry (already removed?).',
-        );
-      }
-    } catch (err) {
-      this.logger.warn(err, 'Error trying to delete conversation loop interval');
-    }
+
+    this.logger.info('Stopping conversation loop...');
     this.isLoopRunning = false;
+
+    // Clear the timeout if it exists
     if (this.conversationLoopTimeout) {
       clearTimeout(this.conversationLoopTimeout);
       this.conversationLoopTimeout = null;
     }
+
     this.logger.info('Conversation loop stopped.');
   }
 }

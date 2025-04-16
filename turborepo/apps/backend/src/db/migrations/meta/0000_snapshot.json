@@ -1,0 +1,207 @@
+{
+  "version": "5",
+  "dialect": "sqlite",
+  "id": "0e30fb8f-4a35-48fa-b9ac-b4cbdb6f5fc3",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "tables": {
+    "scene_configs": {
+      "name": "scene_configs",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(strftime('%s', 'now') as integer) * 1000)"
+        },
+        "config": {
+          "name": "config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "votes": {
+          "name": "votes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "'proposed'"
+        },
+        "system_prompt": {
+          "name": "system_prompt",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        }
+      },
+      "indexes": {
+        "scene_config_created_at_idx": {
+          "name": "scene_config_created_at_idx",
+          "columns": ["created_at"],
+          "isUnique": false
+        },
+        "scene_config_status_idx": {
+          "name": "scene_config_status_idx",
+          "columns": ["status"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "scenes": {
+      "name": "scenes",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(strftime('%s', 'now') as integer) * 1000)"
+        },
+        "config_id": {
+          "name": "config_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "scene_created_at_idx": {
+          "name": "scene_created_at_idx",
+          "columns": ["created_at"],
+          "isUnique": false
+        },
+        "scene_config_id_idx": {
+          "name": "scene_config_id_idx",
+          "columns": ["config_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "scenes_config_id_scene_configs_id_fk": {
+          "name": "scenes_config_id_scene_configs_id_fk",
+          "tableFrom": "scenes",
+          "tableTo": "scene_configs",
+          "columnsFrom": ["config_id"],
+          "columnsTo": ["id"],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    },
+    "scene_state_snapshots": {
+      "name": "scene_state_snapshots",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "timestamp": {
+          "name": "timestamp",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "(cast(strftime('%s', 'now') as integer) * 1000)"
+        },
+        "state": {
+          "name": "state",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "config_id": {
+          "name": "config_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "scene_id": {
+          "name": "scene_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        }
+      },
+      "indexes": {
+        "snapshot_timestamp_idx": {
+          "name": "snapshot_timestamp_idx",
+          "columns": ["timestamp"],
+          "isUnique": false
+        },
+        "snapshot_scene_id_idx": {
+          "name": "snapshot_scene_id_idx",
+          "columns": ["scene_id"],
+          "isUnique": false
+        }
+      },
+      "foreignKeys": {
+        "scene_state_snapshots_config_id_scene_configs_id_fk": {
+          "name": "scene_state_snapshots_config_id_scene_configs_id_fk",
+          "tableFrom": "scene_state_snapshots",
+          "tableTo": "scene_configs",
+          "columnsFrom": ["config_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "scene_state_snapshots_scene_id_scenes_id_fk": {
+          "name": "scene_state_snapshots_scene_id_scenes_id_fk",
+          "tableFrom": "scene_state_snapshots",
+          "tableTo": "scenes",
+          "columnsFrom": ["scene_id"],
+          "columnsTo": ["id"],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {}
+    }
+  },
+  "enums": {},
+  "_meta": {
+    "schemas": {},
+    "tables": {},
+    "columns": {}
+  }
+}

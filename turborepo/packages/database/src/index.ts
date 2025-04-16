@@ -3,6 +3,7 @@ import { z } from 'zod';
 import * as schema from './db-schema';
 
 // === Schema Export ===
+export * from './client';
 export * from './db-schema';
 export * from './schemas';
 

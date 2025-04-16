@@ -1,8 +1,11 @@
 import { ChatAnthropic } from '@langchain/anthropic';
-import { BaseMessage } from '@langchain/core/messages';
-import { StructuredOutputParser } from '@langchain/core/output_parsers';
-import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
-import { Runnable, RunnableConfig, RunnableSequence } from '@langchain/core/runnables';
+import { BaseMessage, HumanMessage } from '@langchain/core/messages';
+import {
+  ChatPromptTemplate,
+  MessagesPlaceholder,
+  SystemMessagePromptTemplate,
+} from '@langchain/core/prompts';
+import { Runnable } from '@langchain/core/runnables';
 import { ChatOpenAI } from '@langchain/openai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -14,7 +17,9 @@ import {
   SceneConfig,
 } from '@pixeltales/contracts';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { DEFAULT_SYSTEM_PROMPT, SystemMessageVars } from '../scene/scene.const';
+import { stripUnsupportedZod } from './strip-unsupported-zod.func';
 
 // Type aliases similar to the Python version
 type LLMConfigHash = number;
@@ -33,22 +38,18 @@ export class LlmService {
   private prompt: ChatPromptTemplate | null = null;
   private chains: Map<LLMConfigHash, AnyRunnable> = new Map();
   private llmConfigs: Map<LLMConfigHash, LLMConfig> = new Map();
-  private chainsInitialized = false;
-  private structuredOutputChain: Runnable<
-    StructuredOutputInput,
-    z.infer<typeof CharacterResponseSchema>,
-    RunnableConfig
-  > | null = null;
+  private modelInitialized = false;
+  private chatModel: ChatOpenAI | null = null;
 
   constructor(private readonly configService: ConfigService) {
-    this.initializeChains()
-      .then(() => {
-        this.logger.log('Chains initialized successfully');
-        this.chainsInitialized = true;
-      })
-      .catch((error) => {
-        this.logger.error('Failed to initialize chains', error);
-      });
+    try {
+      this.initializeModel();
+      this.logger.log('Model initialized successfully');
+      this.modelInitialized = true;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error({ err: error }, `Failed to initialize model: ${errorMessage}`);
+    }
   }
 
   /**
@@ -147,13 +148,28 @@ export class LlmService {
       try {
         const model = this.getChatModel(config);
 
-        // Use withStructuredOutput instead of createStructuredOutputRunnable (which is deprecated)
-        const llm = model.withStructuredOutput(CharacterResponseSchema);
+        // Strip unsupported Zod features before sending to LLM API
+        const strippedSchema = stripUnsupportedZod(CharacterResponseSchema);
+
+        // Use withStructuredOutput with stripped schema
+        const llmWithStripped = model.withStructuredOutput(strippedSchema, {
+          method: config.provider === 'openai' ? 'tool_calling' : 'function_calling',
+        });
+
+        // Create a chain that validates the output with original schema
+        const llm = llmWithStripped.pipe((rawResult) => {
+          // Validate against the original schema
+          return CharacterResponseSchema.parse(rawResult);
+        });
 
         this.llms.set(hash, llm);
         this.logger.debug(`Initialized LLM for config hash ${hash}`);
       } catch (error) {
-        this.logger.error({ err: error }, `Failed to initialize LLM for config hash ${hash}`);
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        this.logger.error(
+          { err: error },
+          `Failed to initialize LLM for config hash ${hash}: ${errorMessage}`,
+        );
         throw error;
       }
     }
@@ -186,9 +202,10 @@ export class LlmService {
         this.chains.set(hash, chain);
         this.logger.debug(`Created conversation chain for config hash ${hash}`);
       } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         this.logger.error(
           { err: error },
-          `Failed to create conversation chain for config hash ${hash}`,
+          `Failed to create conversation chain for config hash ${hash}: ${errorMessage}`,
         );
         throw error;
       }
@@ -236,9 +253,16 @@ export class LlmService {
     // Prepare history separately as it's not part of SystemMessageVars
     const history = Array.isArray(input.history) ? input.history : [];
 
+    this.logger.debug(
+      `[prepareInputVars] Preparing input vars for ${externalId}, history length: ${history.length}`,
+    );
+    this.logger.debug(`[prepareInputVars] Input keys: ${Object.keys(input).join(', ')}`);
+
     // Get keys from SystemMessageVars by creating a dummy instance
     const dummyVars = {} as SystemMessageVars;
     const sysVarKeys = Object.keys(dummyVars);
+
+    this.logger.debug(`[prepareInputVars] SystemMessageVars keys: ${sysVarKeys.join(', ')}`);
 
     // Create a base object with empty strings for all SystemMessageVars fields
     const baseVars = sysVarKeys.reduce(
@@ -268,7 +292,7 @@ export class LlmService {
     };
 
     // Return the complete object with history and any additional properties
-    return {
+    const result = {
       ...mergedVars,
       // Add any additional properties from input not in SystemMessageVars
       ...Object.fromEntries(
@@ -279,6 +303,9 @@ export class LlmService {
       // Always include history
       history,
     };
+
+    this.logger.debug(`[prepareInputVars] Result keys: ${Object.keys(result).join(', ')}`);
+    return result;
   }
 
   /**
@@ -292,29 +319,103 @@ export class LlmService {
     },
   ): Promise<z.infer<typeof CharacterResponseSchema>> {
     try {
-      if (!this.chainsInitialized || !this.structuredOutputChain) {
-        this.logger.error('Chains not initialized');
-        throw new Error('Chains not initialized');
+      this.logger.debug(`[generateResponse] Starting for ${externalId}`);
+
+      if (!this.modelInitialized || !this.chatModel) {
+        this.logger.error('[generateResponse] Model not initialized');
+        throw new Error('Model not initialized');
       }
 
-      this.logger.log('Generating character response', { externalId });
+      this.logger.log('[generateResponse] Preparing input', { externalId });
 
       try {
         // Use helper function to prepare input variables
         const preparedInput = this.prepareInputVars(externalId, input);
 
-        // Generate response using prepared input
-        const result = await this.structuredOutputChain.invoke(preparedInput);
+        this.logger.debug(
+          `[generateResponse] Prepared input with ${preparedInput.history.length} history items`,
+        );
 
-        return result;
+        // Extract history messages
+        const historyMessages = Array.isArray(preparedInput.history) ? preparedInput.history : [];
+
+        // Debug logs for template variables
+        const inputKeys = Object.keys(preparedInput).filter((key) => key !== 'history');
+        this.logger.debug(`[generateResponse] Template variables: ${inputKeys.join(', ')}`);
+
+        try {
+          // Get format instructions for the output schema
+          const formatInstructions = this.getFormatInstructions(CharacterResponseSchema);
+
+          // Create a combined system prompt with format instructions
+          const fullPrompt = DEFAULT_SYSTEM_PROMPT + '\n\n' + formatInstructions;
+
+          // Create a system message from the template
+          const template = SystemMessagePromptTemplate.fromTemplate(fullPrompt);
+          const systemMessage = await template.format(
+            Object.fromEntries(Object.entries(preparedInput).filter(([key]) => key !== 'history')),
+          );
+
+          // Build the full message list
+          const allMessages = [systemMessage, ...historyMessages].filter(
+            (message): message is BaseMessage => message !== undefined,
+          );
+
+          if (preparedInput.input) {
+            allMessages.push(new HumanMessage(preparedInput.input));
+          }
+
+          this.logger.debug(`[generateResponse] Created ${allMessages.length} messages`);
+
+          // Strip unsupported Zod features before sending to LLM API
+          const strippedSchema = stripUnsupportedZod(CharacterResponseSchema);
+
+          // Call the model with structured output using stripped schema
+          const rawResult = await this.chatModel
+            .withStructuredOutput(strippedSchema, {
+              method: 'tool_calling', // Explicitly use tool_calling for OpenAI models
+            })
+            .invoke(allMessages);
+
+          // Validate against the original schema to ensure all constraints are satisfied
+          const result = CharacterResponseSchema.parse(rawResult);
+
+          this.logger.debug(`[generateResponse] Successfully generated response`);
+          return result;
+        } catch (templateError) {
+          // If there's a template error, log it in detail and rethrow for central error handling
+          const errorMsg =
+            templateError instanceof Error ? templateError.message : String(templateError);
+          this.logger.error(`[generateResponse] Template error: ${errorMsg}`);
+
+          if (templateError instanceof Error && templateError.stack) {
+            this.logger.error(`[generateResponse] Stack: ${templateError.stack}`);
+          }
+
+          // Rethrow the error for the central error handling
+          throw new Error(`Template processing error: ${errorMsg}`);
+        }
       } catch (error) {
+        const errorJson =
+          error instanceof Error
+            ? JSON.stringify({ message: error.message, stack: error.stack })
+            : JSON.stringify(error);
+        this.logger.error(`[generateResponse] Error details: ${errorJson}`);
+
+        if (error instanceof Error) {
+          this.logger.error(`[generateResponse] Stack trace: ${error.stack}`);
+        }
+
         const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(`Error generating character response: ${errorMessage}`);
+        this.logger.error(
+          { err: error },
+          `[generateResponse] Error generating character response: ${errorMessage}`,
+        );
         throw new Error(`Failed to generate response: ${errorMessage}`);
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error('Error generating character response', {
+      this.logger.error('[generateResponse] Error in outer try/catch', {
         error: errorMessage,
         externalId,
       });
@@ -322,57 +423,70 @@ export class LlmService {
     }
   }
 
-  private async initializeChains(): Promise<void> {
-    try {
-      this.logger.log('Initializing chains');
-      const structuredOutputParser = StructuredOutputParser.fromZodSchema(CharacterResponseSchema);
+  private getFormatInstructions(schema: z.ZodSchema): string {
+    // Get the JSON schema representation
+    const jsonSchema = zodToJsonSchema(schema);
+    const jsonString = JSON.stringify(jsonSchema);
 
-      const chatModel = new ChatOpenAI({
+    // Double all curly braces in the JSON string to escape them for LangChain's template system
+    const escapedJsonString = jsonString.replace(/({|})/g, '$1$1');
+
+    return `You must format your output as a JSON value that adheres to a given "JSON Schema" instance.
+
+"JSON Schema" is a declarative language that allows you to annotate and validate JSON documents.
+
+For example, the example "JSON Schema" instance {{"properties": {{"foo": {{"description": "a list of test words", "type": "array", "items": {{"type": "string"}}}}}}, "required": ["foo"]}}
+would match an object with one required property, "foo". The "type" property specifies "foo" must be an "array", and the "description" property semantically describes it as "a list of test words". The items within "foo" must be strings.
+Thus, the object {{"foo": ["bar", "baz"]}} is a well-formatted instance of this example "JSON Schema". The object {{"properties": {{"foo": ["bar", "baz"]}}}} is not well-formatted.
+
+Your output will be parsed and type-checked according to the provided schema instance, so make sure all fields in your output match the schema exactly and there are no trailing commas!
+
+Here is the JSON Schema instance your output must adhere to. Include the enclosing markdown codeblock:
+\`\`\`json
+${escapedJsonString}
+\`\`\`
+`;
+  }
+
+  /**
+   * Initialize the ChatModel needed for generating structured responses
+   */
+  private initializeModel(): void {
+    try {
+      this.logger.log('[initializeModel] Starting initialization');
+
+      this.chatModel = new ChatOpenAI({
         temperature: 0.7,
         modelName: 'gpt-4o',
         openAIApiKey: this.configService.get<string>('OPENAI_API_KEY'),
         maxTokens: 1000,
       });
 
-      // Replace PromptTemplate with ChatPromptTemplate that has proper messages format
-      const systemTemplate = DEFAULT_SYSTEM_PROMPT + '\n\n{format_instructions}';
+      this.logger.debug('[initializeModel] Created chat model');
 
-      const chatPrompt = ChatPromptTemplate.fromMessages([
-        ['system', systemTemplate],
-        new MessagesPlaceholder('history'),
-      ]);
+      // Debug logs for template inspection
+      this.logger.debug(
+        '[initializeModel] DEFAULT_SYSTEM_PROMPT first 100 chars: ' +
+          DEFAULT_SYSTEM_PROMPT.substring(0, 100),
+      );
 
-      const formatInstructions = structuredOutputParser.getFormatInstructions();
+      // Check for any potential unescaped braces in system prompt
+      const openBraces = (DEFAULT_SYSTEM_PROMPT.match(/\{/g) || []).length;
+      const closeBraces = (DEFAULT_SYSTEM_PROMPT.match(/\}/g) || []).length;
+      this.logger.debug(
+        `[initializeModel] Brace count in system prompt: { = ${openBraces}, } = ${closeBraces}`,
+      );
 
-      this.structuredOutputChain = RunnableSequence.from([
-        {
-          // Map input variables to template variables
-          messages: (input: StructuredOutputInput) => {
-            // Create messages directly instead of using format
-            return [
-              {
-                type: 'system',
-                content: systemTemplate
-                  .replace('{character_name}', input.character_name)
-                  .replace('{character_visual}', input.character_visual || '')
-                  .replace('{character_role}', input.character_role || '')
-                  .replace('{scene_description}', input.scene_description || '')
-                  .replace('{conversation_length}', input.conversation_length || '0')
-                  .replace('{current_time}', input.current_time || new Date().toLocaleTimeString())
-                  .replace('{format_instructions}', formatInstructions),
-              },
-              ...input.history,
-            ];
-          },
-        },
-        chatModel.withStructuredOutput(CharacterResponseSchema),
-      ]);
-
-      this.logger.log('Chains created successfully');
+      this.logger.debug('[initializeModel] Model initialized successfully');
+      // Note: modelInitialized is set in the constructor's then() callback
+      return; // Explicitly return to satisfy linter
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`Error creating chains: ${errorMessage}`);
-      throw new Error(`Failed to create chains: ${errorMessage}`);
+      this.logger.error(`[initializeModel] Error creating model: ${errorMessage}`);
+      if (error instanceof Error && error.stack) {
+        this.logger.error(`[initializeModel] Stack: ${error.stack}`);
+      }
+      throw new Error(`Failed to initialize model: ${errorMessage}`);
     }
   }
 }

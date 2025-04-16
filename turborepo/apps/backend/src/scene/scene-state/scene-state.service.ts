@@ -3,6 +3,7 @@ import {
   CharacterState,
   CharacterStateSchema,
   DBScene,
+  Message,
   NewDBSceneStateSnapshot,
   SceneState,
 } from '@pixeltales/contracts';
@@ -57,6 +58,29 @@ export class SceneStateService {
     }
     this.currentState = { ...this.currentState, ...updates };
     // Note: Emitting state updates should likely happen after calling this.
+  }
+
+  // --- Message Management ---
+
+  addMessageToState(message: Message): void {
+    if (!this.currentState) {
+      this.logger.warn('Cannot add message: No current state exists.');
+      return;
+    }
+
+    // Create a new messages array with the new message appended
+    const updatedMessages = [...(this.currentState.messages || []), message];
+
+    // Update the state with the new messages array
+    this.currentState = {
+      ...this.currentState,
+      messages: updatedMessages,
+    };
+
+    this.logger.debug(
+      { timestamp: message.timestamp, characterId: message.character },
+      `Added message from ${message.character} to scene state`,
+    );
   }
 
   // --- Initialization ---

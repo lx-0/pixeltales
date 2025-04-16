@@ -10,7 +10,7 @@ const dbUrl = process.env.DATABASE_URL ?? symlinkPathRelativeToConfig;
 export default defineConfig({
   out: './src/db/migrations', // Output directory for migrations
   // Point to the schema source file in the database package
-  schema: '../../packages/database/src/schema.ts',
+  schema: '../../packages/database/src/db-schema.ts',
   dialect: 'sqlite', // Specify SQLite dialect
   // driver: 'better-sqlite3', // Driver is inferred for sqlite
   dbCredentials: {

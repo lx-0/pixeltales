@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { SceneModule } from '../scene/scene.module';
+import { SceneManagerModule } from 'src/scene/scene-manager/scene-manager.module';
 import { EventsGateway } from './events.gateway';
 
 @Module({
-  imports: [SceneModule],
+  imports: [SceneManagerModule],
   providers: [EventsGateway],
   exports: [EventsGateway],
 })

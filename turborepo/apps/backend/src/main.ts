@@ -7,6 +7,12 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
 
+  // Setze globales API-Präfix
+  app.setGlobalPrefix('api/v1');
+
+  // Aktiviere CORS für Frontend-Zugriff
+  app.enableCors();
+
   app.useWebSocketAdapter(new IoAdapter(app));
 
   const port = process.env.PORT ?? 3000;

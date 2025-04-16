@@ -21,7 +21,6 @@ export class AllExceptionsFilter implements ExceptionFilter {
   }
 
   catch(exception: unknown, host: ArgumentsHost): void {
-    // const { httpAdapter } = this.httpAdapterHost; // No longer needed
     const ctx = host.switchToHttp();
     const request = ctx.getRequest<Request>();
     const response = ctx.getResponse<Response>();
@@ -29,35 +28,71 @@ export class AllExceptionsFilter implements ExceptionFilter {
     const httpStatus =
       exception instanceof HttpException ? exception.getStatus() : HttpStatus.INTERNAL_SERVER_ERROR;
 
-    const message =
-      exception instanceof HttpException ? exception.message : 'Internal server error';
+    // Extract useful information from the exception
+    const errorInfo = this.extractErrorInfo(exception);
 
-    // Log the error using PinoLogger
-    // Use error level for server errors, warn for client errors (optional)
+    // Use error level for server errors, warn for client errors
     const logLevel = httpStatus >= 500 ? 'error' : 'warn';
-    this.logger[logLevel](
-      {
-        exception, // Log the full exception object for details
-        stack: exception instanceof Error ? exception.stack : undefined,
-        path: request.url, // Use standard request property
-        method: request.method, // Use standard request property
-        statusCode: httpStatus,
-        // Optionally add request body, headers etc. (be careful with sensitive data)
-        // body: request.body,
-        // headers: request.headers,
-      },
-      // Prepend context manually
-      `[${AllExceptionsFilter.name}] Unhandled Exception: ${message}`,
-    );
+
+    // Format string log message without dumping entire objects
+    const logMessage = `${errorInfo.name}: ${errorInfo.message} [${request.method} ${request.url}]`;
+
+    // Log only the message without attaching the entire object structure
+    this.logger[logLevel](logMessage);
+
+    // Optionally log more detailed information at trace level for debugging
+    if (logLevel === 'error') {
+      this.logger.debug({
+        errorName: errorInfo.name,
+        errorMessage: errorInfo.message,
+        path: request.url,
+        method: request.method,
+        stack: errorInfo.stack,
+      });
+    }
 
     const responseBody = {
       statusCode: httpStatus,
       timestamp: new Date().toISOString(),
-      path: request.url, // Use standard request property
-      message,
+      path: request.url,
+      message: errorInfo.message,
     };
 
-    // Use response directly, httpAdapter.reply might not be needed with explicit types
     response.status(httpStatus).json(responseBody);
+  }
+
+  private extractErrorInfo(exception: unknown): { name: string; message: string; stack?: string } {
+    if (exception instanceof HttpException) {
+      const response = exception.getResponse();
+      let message = exception.message;
+
+      // If response is an object with a message property, use that instead
+      if (typeof response === 'object' && response !== null && 'message' in response) {
+        message = Array.isArray(response.message)
+          ? response.message.join(', ')
+          : String(response.message);
+      }
+
+      return {
+        name: exception.name,
+        message: message,
+        stack: exception.stack,
+      };
+    }
+
+    if (exception instanceof Error) {
+      return {
+        name: exception.name,
+        message: exception.message,
+        stack: exception.stack,
+      };
+    }
+
+    // For non-Error objects
+    return {
+      name: 'UnknownException',
+      message: typeof exception === 'string' ? exception : 'An unknown error occurred',
+      stack: undefined,
+    };
   }
 }

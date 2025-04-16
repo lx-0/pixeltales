@@ -53,7 +53,19 @@ export const DrizzleProvider: FactoryProvider<DrizzleSqliteDatabase> = {
       sqlite.pragma('journal_mode = WAL');
       logger.log('WAL mode enabled', 'DrizzleProvider');
 
-      const db = drizzle(sqlite, { schema: dbSchema, logger: true });
+      // Benutzerdefinierter Logger für Drizzle, der NestJS-Logger verwendet
+      const customLogger = {
+        logQuery: (query: string, params: unknown[]) => {
+          const formattedParams = params.map((p) => JSON.stringify(p)).join(', ');
+          logger.debug(`Query: ${query} -- params: [${formattedParams}]`, 'DrizzleORM');
+        },
+      };
+
+      const db = drizzle(sqlite, {
+        schema: dbSchema,
+        logger: configService.get<boolean>('DB_DEBUG_LOGGING', false) ? customLogger : false,
+      });
+
       logger.log('Drizzle instance created successfully', 'DrizzleProvider');
       return db;
     } catch (error) {
