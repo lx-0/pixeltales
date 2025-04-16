@@ -13,6 +13,7 @@ import { SceneStateService } from '../scene-state/scene-state.service';
 
 const CONVERSATION_LOOP_INTERVAL = 'CONVERSATION_LOOP_INTERVAL';
 const LOOP_INTERVAL_MS = 500; // Check loop every 500ms
+const BUSY_LOOP_INTERVAL_MS = 2000; // Longer interval when characters are busy (2 seconds)
 const NEW_CONVERSATION_COOLDOWN_MS = 10 * 60 * 1000; // 10 minutes
 const ALWAYS_RUN_CONVERSATION = false; // Set to true to always run the conversation regardless of visitor count
 
@@ -23,6 +24,7 @@ export class SceneManagerService implements OnModuleInit {
   private activeVisitors: Set<string> = new Set();
   private conversationLoopTimeout: NodeJS.Timeout | null = null;
   private isLoopRunning = false; // Prevent concurrent loops
+  private lastSpeakingLogTime = 0; // Track when we last logged about speaking characters
 
   // Reference to the gateway to emit events
   // This is often better handled via events/observables, but direct ref is simpler for now
@@ -333,11 +335,14 @@ export class SceneManagerService implements OnModuleInit {
     this.scheduleNextStep();
   }
 
-  private scheduleNextStep() {
+  private scheduleNextStep(useExtendedDelay = false) {
     if (!this.isLoopRunning) {
       this.logger.debug('Loop no longer running, not scheduling next step.');
       return;
     }
+
+    // Use longer interval if characters are busy
+    const interval = useExtendedDelay ? BUSY_LOOP_INTERVAL_MS : LOOP_INTERVAL_MS;
 
     // Use timeout instead of interval for better control
     this.conversationLoopTimeout = setTimeout(() => {
@@ -349,21 +354,22 @@ export class SceneManagerService implements OnModuleInit {
       // Wrap the async execution in an IIFE to avoid the Promise return lint error
       void (async () => {
         try {
-          await this.executeConversationStep();
+          const isWaiting = await this.executeConversationStep();
 
           // Only schedule next step if loop is still running
           if (this.isLoopRunning) {
-            this.scheduleNextStep();
+            // If characters are speaking/thinking, use longer interval
+            this.scheduleNextStep(isWaiting);
           }
         } catch (error) {
           this.logger.error(error, 'Error in conversation step. Stopping loop.');
           this.stopConversationLoop();
         }
       })();
-    }, LOOP_INTERVAL_MS);
+    }, interval);
   }
 
-  private async executeConversationStep(): Promise<void> {
+  private async executeConversationStep(): Promise<boolean> {
     // Get current data at the beginning of the step
     const currentScene = this.activeScene;
     const currentConfig = this.activeSceneConfig;
@@ -373,7 +379,7 @@ export class SceneManagerService implements OnModuleInit {
     if (!currentScene || !currentConfig || !currentState) {
       this.logger.error('Loop step failed: Missing essential scene data. Stopping loop.');
       this.stopConversationLoop();
-      return;
+      return false;
     }
 
     // --- Restart Logic ---
@@ -386,17 +392,17 @@ export class SceneManagerService implements OnModuleInit {
         try {
           // startNewScene will stop the current loop and start a new one
           await this.startNewScene();
-          return;
+          return false;
         } catch (restartError: unknown) {
           this.logger.error(restartError, 'Failed to restart scene after cooldown. Stopping loop.');
           this.stopConversationLoop();
-          return;
+          return false;
         }
       }
       // Cooldown not met, ensure loop remains stopped
       this.logger.trace('Conversation ended, waiting for cooldown. Stopping loop.');
       this.stopConversationLoop();
-      return;
+      return false;
     }
 
     // --- Active Check ---
@@ -409,7 +415,7 @@ export class SceneManagerService implements OnModuleInit {
         'Conversation not active and no visitors or ALWAYS_RUN_CONVERSATION is false. Pausing loop.',
       );
       this.stopConversationLoop();
-      return;
+      return false;
     }
 
     // Check if any character is still speaking or thinking
@@ -428,12 +434,20 @@ export class SceneManagerService implements OnModuleInit {
     const hasActiveSpeakers = activeCharacters.length > 0;
 
     if (hasActiveSpeakers) {
-      this.logger.debug(
-        { active: activeCharacters },
-        'Characters are still active (speaking/thinking). Skipping generation step.',
-      );
-      return;
+      // Only log this message if we haven't logged it recently (every 5 seconds)
+      const now = Date.now();
+      if (now - this.lastSpeakingLogTime > 5000) {
+        this.logger.debug(
+          { active: activeCharacters },
+          'Characters are still active (speaking/thinking). Waiting for completion before generation.',
+        );
+        this.lastSpeakingLogTime = now;
+      }
+      return true; // Return true to indicate we should use longer delay
     }
+
+    // Reset the log timer when there are no active speakers
+    this.lastSpeakingLogTime = 0;
 
     // --- Execute Orchestrator Step ---
     this.logger.debug('Executing conversation orchestrator step...');
@@ -446,6 +460,8 @@ export class SceneManagerService implements OnModuleInit {
     } else {
       this.logger.warn('State became null after conversation step? This should not happen.');
     }
+
+    return false; // Return false to indicate we should use normal delay
   }
 
   private stopConversationLoop() {

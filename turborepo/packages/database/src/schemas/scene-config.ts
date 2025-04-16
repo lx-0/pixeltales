@@ -7,6 +7,7 @@ export type SceneConfigStatus = (typeof SceneConfigStatusEnum)[number];
 
 // Define SceneConfig separately, as it might differ from DB record slightly
 export const SceneConfigSchema = z.object({
+  id: z.number().describe('Unique identifier for the scene configuration'),
   name: z.string().min(3).max(50).describe('Scene name (3-50 characters)'),
   description: z.string().min(10).max(5000).describe('Scene description (10-5000 characters)'),
   start_character_id: z.string().describe('ID of the character who starts the conversation'),

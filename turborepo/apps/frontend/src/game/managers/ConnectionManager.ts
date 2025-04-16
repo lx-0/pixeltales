@@ -1,5 +1,5 @@
+import { socketService } from '@/services/socket';
 import { Scene } from 'phaser';
-import { socketService } from '../../services/socket';
 
 export class ConnectionManager {
   private connectionStatus!: Phaser.GameObjects.Text;
@@ -56,9 +56,7 @@ export class ConnectionManager {
       this.connectionStatus.setText('🟢 Connected');
       this.connectionStatus.setBackgroundColor('#28a745');
     } else if (this.reconnectAttempt > 0) {
-      this.connectionStatus.setText(
-        `🟡 Reconnecting (${this.reconnectAttempt}/5)...`,
-      );
+      this.connectionStatus.setText(`🟡 Reconnecting (${this.reconnectAttempt}/5)...`);
       this.connectionStatus.setBackgroundColor('#ffc107');
     } else {
       this.connectionStatus.setText('🔴 Disconnected');

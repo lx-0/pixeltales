@@ -1,32 +1,24 @@
-import type { SceneState } from '@/types/scene';
+import { socketService } from '@/services/socket';
+import { Logger } from '@/utils/logger';
+import type { SceneState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
-import { socketService } from '../../services/socket';
-import { Logger } from '../../utils/logger';
 import { StateManager } from './StateManager';
 
 export class EventManager {
-  constructor(private scene: Scene, private stateManager: StateManager) {}
+  constructor(
+    private scene: Scene,
+    private stateManager: StateManager,
+  ) {}
 
   setupEventListeners(): void {
     Logger.info(this.constructor.name, 'Setting up event listeners');
 
     // Set up history mode event listeners
-    this.scene.game.events.on(
-      'historyModeChange',
-      this.handleHistoryModeChange,
-      this,
-    );
-    this.scene.game.events.on(
-      'historyNavigate',
-      this.handleHistoryNavigate,
-      this,
-    );
+    this.scene.game.events.on('historyModeChange', this.handleHistoryModeChange, this);
+    this.scene.game.events.on('historyNavigate', this.handleHistoryNavigate, this);
 
     // Set up socket event listeners
-    socketService.addListener(
-      'scene_state',
-      this.handleSceneStateUpdate.bind(this),
-    );
+    socketService.addListener('scene_state', this.handleSceneStateUpdate.bind(this));
   }
 
   private handleHistoryModeChange(isInHistoryMode: boolean): void {
@@ -38,10 +30,7 @@ export class EventManager {
   }
 
   private handleHistoryNavigate(index: number): void {
-    Logger.info(
-      this.constructor.name,
-      `Handling historyNavigate event with index: ${index}`,
-    );
+    Logger.info(this.constructor.name, `Handling historyNavigate event with index: ${index}`);
     this.stateManager.navigateHistory(index);
   }
 
@@ -54,21 +43,10 @@ export class EventManager {
     Logger.info(this.constructor.name, 'Cleaning up event listeners');
 
     // Remove history mode event listeners
-    this.scene.game.events.off(
-      'historyModeChange',
-      this.handleHistoryModeChange,
-      this,
-    );
-    this.scene.game.events.off(
-      'historyNavigate',
-      this.handleHistoryNavigate,
-      this,
-    );
+    this.scene.game.events.off('historyModeChange', this.handleHistoryModeChange, this);
+    this.scene.game.events.off('historyNavigate', this.handleHistoryNavigate, this);
 
     // Remove socket event listeners
-    socketService.removeListener(
-      'scene_state',
-      this.handleSceneStateUpdate.bind(this),
-    );
+    socketService.removeListener('scene_state', this.handleSceneStateUpdate.bind(this));
   }
 }

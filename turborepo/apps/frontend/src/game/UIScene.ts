@@ -1,5 +1,5 @@
+import { Logger } from '@/utils/logger';
 import { Scene } from 'phaser';
-import { Logger } from '../utils/logger';
 import { TILE_SIZE } from './config';
 import { ConnectionManager } from './managers/ConnectionManager';
 import { HistoryManager } from './managers/HistoryManager';
@@ -22,14 +22,10 @@ export class UIScene extends Scene {
 
   preload(): void {
     // Load UI assets
-    this.load.spritesheet(
-      'ui_controls',
-      '/assets/ui/Modern_UI_Style_2_48x48.png',
-      {
-        frameWidth: TILE_SIZE,
-        frameHeight: TILE_SIZE,
-      },
-    );
+    this.load.spritesheet('ui_controls', '/assets/ui/Modern_UI_Style_2_48x48.png', {
+      frameWidth: TILE_SIZE,
+      frameHeight: TILE_SIZE,
+    });
   }
 
   create(): void {
@@ -89,10 +85,7 @@ export class UIScene extends Scene {
     // Add keyboard event handlers
     this.input.keyboard.on('keydown-H', (event: KeyboardEvent) => {
       if (!this.isInteractionEnabled) {
-        Logger.debug(
-          this.constructor.name,
-          'Ignoring H key - interactions disabled',
-        );
+        Logger.debug(this.constructor.name, 'Ignoring H key - interactions disabled');
         event.stopPropagation();
         event.preventDefault();
         return;
@@ -173,11 +166,7 @@ export class UIScene extends Scene {
     // Clean up event listeners
     if (this.keyboardControls && this.input?.keyboard) {
       this.input.keyboard.off('keydown-H');
-      this.events.off(
-        Phaser.Scenes.Events.UPDATE,
-        this.handleKeyboardInput,
-        this,
-      );
+      this.events.off(Phaser.Scenes.Events.UPDATE, this.handleKeyboardInput, this);
     }
   }
 

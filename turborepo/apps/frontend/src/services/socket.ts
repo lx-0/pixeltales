@@ -1,6 +1,6 @@
-import type { SceneState } from '@/types/scene';
+import { Logger } from '@/utils/logger';
+import type { SceneState } from '@pixeltales/contracts';
 import { io, Socket } from 'socket.io-client';
-import { Logger } from '../utils/logger';
 
 type EventData = {
   scene_state: SceneState;
@@ -12,8 +12,7 @@ type EventData = {
 class SocketService {
   private static instance: SocketService;
   private socket: Socket | null = null;
-  private listeners: Map<keyof EventData, Set<(data: unknown) => void>> =
-    new Map();
+  private listeners: Map<keyof EventData, Set<(data: unknown) => void>> = new Map();
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
   private readonly RECONNECT_DELAY = 2000; // 2 seconds
@@ -40,16 +39,11 @@ class SocketService {
     }
 
     this.isConnecting = true;
-    Logger.info(
-      this.constructor.name,
-      'Attempting to connect to socket server...',
-    );
+    Logger.info(this.constructor.name, 'Attempting to connect to socket server...');
 
     // In production, use relative path to ensure connection goes through nginx
     const url =
-      process.env.NODE_ENV === 'production'
-        ? undefined
-        : import.meta.env.VITE_BACKEND_URL;
+      process.env.NODE_ENV === 'production' ? undefined : import.meta.env.VITE_BACKEND_URL;
 
     this.socket = io(url, {
       path: '/socket.io',
@@ -62,10 +56,7 @@ class SocketService {
     });
 
     this.socket.on('connect', () => {
-      Logger.info(
-        this.constructor.name,
-        `Connected to server with ID: ${this.socket?.id}`,
-      );
+      Logger.info(this.constructor.name, `Connected to server with ID: ${this.socket?.id}`);
       this.reconnectAttempts = 0;
       this.isConnecting = false;
       this.notifyListeners('connect', undefined);
@@ -91,10 +82,7 @@ class SocketService {
     });
 
     this.socket.on('disconnect', (reason) => {
-      Logger.info(
-        this.constructor.name,
-        `Disconnected from server. Reason: ${reason}`,
-      );
+      Logger.info(this.constructor.name, `Disconnected from server. Reason: ${reason}`);
       this.isConnecting = false;
       this.notifyListeners('disconnect', undefined);
       if (reason === 'io server disconnect') {
@@ -125,10 +113,7 @@ class SocketService {
     }
   }
 
-  addListener<K extends keyof EventData>(
-    event: K,
-    callback: (data: EventData[K]) => void,
-  ): void {
+  addListener<K extends keyof EventData>(event: K, callback: (data: EventData[K]) => void): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
@@ -142,10 +127,7 @@ class SocketService {
     this.listeners.get(event)?.delete(callback as (data: unknown) => void);
   }
 
-  private notifyListeners<K extends keyof EventData>(
-    event: K,
-    data: EventData[K],
-  ): void {
+  private notifyListeners<K extends keyof EventData>(event: K, data: EventData[K]): void {
     this.listeners.get(event)?.forEach((callback) => callback(data));
   }
 }

@@ -1,12 +1,8 @@
+import { useProposedScenes, useSceneVote, useVotedProposals } from '@/hooks/use-scenes';
 import { useToast } from '@/hooks/use-toast';
-import { SceneConfig } from '@/types/scene';
+import { SceneConfig } from '@pixeltales/contracts';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import {
-  useProposedScenes,
-  useSceneVote,
-  useVotedProposals,
-} from '../hooks/use-scenes';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -24,10 +20,7 @@ interface SceneProposalListProps {
   setIsModalOpen: (isOpen: boolean) => void;
 }
 
-export function SceneProposalList({
-  trigger,
-  setIsModalOpen,
-}: SceneProposalListProps) {
+export function SceneProposalList({ trigger, setIsModalOpen }: SceneProposalListProps) {
   const [isOpen, setIsOpen] = useState(false);
   const { data: proposals, isLoading, error } = useProposedScenes();
   const voteMutation = useSceneVote();
@@ -45,8 +38,7 @@ export function SceneProposalList({
     } catch (error) {
       toast({
         title: 'Error',
-        description:
-          error instanceof Error ? error.message : 'Failed to submit vote',
+        description: error instanceof Error ? error.message : 'Failed to submit vote',
         variant: 'destructive',
       });
     }
@@ -68,16 +60,12 @@ export function SceneProposalList({
       <DialogContent className="sm:max-w-[600px] lg:max-w-screen-lg bg-gray-900">
         <DialogHeader>
           <DialogTitle>Scene Proposals</DialogTitle>
-          <DialogDescription>
-            Vote on proposed scenes for the next conversation.
-          </DialogDescription>
+          <DialogDescription>Vote on proposed scenes for the next conversation.</DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="h-[500px] pr-4">
           {isLoading ? (
-            <div className="flex items-center justify-center h-full">
-              Loading proposals...
-            </div>
+            <div className="flex items-center justify-center h-full">Loading proposals...</div>
           ) : !proposals?.length ? (
             <div className="flex items-center justify-center h-full text-gray-500">
               No proposals yet
@@ -87,8 +75,7 @@ export function SceneProposalList({
               {proposals.map((proposal) => {
                 const hasVoted = votedProposals.has(proposal.id);
                 const isVoting =
-                  voteMutation.isPending &&
-                  voteMutation.variables?.sceneConfigId === proposal.id;
+                  voteMutation.isPending && voteMutation.variables?.sceneConfigId === proposal.id;
 
                 return (
                   <div
@@ -97,9 +84,7 @@ export function SceneProposalList({
                   >
                     <div className="flex justify-between items-start gap-4">
                       <div>
-                        <h3 className="text-lg font-semibold">
-                          {proposal.name}
-                        </h3>
+                        <h3 className="text-lg font-semibold">{proposal.name}</h3>
                         <p className="text-sm text-gray-400">
                           Proposed by {proposal.proposer_name} on{' '}
                           {new Date(proposal.proposed_at!).toLocaleDateString()}
@@ -138,35 +123,26 @@ export function SceneProposalList({
                       </div>
                     </div>
 
-                    <p className="mt-2 text-sm text-gray-300">
-                      {proposal.description}
-                    </p>
+                    <p className="mt-2 text-sm text-gray-300">{proposal.description}</p>
 
                     <Separator className="my-4" />
 
                     <div className="grid grid-cols-2 gap-4">
-                      {Object.entries(proposal.characters_config).map(
-                        ([id, char]) => (
-                          <div
-                            key={id}
-                            className="p-3 bg-gray-700 rounded border-2"
-                            style={{ borderColor: char.color }}
-                          >
-                            <h4
-                              className="font-semibold"
-                              style={{ color: char.color }}
-                            >
-                              {char.name}
-                            </h4>
-                            <p className="text-sm text-gray-300 mt-1">
-                              {char.visual}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-1 italic">
-                              {char.role.split('\n')[0]}
-                            </p>
-                          </div>
-                        ),
-                      )}
+                      {Object.entries(proposal.characters_config).map(([id, char]) => (
+                        <div
+                          key={id}
+                          className="p-3 bg-gray-700 rounded border-2"
+                          style={{ borderColor: char.color }}
+                        >
+                          <h4 className="font-semibold" style={{ color: char.color }}>
+                            {char.name}
+                          </h4>
+                          <p className="text-sm text-gray-300 mt-1">{char.visual}</p>
+                          <p className="text-xs text-gray-400 mt-1 italic">
+                            {char.role.split('\n')[0]}
+                          </p>
+                        </div>
+                      ))}
                     </div>
 
                     {proposal.comments?.length ? (
@@ -174,14 +150,10 @@ export function SceneProposalList({
                         <h4 className="text-sm font-medium mb-2">Comments</h4>
                         <div className="space-y-2">
                           {proposal.comments.map((comment, i) => (
-                            <div
-                              key={i}
-                              className="text-sm bg-gray-700 rounded p-2"
-                            >
+                            <div key={i} className="text-sm bg-gray-700 rounded p-2">
                               <p className="text-gray-300">{comment.comment}</p>
                               <p className="text-xs text-gray-400 mt-1">
-                                {comment.user} -{' '}
-                                {new Date(comment.timestamp).toLocaleString()}
+                                {comment.user} - {new Date(comment.timestamp).toLocaleString()}
                               </p>
                             </div>
                           ))}

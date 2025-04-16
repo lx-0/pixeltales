@@ -1,6 +1,6 @@
-import type { Message, SceneState } from '@/types/scene';
+import { Logger } from '@/utils/logger';
+import type { Message, SceneState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
-import { Logger } from '../../utils/logger';
 import { CharacterManager } from './CharacterManager';
 
 interface SpeechBubble {
@@ -52,10 +52,8 @@ export class SpeechBubbleManager {
     for (const [key, value] of Object.entries(state.characters)) {
       if (value.action === 'speaking') {
         const character = this.characterManager.getCharacter(key);
-        const message = state.messages
-          .filter((m) => m.character === key)
-          .slice(-1)[0];
-        if (character && message.content) {
+        const message = state.messages.filter((m) => m.character === key).slice(-1)[0];
+        if (character && message?.content) {
           Logger.info(
             this.constructor.name,
             `Creating speech bubble for ${key} with message ${message.content}`,
@@ -70,11 +68,10 @@ export class SpeechBubbleManager {
             message.mood_emoji,
           );
         } else {
-          Logger.info(
-            this.constructor.name,
-            `No character or message found for ${key}`,
-            { character, message },
-          );
+          Logger.info(this.constructor.name, `No character or message found for ${key}`, {
+            character,
+            message,
+          });
         }
       }
     }
@@ -120,8 +117,7 @@ export class SpeechBubbleManager {
     const bubbleWidth = Math.max(
       this.MIN_BUBBLE_WIDTH,
       Math.min(
-        Math.max(text.width, nameText.width + moodText.width + padding) +
-          padding * 2,
+        Math.max(text.width, nameText.width + moodText.width + padding) + padding * 2,
         this.MAX_BUBBLE_WIDTH,
       ),
     );
@@ -137,12 +133,7 @@ export class SpeechBubbleManager {
     background.fillStyle(0xffffff, 1);
 
     // Draw bubble background
-    this.drawBubbleBackground(
-      background,
-      bubbleWidth,
-      bubbleHeight,
-      pointerHeight,
-    );
+    this.drawBubbleBackground(background, bubbleWidth, bubbleHeight, pointerHeight);
 
     // Position texts within bubble
     nameText.setPosition(padding, padding);
@@ -155,12 +146,7 @@ export class SpeechBubbleManager {
     if (speakingTime) {
       progressBar =
         speakingTime > 0
-          ? this.createProgressBar(
-              bubbleWidth,
-              bubbleHeight,
-              speakingTime,
-              characterColor,
-            )
+          ? this.createProgressBar(bubbleWidth, bubbleHeight, speakingTime, characterColor)
           : undefined;
     }
 
@@ -172,8 +158,7 @@ export class SpeechBubbleManager {
 
     // Position bubble above character
     const bubbleX = speaker.x - bubbleWidth / 2;
-    const bubbleY =
-      speaker.y - speaker.height / 2 - bubbleHeight - pointerHeight;
+    const bubbleY = speaker.y - speaker.height / 2 - bubbleHeight - pointerHeight;
     container.setPosition(bubbleX, bubbleY);
 
     // Store the bubble

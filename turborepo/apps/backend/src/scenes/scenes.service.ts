@@ -77,6 +77,7 @@ export class ScenesService {
 
     // Prepare the JSON data, matching the structure expected by SceneConfigBase Pydantic model
     const configDataForJson: SceneConfig = {
+      id: 0, // TODO: Remove this once we have a proper ID
       name: dto.name,
       description: dto.description,
       start_character_id: dto.start_character_id,

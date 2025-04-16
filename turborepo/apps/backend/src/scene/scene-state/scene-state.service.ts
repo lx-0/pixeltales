@@ -118,8 +118,8 @@ export class SceneStateService {
         characters[charId] = characterStateParseResult.data;
       } else {
         this.logger.error(
-          `Failed to parse initial state for character ${charId}`,
           characterStateParseResult.error.flatten(),
+          `Failed to parse initial state for character ${charId}`,
         );
         // Potentially throw an error here?
       }
@@ -191,8 +191,8 @@ export class SceneStateService {
 
     this.logger.debug(`Saving snapshot for scene ${sceneId}...`);
     const newStateSnapshot: NewDBSceneStateSnapshot = {
+      state: JSON.stringify(this.currentState) as unknown as NewDBSceneStateSnapshot['state'],
       sceneId: sceneId,
-      state: this.currentState,
       configId: this.currentState.scene_config_id,
       // timestamp is defaulted by DB
     };
@@ -201,8 +201,9 @@ export class SceneStateService {
       await this.db.insert(dbSchema.sceneStateSnapshotsTable).values(newStateSnapshot);
       this.logger.info(`Snapshot saved for scene ${sceneId}.`);
     } catch (error) {
-      this.logger.error(`Failed to save state snapshot for scene ${sceneId}`, error);
+      this.logger.error({ error }, `Failed to save state snapshot for scene ${sceneId}`);
       // Potentially re-throw or handle differently
+      throw error;
     }
   }
 }

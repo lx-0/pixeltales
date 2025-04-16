@@ -99,6 +99,7 @@ Key traits:
 
 // Default scene configuration
 export const DEFAULT_SCENE_CONFIG: SceneConfig = {
+  id: 1, // TODO: Remove this once we have a proper ID
   name: 'Default Scene: Ice Cream Shop with Alice and Bob',
   description:
     'You are in an ice cream shop. You are having a conversation with another character.',

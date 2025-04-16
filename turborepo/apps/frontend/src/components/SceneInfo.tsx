@@ -1,6 +1,6 @@
+import { formatDuration, formatTime } from '@/utils/format';
+import type { SceneState } from '@pixeltales/contracts';
 import { Brain, Clock, MessageSquare, Users2 } from 'lucide-react';
-import type { SceneState } from '../types/scene';
-import { formatDuration, formatTime } from '../utils/format';
 import ConversationStatsChart from './ConversationStatsChart';
 import { SceneProposalForm } from './SceneProposalForm';
 import { SceneProposalList } from './SceneProposalList';
@@ -22,9 +22,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
     scene.messages.length > 1
       ? scene.messages.reduce((acc, msg, idx) => {
           if (idx === 0) return 0;
-          return (
-            acc + (msg.unix_timestamp - scene.messages[idx - 1].unix_timestamp)
-          );
+          return acc + (msg.unix_timestamp - (scene.messages[idx - 1]?.unix_timestamp || 0));
         }, 0) /
         (scene.messages.length - 1)
       : 0;
@@ -41,24 +39,23 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
   );
 
   // Calculate average conversation rating
-  const ratingsCount = scene.messages.filter(
-    (m) => m.conversation_rating !== null,
-  ).length;
+  const ratingsCount = scene.messages.filter((m) => m.conversation_rating !== null).length;
   const averageRating =
     ratingsCount > 0
-      ? scene.messages.reduce(
-          (acc, msg) => acc + (msg.conversation_rating || 0),
-          0,
-        ) / ratingsCount
+      ? scene.messages.reduce((acc, msg) => acc + (msg.conversation_rating || 0), 0) / ratingsCount
       : null;
 
   // Calculate total tokens used per model
-  const modelUsage = scene.messages.reduce((acc, msg) => {
-    const char = scene.characters[msg.character];
-    const modelKey = `${char.llm_config.provider}:${char.llm_config.model_name}`;
-    acc[modelKey] = (acc[modelKey] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const modelUsage = scene.messages.reduce(
+    (acc, msg) => {
+      const char = scene.characters[msg.character];
+      if (!char) return acc;
+      const modelKey = `${char.llm_config.provider}:${char.llm_config.model_name}`;
+      acc[modelKey] = (acc[modelKey] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>,
+  );
 
   // Calculate elapsed time
   const elapsedSeconds = Math.floor(Date.now() / 1000 - scene.started_at);
@@ -69,9 +66,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
       <div className="p-2 sm:p-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 sm:gap-4 mb-2 sm:mb-4">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg sm:text-xl font-bold text-gray-100">
-              Scene Information
-            </h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-100">Scene Information</h2>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
                 #{scene.scene_id}
@@ -119,21 +114,15 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
               <div className="grid gap-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Started:</span>
-                  <span className="text-gray-100">
-                    {formatTime(scene.started_at)}
-                  </span>
+                  <span className="text-gray-100">{formatTime(scene.started_at)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Duration:</span>
-                  <span className="text-gray-100">
-                    {formatDuration(elapsedSeconds)}
-                  </span>
+                  <span className="text-gray-100">{formatDuration(elapsedSeconds)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Speaking:</span>
-                  <span className="text-gray-100">
-                    {formatDuration(totalResponseTime)}
-                  </span>
+                  <span className="text-gray-100">{formatDuration(totalResponseTime)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Idle:</span>
@@ -155,15 +144,11 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
           <div className="bg-gray-700 p-2 sm:p-4 rounded-lg">
             <div className="flex items-center gap-2 mb-1">
               <MessageSquare className="w-4 h-4 text-gray-400" />
-              <p className="text-gray-400 text-xs sm:text-sm">
-                Interaction Stats
-              </p>
+              <p className="text-gray-400 text-xs sm:text-sm">Interaction Stats</p>
             </div>
             <div className="space-y-1">
               <div className="flex items-center gap-1">
-                <span className="text-gray-100 text-sm sm:text-base">
-                  {scene.messages.length}
-                </span>
+                <span className="text-gray-100 text-sm sm:text-base">{scene.messages.length}</span>
                 <span className="text-gray-400 text-xs">messages</span>
               </div>
               {averageResponseTime > 0 && (
@@ -200,16 +185,13 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-1">
                 <span className="text-gray-100 text-sm sm:text-base">
-                  {activeCharacters.length}/
-                  {Object.keys(scene.characters).length}
+                  {activeCharacters.length}/{Object.keys(scene.characters).length}
                 </span>
                 <span className="text-gray-400 text-xs">characters active</span>
               </div>
               {scene.visitor_count > 0 && (
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-100 text-sm sm:text-base">
-                    {scene.visitor_count}
-                  </span>
+                  <span className="text-gray-100 text-sm sm:text-base">{scene.visitor_count}</span>
                   <span className="text-gray-400 text-xs">
                     viewer{scene.visitor_count !== 1 ? 's' : ''} online
                   </span>
@@ -221,9 +203,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
               )}
               {endRequesters.length > 0 && (
                 <div className="flex items-center gap-1">
-                  <span className="text-red-400 text-sm sm:text-base">
-                    {endRequesters.length}
-                  </span>
+                  <span className="text-red-400 text-sm sm:text-base">{endRequesters.length}</span>
                   <span className="text-gray-400 text-xs">
                     want{endRequesters.length === 1 ? 's' : ''} to end
                   </span>
@@ -241,12 +221,8 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
             <div className="space-y-1">
               {Object.entries(modelUsage).map(([model, count]) => (
                 <div key={model} className="flex items-center gap-1">
-                  <span className="text-gray-100 text-sm sm:text-base">
-                    {count}
-                  </span>
-                  <span className="text-gray-400 text-xs">
-                    {model.split(':')[1]}
-                  </span>
+                  <span className="text-gray-100 text-sm sm:text-base">{count}</span>
+                  <span className="text-gray-400 text-xs">{model.split(':')[1]}</span>
                 </div>
               ))}
             </div>
@@ -257,27 +233,18 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
       {/* Characters Card */}
       <div className="p-2 sm:p-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700">
         <div className="flex justify-between items-center mb-2 sm:mb-4">
-          <h2 className="text-lg sm:text-xl font-bold text-gray-100">
-            Characters
-          </h2>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-100">Characters</h2>
           <div className="text-xs text-gray-400">
-            {activeCharacters.length}/{Object.keys(scene.characters).length}{' '}
-            active
+            {activeCharacters.length}/{Object.keys(scene.characters).length} active
           </div>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
           {Object.entries(scene.characters).map(([id, char]) => {
-            const messageCount = scene.messages.filter(
-              (msg) => msg.character === id,
-            ).length;
-            const lastMessage = [...scene.messages]
-              .reverse()
-              .find((msg) => msg.character === id);
+            const messageCount = scene.messages.filter((msg) => msg.character === id).length;
+            const lastMessage = [...scene.messages].reverse().find((msg) => msg.character === id);
 
             // Calculate character-specific metrics
-            const characterMessages = scene.messages.filter(
-              (msg) => msg.character === id,
-            );
+            const characterMessages = scene.messages.filter((msg) => msg.character === id);
             const avgResponseTime =
               characterMessages.length > 1
                 ? characterMessages.reduce((acc, msg, idx) => {
@@ -296,10 +263,8 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
             );
             const avgRating =
               characterRatings.length > 0
-                ? characterRatings.reduce(
-                    (acc, msg) => acc + (msg.conversation_rating || 0),
-                    0,
-                  ) / characterRatings.length
+                ? characterRatings.reduce((acc, msg) => acc + (msg.conversation_rating || 0), 0) /
+                  characterRatings.length
                 : null;
 
             return (
@@ -310,10 +275,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
               >
                 {/* Header with name and model */}
                 <div className="flex justify-between items-start mb-3">
-                  <h3
-                    className="text-lg sm:text-xl font-bold"
-                    style={{ color: char.color }}
-                  >
+                  <h3 className="text-lg sm:text-xl font-bold" style={{ color: char.color }}>
                     {char.name}
                   </h3>
                   <div className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
@@ -322,9 +284,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                 </div>
 
                 {/* Description */}
-                <p className="text-gray-300 text-xs sm:text-sm mb-3">
-                  {char.visual}
-                </p>
+                <p className="text-gray-300 text-xs sm:text-sm mb-3">{char.visual}</p>
                 <p className="text-gray-400 text-xs sm:text-sm italic mb-3">
                   {char.role.split('\n')[0]}
                 </p>
@@ -350,9 +310,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                       }`}
                     >
                       <div className="text-gray-400 mb-1">Average Rating</div>
-                      <div className="text-gray-200">
-                        {avgRating.toFixed(1)}/10
-                      </div>
+                      <div className="text-gray-200">{avgRating.toFixed(1)}/10</div>
                     </div>
                   )}
                 </div>
@@ -379,8 +337,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                           {formatDuration(
                             Math.round(
                               char.end_conversation_requested_validity_duration -
-                                (Date.now() / 1000 -
-                                  (char.end_conversation_requested_at || 0)),
+                                (Date.now() / 1000 - (char.end_conversation_requested_at || 0)),
                             ),
                           )}
                           )

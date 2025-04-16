@@ -1,6 +1,6 @@
-import type { SceneState } from '@/types/scene';
+import { Logger } from '@/utils/logger';
+import type { SceneState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
-import { Logger } from '../../utils/logger';
 import { TILE_SIZE } from '../config';
 import { HistoryManager } from './HistoryManager';
 
@@ -41,8 +41,7 @@ export class UIControlsManager {
     const liveContainerHeight = TILE_SIZE;
     const liveContainerWidth = TILE_SIZE;
     const container = this.scene.add.container(
-      this.scene.cameras.main.width -
-        (this.CONTROLS_PADDING + liveContainerWidth),
+      this.scene.cameras.main.width - (this.CONTROLS_PADDING + liveContainerWidth),
       this.CONTROLS_PADDING,
     );
 
@@ -64,20 +63,11 @@ export class UIControlsManager {
     metadataDisplay.setVisible(false); // Initially hidden in live mode
 
     // Create navigation container (initially empty)
-    const navigationContainer = this.scene.add.container(
-      containerWidth - 70,
-      28,
-    );
+    const navigationContainer = this.scene.add.container(containerWidth - 70, 28);
     navigationContainer.setVisible(false); // Initially hidden in live mode
 
     // Add everything to main container
-    container.add([
-      playButton,
-      pauseButton,
-      headlineDisplay,
-      metadataDisplay,
-      navigationContainer,
-    ]);
+    container.add([playButton, pauseButton, headlineDisplay, metadataDisplay, navigationContainer]);
 
     // Store references
     this.controls = {
@@ -102,11 +92,7 @@ export class UIControlsManager {
     container.setDepth(2000);
 
     // Add resize handler
-    this.scene.scale.on(
-      'resize',
-      () => this.handleResize(containerWidth),
-      this,
-    );
+    this.scene.scale.on('resize', () => this.handleResize(containerWidth), this);
 
     // Listen for history mode changes to update button visibility
     this.scene.game.events.on(
@@ -148,10 +134,7 @@ export class UIControlsManager {
     this.scene.game.events.off('historyNavigate');
   }
 
-  private createBackground(
-    width: number,
-    height: number,
-  ): Phaser.GameObjects.Graphics {
+  private createBackground(width: number, height: number): Phaser.GameObjects.Graphics {
     const bg = this.scene.add.graphics();
     bg.lineStyle(2, 0x666666, 0.8);
     bg.fillStyle(0x222222, 0.9);
@@ -183,14 +166,8 @@ export class UIControlsManager {
     bg.moveTo(cornerSize + innerPadding, innerPadding);
     bg.lineTo(borderWidth - cornerSize - innerPadding, innerPadding);
     bg.lineTo(borderWidth - innerPadding, cornerSize + innerPadding);
-    bg.lineTo(
-      borderWidth - innerPadding,
-      borderHeight - cornerSize - innerPadding,
-    );
-    bg.lineTo(
-      borderWidth - cornerSize - innerPadding,
-      borderHeight - innerPadding,
-    );
+    bg.lineTo(borderWidth - innerPadding, borderHeight - cornerSize - innerPadding);
+    bg.lineTo(borderWidth - cornerSize - innerPadding, borderHeight - innerPadding);
     bg.lineTo(cornerSize + innerPadding, borderHeight - innerPadding);
     bg.lineTo(innerPadding, borderHeight - cornerSize - innerPadding);
     bg.lineTo(innerPadding, cornerSize + innerPadding);
@@ -247,10 +224,7 @@ export class UIControlsManager {
     });
   }
 
-  private handleButtonHover(
-    button: Phaser.GameObjects.Sprite,
-    isOver: boolean,
-  ): void {
+  private handleButtonHover(button: Phaser.GameObjects.Sprite, isOver: boolean): void {
     this.scene.tweens.add({
       targets: button,
       scale: isOver ? 0.55 : 0.5,
@@ -416,9 +390,7 @@ export class UIControlsManager {
 
     Logger.info(
       this.constructor.name,
-      `Updating controls visibility: ${
-        isHistoryMode ? 'history' : 'live'
-      } mode`,
+      `Updating controls visibility: ${isHistoryMode ? 'history' : 'live'} mode`,
     );
 
     // Update play/pause button visibility and position
@@ -437,10 +409,7 @@ export class UIControlsManager {
       this.createNavigationButtons();
       // Reset to full width and height in history mode
       this.controls.background.clear();
-      this.controls.background = this.createBackground(
-        320,
-        this.controls.containerHeight,
-      );
+      this.controls.background = this.createBackground(320, this.controls.containerHeight);
       this.controls.container.add(this.controls.background);
       this.controls.background.setPosition(0, 0);
       // Ensure background is at the back
@@ -488,18 +457,8 @@ export class UIControlsManager {
         const messages = this.historyManager.getConversationHistory();
         const currentIndex = this.historyManager.getCurrentHistoryIndex();
         const currentMessage = messages[currentIndex];
-        this.updateHeadlineDisplay(
-          isHistoryMode,
-          currentMessage,
-          currentIndex,
-          messages.length,
-        );
-        this.updateMetadataDisplay(
-          isHistoryMode,
-          currentMessage,
-          currentIndex,
-          messages.length,
-        );
+        this.updateHeadlineDisplay(isHistoryMode, currentMessage, currentIndex, messages.length);
+        this.updateMetadataDisplay(isHistoryMode, currentMessage, currentIndex, messages.length);
       } else {
         this.updateHeadlineDisplay(isHistoryMode, undefined, -1, -1);
         this.updateMetadataDisplay(isHistoryMode, undefined, -1, -1);

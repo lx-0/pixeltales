@@ -1,6 +1,6 @@
-import type { SceneState } from '@/types/scene';
+import { Logger } from '@/utils/logger';
+import type { SceneState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
-import { Logger } from '../../utils/logger';
 import { CharacterManager } from './CharacterManager';
 import { SpeechBubbleManager } from './SpeechBubbleManager';
 
@@ -31,11 +31,9 @@ export class StateManager {
     if (!this.isInHistoryMode) {
       // Log character moods
       Object.entries(newState.characters).forEach(([charId, char]) => {
-        Logger.info(
-          this.constructor.name,
-          `Character ${charId} mood: ${char.current_mood}`,
-          { action: char.action },
-        );
+        Logger.info(this.constructor.name, `Character ${charId} mood: ${char.current_mood}`, {
+          action: char.action,
+        });
       });
 
       // Only update scene in live mode
@@ -53,9 +51,10 @@ export class StateManager {
     this.isInHistoryMode = isInHistoryMode;
     if (this.currentState) {
       if (isInHistoryMode) {
-        this.speechBubbleManager.showHistoricalBubble(
-          this.currentState.messages[this.currentState.messages.length - 1],
-        );
+        const msg = this.currentState.messages[this.currentState.messages.length - 1];
+        if (msg) {
+          this.speechBubbleManager.showHistoricalBubble(msg);
+        }
       } else {
         this.characterManager.updateCharacters(this.currentState);
         this.speechBubbleManager.updateBubbles(this.currentState);
@@ -67,9 +66,7 @@ export class StateManager {
     Logger.info(this.constructor.name, `Navigating to history index: ${index}`);
     if (this.isInHistoryMode && this.currentState?.messages[index]) {
       // Update just the speech bubble for the selected message
-      this.speechBubbleManager.showHistoricalBubble(
-        this.currentState?.messages[index],
-      );
+      this.speechBubbleManager.showHistoricalBubble(this.currentState?.messages[index]);
     }
   }
 

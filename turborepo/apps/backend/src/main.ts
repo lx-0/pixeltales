@@ -8,7 +8,7 @@ async function bootstrap() {
   app.useLogger(app.get(PinoLogger));
 
   // Setze globales API-Präfix
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix('/api/v1');
 
   // Aktiviere CORS für Frontend-Zugriff
   app.enableCors();

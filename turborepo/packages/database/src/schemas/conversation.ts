@@ -10,9 +10,9 @@ export const MessageSchema = z.object({
   mood_emoji: z.string(),
   reaction_on_previous_message: z.string().optional().nullable(),
   unix_timestamp: z.number(),
-  calculated_speaking_time: z.number().nullable(),
+  calculated_speaking_time: z.number(),
   conversation_rating: z.number().optional().nullable(),
-  end_conversation: z.boolean().nullable(),
+  end_conversation: z.boolean(),
 });
 export type Message = z.infer<typeof MessageSchema>;
 

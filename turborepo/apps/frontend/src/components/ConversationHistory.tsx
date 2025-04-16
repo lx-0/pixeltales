@@ -1,7 +1,7 @@
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import type { SceneState } from '@pixeltales/contracts';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAutoScroll } from '../hooks/use-auto-scroll';
-import type { SceneState } from '../types/scene';
 import { SceneProposalForm } from './SceneProposalForm';
 import { Button } from './ui/button';
 
@@ -30,10 +30,7 @@ export default function ConversationHistory({
 }: ConversationHistoryProps) {
   const [isExpanded, setIsExpanded] = useState(isSideView);
   const [countdown, setCountdown] = useState<number>(0);
-  const conversationRef = useAutoScroll<HTMLDivElement>([
-    scene.messages,
-    scene.conversation_ended,
-  ]);
+  const conversationRef = useAutoScroll<HTMLDivElement>([scene.messages, scene.conversation_ended]);
 
   // Update expansion state when view mode changes
   useEffect(() => {
@@ -71,9 +68,7 @@ export default function ConversationHistory({
       className={`h-full flex flex-col bg-gray-800 rounded-lg shadow-lg border border-gray-700 w-full min-w-0`}
     >
       <div className="p-2 sm:p-4 flex items-center justify-between flex-shrink-0 border-b border-gray-700">
-        <h2 className="text-lg sm:text-xl font-bold text-gray-100">
-          Conversation History
-        </h2>
+        <h2 className="text-lg sm:text-xl font-bold text-gray-100">Conversation History</h2>
         <Button
           variant="ghost"
           size="icon"
@@ -85,9 +80,7 @@ export default function ConversationHistory({
               isExpanded ? 'rotate-180' : ''
             }`}
           />
-          <span className="sr-only">
-            {isExpanded ? 'Collapse' : 'Expand'} Conversation History
-          </span>
+          <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'} Conversation History</span>
         </Button>
       </div>
       {isExpanded && (
@@ -100,19 +93,16 @@ export default function ConversationHistory({
             const character = scene.characters[message.character];
             const isLastMessage = index === scene.messages.length - 1;
             const isSecondLastMessage = index === scene.messages.length - 2;
-            const nextMessage = isLastMessage
-              ? null
-              : scene.messages[index + 1];
+            const nextMessage = isLastMessage ? null : scene.messages[index + 1];
             const nextMessageCharacter = nextMessage
               ? scene.characters[nextMessage.character]
               : null;
+            if (!character) return null;
             return (
               <div
                 key={`${index}-${scene.conversation_ended}`}
                 className={`p-2 sm:p-3 rounded-lg bg-gray-700 relative text-sm sm:text-base ${
-                  isLastMessage &&
-                  character.action === 'speaking' &&
-                  !scene.conversation_ended
+                  isLastMessage && character.action === 'speaking' && !scene.conversation_ended
                     ? 'animate-pulse'
                     : ''
                 }`}
@@ -125,17 +115,12 @@ export default function ConversationHistory({
                     <span title="Temperature used for this character">
                       {character.llm_config.temperature}
                     </span> */}
-                  <span title="Message number in the conversation">
-                    #{index + 1}
-                  </span>
+                  <span title="Message number in the conversation">#{index + 1}</span>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 cursor-default mb-1">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="font-bold"
-                      style={{ color: character.color }}
-                    >
+                    <span className="font-bold" style={{ color: character.color }}>
                       {character.name}
                     </span>
                     {message.mood && (
@@ -173,17 +158,14 @@ export default function ConversationHistory({
                   </div>
                 )}
 
-                <div className="text-gray-300 text-sm sm:text-base">
-                  {message.content}
-                </div>
+                <div className="text-gray-300 text-sm sm:text-base">{message.content}</div>
 
                 {message.end_conversation && (
                   <div
                     className="mt-2 text-xs text-center italic text-gray-400"
                     style={
                       ((character.end_conversation_requested_at ?? 0) +
-                        (character.end_conversation_requested_validity_duration ??
-                          0)) *
+                        (character.end_conversation_requested_validity_duration ?? 0)) *
                         1000 >
                       Date.now()
                         ? { color: character.color }
@@ -197,9 +179,7 @@ export default function ConversationHistory({
                 {nextMessage?.reaction_on_previous_message !== undefined &&
                   nextMessage?.reaction_on_previous_message !== null && (
                     <span
-                      title={`Reaction of ${
-                        nextMessageCharacter?.name ?? 'unknown'
-                      }`}
+                      title={`Reaction of ${nextMessageCharacter?.name ?? 'unknown'}`}
                       className={`absolute bottom-1 right-8 translate-y-1/2 translate-x-1/2 text-sm bg-gray-700 border border-gray-800 rounded-full px-2 py-0 shadow-lg cursor-default z-10 ${
                         isSecondLastMessage &&
                         nextMessageCharacter?.action === 'speaking' &&
@@ -225,9 +205,7 @@ export default function ConversationHistory({
                   <span className="font-bold" style={{ color: c.color }}>
                     {c.name}
                   </span>
-                  <span className="text-[10px] sm:text-xs text-gray-400">
-                    is thinking...
-                  </span>
+                  <span className="text-[10px] sm:text-xs text-gray-400">is thinking...</span>
                 </div>
               </div>
             ))}

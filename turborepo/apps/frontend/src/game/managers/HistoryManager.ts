@@ -1,6 +1,6 @@
-import type { SceneState } from '@/types/scene';
+import { Logger } from '@/utils/logger';
+import type { SceneState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
-import { Logger } from '../../utils/logger';
 import { UIControlsManager } from './UIControlsManager';
 
 export class HistoryManager {
@@ -21,21 +21,9 @@ export class HistoryManager {
 
   private setupEventListeners(): void {
     // Set up history mode event listeners
-    this.scene.game.events.on(
-      'enterHistoryMode',
-      this.handleEnterHistoryMode,
-      this,
-    );
-    this.scene.game.events.on(
-      'exitHistoryMode',
-      this.handleExitHistoryMode,
-      this,
-    );
-    this.scene.game.events.on(
-      'historyNavigateTo',
-      this.handleHistoryNavigateTo,
-      this,
-    );
+    this.scene.game.events.on('enterHistoryMode', this.handleEnterHistoryMode, this);
+    this.scene.game.events.on('exitHistoryMode', this.handleExitHistoryMode, this);
+    this.scene.game.events.on('historyNavigateTo', this.handleHistoryNavigateTo, this);
 
     // Listen for scene state updates from the game event system
     this.scene.game.events.on('sceneStateUpdate', (state: SceneState) => {
@@ -74,10 +62,7 @@ export class HistoryManager {
   }
 
   private navigateHistory(direction: number): void {
-    Logger.info(
-      this.constructor.name,
-      `navigateHistory called with direction: ${direction}`,
-    );
+    Logger.info(this.constructor.name, `navigateHistory called with direction: ${direction}`);
     const newIndex = this.currentHistoryIndex + direction;
     Logger.info(
       this.constructor.name,
@@ -136,20 +121,8 @@ export class HistoryManager {
     this.scene.game.events.off('sceneStateUpdate');
 
     // Remove scene event listeners
-    this.scene.game.events.removeListener(
-      'enterHistoryMode',
-      this.handleEnterHistoryMode,
-      this,
-    );
-    this.scene.game.events.removeListener(
-      'exitHistoryMode',
-      this.handleExitHistoryMode,
-      this,
-    );
-    this.scene.game.events.removeListener(
-      'historyNavigateTo',
-      this.handleHistoryNavigateTo,
-      this,
-    );
+    this.scene.game.events.removeListener('enterHistoryMode', this.handleEnterHistoryMode, this);
+    this.scene.game.events.removeListener('exitHistoryMode', this.handleExitHistoryMode, this);
+    this.scene.game.events.removeListener('historyNavigateTo', this.handleHistoryNavigateTo, this);
   }
 }

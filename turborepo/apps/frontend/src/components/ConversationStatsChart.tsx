@@ -1,5 +1,5 @@
-import { type SceneState } from '@/types/scene';
 import { formatTime } from '@/utils/format';
+import { type SceneState } from '@pixeltales/contracts';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -49,9 +49,7 @@ interface DataPointCharProps {
   hasRequestedEndConversation: boolean;
 }
 
-export default function ConversationStatsChart({
-  scene,
-}: ConversationStatsChartProps) {
+export default function ConversationStatsChart({ scene }: ConversationStatsChartProps) {
   const characterDatasets: DataPoint[] = useMemo(
     () =>
       scene.messages
@@ -79,9 +77,7 @@ export default function ConversationStatsChart({
         <div className="flex justify-between items-center mb-2 sm:mb-4">
           <div className="flex items-center gap-2">
             <MessageSquare className="w-4 h-4 text-gray-400" />
-            <h2 className="text-lg sm:text-xl font-bold text-gray-100">
-              Conversation Ratings
-            </h2>
+            <h2 className="text-lg sm:text-xl font-bold text-gray-100">Conversation Ratings</h2>
           </div>
           <div className="flex gap-2">
             {/* <Button
@@ -122,12 +118,7 @@ export default function ConversationStatsChart({
                 stroke="#9CA3AF"
                 fontSize={12}
               />
-              <YAxis
-                domain={[0, 10]}
-                tickCount={6}
-                stroke="#9CA3AF"
-                fontSize={12}
-              >
+              <YAxis domain={[0, 10]} tickCount={6} stroke="#9CA3AF" fontSize={12}>
                 <Label
                   value="Rating"
                   position="insideLeft"
@@ -153,9 +144,7 @@ export default function ConversationStatsChart({
                   })
                 }
                 formatter={(value, name, props) => {
-                  const charProps = Object.values(
-                    props.payload.chars,
-                  ).pop() as DataPointCharProps;
+                  const charProps = Object.values(props.payload.chars).pop() as DataPointCharProps;
                   if (value === null) return null;
                   return [
                     <span className="text-pretty">
@@ -198,7 +187,13 @@ export default function ConversationStatsChart({
 
                     const cy = props.cy ?? 0;
                     const charProps = props.payload.chars[charId];
-
+                    if (!charProps) {
+                      return (
+                        <g key={`${props.key}-${charId}`}>
+                          <circle cx={0} cy={0} r={0} fill="none" />
+                        </g>
+                      );
+                    }
                     return (
                       <g key={`${props.key}-${charId}`}>
                         <circle

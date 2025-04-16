@@ -18,25 +18,17 @@ interface ColorPaletteProps {
   className?: string;
 }
 
-export function ColorPalette({
-  colors,
-  value,
-  onChange,
-  className,
-}: ColorPaletteProps) {
+export function ColorPalette({ colors, value, onChange, className }: ColorPaletteProps) {
   const [open, setOpen] = useState(false);
 
   // Group colors by their group
-  const groupedColors = colors.reduce<Record<string, ColorOption[]>>(
-    (acc, color) => {
-      if (!acc[color.group]) {
-        acc[color.group] = [];
-      }
-      acc[color.group].push(color);
-      return acc;
-    },
-    {},
-  );
+  const groupedColors = colors.reduce<Record<string, ColorOption[]>>((acc, color) => {
+    if (!acc[color.group]) {
+      acc[color.group] = [];
+    }
+    acc[color.group]?.push(color);
+    return acc;
+  }, {});
 
   const selectedColor = colors.find((c) => c.id === value);
 
@@ -69,16 +61,11 @@ export function ColorPalette({
           <ChevronDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent
-        className="w-[200px] p-0 bg-gray-800 border-gray-700"
-        align="start"
-      >
+      <PopoverContent className="w-[200px] p-0 bg-gray-800 border-gray-700" align="start">
         <div className="space-y-4 p-3">
           {Object.entries(groupedColors).map(([group, groupColors]) => (
             <div key={group} className="space-y-2">
-              <div className="text-sm font-medium capitalize text-gray-400">
-                {group}
-              </div>
+              <div className="text-sm font-medium capitalize text-gray-400">{group}</div>
               <div className="grid grid-cols-5 gap-2">
                 {groupColors.map((color) => (
                   <button
