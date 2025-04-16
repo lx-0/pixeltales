@@ -7,6 +7,9 @@
     "lib": ["ES2020", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "jsx": "react-jsx",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
 
     /* Bundler mode - Inherited or aligned with base */
     "moduleResolution": "bundler",

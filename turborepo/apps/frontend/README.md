@@ -1,54 +1,153 @@
-# React + TypeScript + Vite
+# PixelTales Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern web-based game interface built with React, TypeScript, and Phaser.js, featuring real-time character interactions powered by WebSocket communication.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- Real-time character animations and interactions
+- WebSocket-based state management
+- Responsive game canvas with Phaser.js
+- Modern UI components with Radix UI and Tailwind CSS
+- Type-safe development with TypeScript
+- Hot Module Replacement (HMR) for rapid development
 
-## Expanding the ESLint configuration
+## 🛠️ Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **Framework**: React 18 with TypeScript
+- **Game Engine**: Phaser 3
+- **State Management**: Redux Toolkit
+- **Real-time Communication**: Socket.IO
+- **UI Components**: Radix UI, shadcn/ui
+- **Styling**: Tailwind CSS
+- **Build Tool**: Vite
+- **Development Server**: Nginx (production)
 
-```js
-export default tseslint.config({
-  extends: [
-    // Remove ...tseslint.configs.recommended and replace with this
-    ...tseslint.configs.recommendedTypeChecked,
-    // Alternatively, use this for stricter rules
-    ...tseslint.configs.strictTypeChecked,
-    // Optionally, add this for stylistic rules
-    ...tseslint.configs.stylisticTypeChecked,
-  ],
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 🏗️ Project Structure
+
+```
+frontend/
+├── src/
+│   ├── game/           # Phaser game components
+│   │   ├── managers/   # Game state managers
+│   │   └── scenes/     # Phaser scenes
+│   ├── components/     # React components
+│   ├── services/       # Socket and API services
+│   ├── store/          # Redux store configuration
+│   └── utils/          # Utility functions
+├── public/
+│   └── assets/        # Game assets (sprites, images)
+└── dist/             # Production build output
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🚦 Getting Started
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Prerequisites
 
-export default tseslint.config({
-  plugins: {
-    // Add the react-x and react-dom plugins
-    'react-x': reactX,
-    'react-dom': reactDom,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended typescript rules
-    ...reactX.configs['recommended-typescript'].rules,
-    ...reactDom.configs.recommended.rules,
-  },
-})
-```
+- Node.js 18 or higher
+- npm or yarn
+- Docker (for containerized deployment)
+
+### Development Setup
+
+1. Install dependencies:
+
+   ```bash
+   npm install
+   ```
+
+2. Start the development server:
+
+   ```bash
+   npm run dev
+   ```
+
+3. For TypeScript type checking:
+
+   ```bash
+   npm run typecheck
+   ```
+
+### Docker Development
+
+1. Build the development container:
+
+   ```bash
+   docker build -t pixeltales-frontend-dev --target development .
+   ```
+
+2. Run the container:
+
+   ```bash
+   docker run -p 5173:5173 -v $(pwd):/app pixeltales-frontend-dev
+   ```
+
+## 🚀 Deployment
+
+### Production Build
+
+1. Create production build:
+
+   ```bash
+   npm run build
+   ```
+
+2. Preview the production build:
+
+   ```bash
+   npm run preview
+   ```
+
+### Docker Production
+
+1. Build the production container:
+
+   ```bash
+   docker build -t pixeltales-frontend-prod --target production-runtime .
+   ```
+
+2. Run the container:
+
+   ```bash
+   docker run -p 80:80 pixeltales-frontend-prod
+   ```
+
+## 🔧 Configuration
+
+The application can be configured through environment variables:
+
+- `VITE_BACKEND_URL`: Backend service URL
+- `FRONTEND_PORT`: Frontend service port (default: 5173 for dev, 80 for prod)
+
+## 🧪 Development Tools
+
+- ESLint for code linting
+- TypeScript for type checking
+- Vite for fast development and optimized builds
+- Docker for containerized development and deployment
+
+## 📝 Scripts
+
+- `npm run dev`: Start development server
+- `npm run build`: Build for production
+- `npm run typecheck`: Run TypeScript type checking
+- `npm run lint`: Run ESLint
+- `npm run preview`: Preview production build
+
+## 🔒 Security
+
+- CORS configuration in Nginx
+- Security headers for production
+- WebSocket secure configuration
+- Static asset caching
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
