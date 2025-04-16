@@ -14,14 +14,14 @@ export default defineConfig({
     host: true,
     proxy: {
       '/socket.io': {
-        target: process.env.DOCKER_ENV ? 'ws://backend:8000' : 'ws://localhost:8000',
+        target: process.env.DOCKER_ENV ? 'ws://backend:3000' : 'ws://localhost:3000',
         ws: true,
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/socket\.io/, '/socket.io'),
       },
       '/api': {
-        target: process.env.DOCKER_ENV ? 'http://backend:8000' : 'http://localhost:8000',
+        target: process.env.DOCKER_ENV ? 'http://backend:3000' : 'http://localhost:3000',
         changeOrigin: true,
         secure: false,
       },
