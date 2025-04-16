@@ -4,7 +4,7 @@ import { Logger } from '@/utils/logger';
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import type { SceneState } from '@pixeltales/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Layout } from 'lucide-react';
+import { Layout, Volume2, VolumeX } from 'lucide-react';
 import { Game } from 'phaser';
 import { useEffect, useRef, useState } from 'react';
 import ConversationHistory from './components/ConversationHistory';
@@ -24,9 +24,11 @@ const queryClient = new QueryClient({
 export default function App() {
   const gameRef = useRef<Game | null>(null);
   const socketInitializedRef = useRef(false);
+  const audioContextInitializedRef = useRef(false);
   const [sceneState, setSceneState] = useState<SceneState | null>(null);
   const { viewMode: _viewMode, toggleViewMode, isSideView } = useViewMode();
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
 
   // Initialize game and socket
   useEffect(() => {
@@ -52,6 +54,57 @@ export default function App() {
       gameRef.current = null;
     };
   }, []);
+
+  // Toggle sound handler
+  const toggleSound = () => {
+    const newState = !isSoundEnabled;
+    setIsSoundEnabled(newState);
+
+    if (newState && !audioContextInitializedRef.current) {
+      Logger.info('App.tsx:App()', 'Sound enabled, initializing AudioContext');
+
+      // Try to initialize AudioContext (for browsers)
+      // Define interface for the webkit prefixed audio context
+      interface WindowWithWebkitAudio {
+        webkitAudioContext: typeof AudioContext;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const AudioContextClass =
+        window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
+
+      if (AudioContextClass) {
+        // Ensure AudioContext is started after user interaction
+        const context = new AudioContextClass();
+        if (context.state !== 'running') {
+          context
+            .resume()
+            .then(() => {
+              Logger.info('App.tsx:App()', 'AudioContext resumed successfully');
+            })
+            .catch((err) => {
+              Logger.error('App.tsx:App()', `Failed to resume AudioContext: ${err}`);
+            });
+        }
+      }
+
+      audioContextInitializedRef.current = true;
+
+      // Emit sound state to game scenes
+      const game = gameRef.current;
+      if (game) {
+        const mainScene = game.scene.getScene('MainScene');
+        const uiScene = game.scene.getScene('UIScene');
+
+        if (mainScene?.events) {
+          mainScene.events.emit('soundEnabled', newState);
+        }
+        if (uiScene?.events) {
+          uiScene.events.emit('soundEnabled', newState);
+        }
+      }
+    }
+  };
 
   // Handle modal state changes
   useEffect(() => {
@@ -87,16 +140,35 @@ export default function App() {
         </header>
 
         <main className="p-2 sm:p-4 space-y-3 sm:space-y-6">
-          {/* View Mode Toggle Button */}
-          <Button
-            variant="secondary"
-            size="icon"
-            className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 text-white bg-gray-700 hover:bg-gray-600"
-            onClick={toggleViewMode}
-          >
-            <Layout className="h-[1.2rem] w-[1.2rem]" />
-            <span className="sr-only">Toggle View Mode</span>
-          </Button>
+          {/* Control Buttons */}
+          <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex gap-2">
+            {/* Sound Toggle Button */}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="text-white bg-gray-700 hover:bg-gray-600"
+              onClick={toggleSound}
+              title={isSoundEnabled ? 'Disable Sound' : 'Enable Sound'}
+            >
+              {isSoundEnabled ? (
+                <Volume2 className="h-[1.2rem] w-[1.2rem]" />
+              ) : (
+                <VolumeX className="h-[1.2rem] w-[1.2rem]" />
+              )}
+              <span className="sr-only">{isSoundEnabled ? 'Disable Sound' : 'Enable Sound'}</span>
+            </Button>
+
+            {/* View Mode Toggle Button */}
+            <Button
+              variant="secondary"
+              size="icon"
+              className="text-white bg-gray-700 hover:bg-gray-600"
+              onClick={toggleViewMode}
+            >
+              <Layout className="h-[1.2rem] w-[1.2rem]" />
+              <span className="sr-only">Toggle View Mode</span>
+            </Button>
+          </div>
 
           {/* Flexible Layout Container */}
           <div

@@ -9,6 +9,7 @@ import {
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { SceneManagerService } from '../scene/scene-manager/scene-manager.service';
+import { SceneStateService } from '../scene/scene-state/scene-state.service';
 
 // Configure gateway options (e.g., CORS)
 @WebSocketGateway({
@@ -28,6 +29,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   constructor(
     @Inject(forwardRef(() => SceneManagerService))
     private readonly sceneManager: SceneManagerService,
+    private readonly sceneStateService: SceneStateService,
   ) {}
 
   afterInit(_server: Server) {
@@ -40,7 +42,20 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
   handleConnection(client: Socket /*, ...args: any[] */) {
     const clientId = client.id;
     this.logger.log(`Client connected: ${clientId}`);
+
+    // Register visitor with SceneManager
     this.sceneManager.addVisitor(clientId);
+
+    // Immediately send current scene state to the new client
+    const currentState = this.sceneStateService.getCurrentState();
+    if (currentState) {
+      this.logger.log(`Sending initial scene state to client: ${clientId}`);
+      client.emit('scene_state', currentState);
+    } else {
+      this.logger.warn(
+        `Cannot send initial state to client ${clientId}: No current state available`,
+      );
+    }
   }
 
   handleDisconnect(client: Socket) {

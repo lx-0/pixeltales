@@ -7,8 +7,17 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
   app.useLogger(app.get(PinoLogger));
 
-  // Setze globales API-Präfix
-  app.setGlobalPrefix('/api/v1');
+  // Setze globales API-Präfix mit korrekter Wildcard-Konfiguration
+  app.setGlobalPrefix('/api/v1', {
+    exclude: ['health', 'metrics'],
+  });
+
+  // // Konfiguriere Versionierung, die modernere Path-to-Regexp Syntax verwendet
+  // app.enableVersioning({
+  //   type: VersioningType.URI,
+  //   defaultVersion: '1',
+  //   prefix: 'api/v',
+  // });
 
   // Aktiviere CORS für Frontend-Zugriff
   app.enableCors();
