@@ -1,5 +1,18 @@
 import { CharacterConfig, LLMConfig, Position, SceneConfig } from '@pixeltales/contracts';
 
+// Type definition for system message template variables - using the ORIGINAL variable names
+export interface SystemMessageVars {
+  character_name: string;
+  character_visual: string;
+  character_role: string;
+  message_recipient: string;
+  scene_description: string;
+  input: string;
+  conversation_length: string;
+  current_time: string;
+  character_mood?: string;
+}
+
 export const DEFAULT_SYSTEM_PROMPT = `You are {character_name}.
 {character_visual}
 

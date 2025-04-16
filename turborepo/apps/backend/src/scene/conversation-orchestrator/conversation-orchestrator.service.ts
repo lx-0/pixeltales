@@ -16,6 +16,7 @@ import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../../db/drizzle.provid
 import { LlmService } from '../../llm/llm.service';
 import { TokenCounter } from '../../llm/token-counter';
 import { SceneStateService } from '../scene-state/scene-state.service';
+import { SystemMessageVars } from '../scene.const';
 
 // Constants moved from SceneManagerService
 const BASE_PAUSE_TIME_MS = 5000; // 5 seconds
@@ -533,7 +534,7 @@ export class ConversationOrchestratorService {
     sceneConfig: DBSceneConfig,
     characterId: string,
     recipientId: string | null,
-  ): Record<string, string> {
+  ): SystemMessageVars {
     // Get character info
     const character = sceneState.characters[characterId];
     if (!character) {
