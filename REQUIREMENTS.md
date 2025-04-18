@@ -110,7 +110,7 @@ Role: You are a woman who is not interested in love.
          e. the new animation sprite sheet is displayed in the frontend and the user can confirm or give feedback (regeneration)
          f. if the user confirms, the new animation sprite sheet is once again interpreted by an llm to extract the exact coordinates of the character sprites in the sprite sheet. it also labels each sprite with the sprite id. the llm uses structured output to get exact coordinates, labels etc.
          g. the determined sprites are highlighted on the generated spritesheet and presented to the user for confirmation. the user can then confirm or give feedback (regeneration)
-         h. if the user confirms, the labeled sprites are cut from the generated spritesheet. the screen now shows the target spritesheet (defined format and sprite ids / lables) with the generated sprites filled in. if any are missing, the user can regenerate individual sprites using the default dummy character sprite of that sprite id together with the generated base character sprite.
+         h. if the user confirms, the labeled sprites are cut from the generated spritesheet. the screen now shows the target spritesheet (defined format and sprite ids / labels) with the generated sprites filled in. if any are missing, the user can regenerate individual sprites using the default dummy character sprite of that sprite id together with the generated base character sprite.
          j. if the user is finalizing the character, the spritesheet is stored as file and can be used for new scenes.
       6. we obviously need central image editing tool service and spritesheet service.
 
