@@ -4,8 +4,8 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)](https://www.typescriptlang.org/)
-[![Python](https://img.shields.io/badge/Python-3.11-blue)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.100.0-green)](https://fastapi.tiangolo.com/)
+[![Node.js](https://img.shields.io/badge/Node.js-20+-blue.svg)](https://nodejs.org/)
+[![NestJS](https://img.shields.io/badge/NestJS-10+-purple.svg)](https://nestjs.com/)
 [![React](https://img.shields.io/badge/React-18.0-blue)](https://reactjs.org/)
 [![Phaser](https://img.shields.io/badge/Phaser-3.60-orange)](https://phaser.io/)
 
@@ -13,7 +13,7 @@
 
 [Demo](https://pixeltales.0fo.de) • [Documentation](docs/) • [Contributing](CONTRIBUTING.md)
 
-![PixelTales Demo](docs/assets/demo.png)
+![PixelTales Demo](docs/assets/demo.png) <!-- TODO: Update demo image later -->
 
 </div>
 
@@ -29,8 +29,11 @@ PixelTales is an interactive web application where AI characters come to life in
 - 🔄 **Endless Stories** - Characters dynamically create new stories and scenarios
 - 🎭 **Multiple Personalities** - Each character powered by different AI models
 
-## 🚀 Quick Start
+## 🚀 Quick Start (WIP - Monorepo Migration)
 
+_Note: These instructions will be updated once the migration to the Turborepo setup is complete._
+
+<!--
 ### Using Docker (Recommended)
 
 ```bash
@@ -47,36 +50,41 @@ docker compose up
 ```
 
 Visit <http://localhost:5173> to see your AI characters in action!
+-->
 
 ### 🎮 Try the Demo
 
-Want to see it in action first? Check out our [live demo](https://pixeltales.0fo.de)!
+Want to see it in action first? Check out our [live demo](https://pixeltales.0fo.de) (running the previous version)!
 
 ## 📖 Documentation
 
-- [Installation Guide](docs/installation.md)
 - [Architecture Overview](docs/architecture.md)
-- [API Reference](docs/api.md)
-- [Contributing Guide](CONTRIBUTING.md)
+- [Common Commands](docs/commands.md)
+- [Contributing Guide](CONTRIBUTING.md) (To be updated)
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack (Planned - Monorepo)
 
 <details>
 <summary>Click to expand</summary>
 
-### Frontend
+### Monorepo Tools
 
-- ⚛️ React 18 with TypeScript
+- 📦 pnpm Workspaces
+- ⚡ Turborepo
+
+### Frontend (Planned)
+
+- ⚛️ React 18 with TypeScript (via Vite)
 - 🎮 Phaser 3 for game rendering
 - 🎨 TailwindCSS for styling
-- 🔄 Socket.IO for real-time updates
+- 🔄 Socket.IO Client for real-time updates
 
 ### Backend
 
-- 🚀 FastAPI for high-performance API
-- 🤖 LangChain for AI orchestration
+- 🚀 NestJS (Node.js, TypeScript) for API and WebSockets
+- 🤖 LangChain.js for AI orchestration
 - 📦 Redis for state management
-- 🗄️ SQLite/PostgreSQL for persistence
+- 🗄️ SQLite/PostgreSQL for persistence (via an ORM like Prisma or Drizzle)
 
 </details>
 
@@ -90,7 +98,7 @@ We love contributions! Here's how you can help:
 4. 📤 Push to the branch: `git push origin feature/amazing-feature`
 5. 🔄 Open a Pull Request
 
-See our [Contributing Guide](CONTRIBUTING.md) for more details.
+See our [Contributing Guide](CONTRIBUTING.md) for more details (will be updated for monorepo).
 
 ## 🌟 Show Your Support
 
@@ -104,7 +112,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 - OpenAI for the language models
 - Phaser game framework team
-- FastAPI and LangChain communities
+- NestJS and LangChain.js communities
 - All our amazing contributors
 
 ---

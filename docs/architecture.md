@@ -1,196 +1,94 @@
-# Architecture Overview
+# PixelTales Monorepo Architecture
 
-PixelTales is built with a modern, scalable architecture that enables real-time AI character interactions in a pixel art environment.
-
-## System Architecture
-
-```mermaid
-graph TB
-    Client[Frontend Client]
-    WS[WebSocket Server]
-    DB[(SQLite/PostgreSQL)]
-    LLM[LLM Service]
-
-    Client -->|WebSocket| WS
-    WS --> DB
-    WS --> LLM
-```
-
-## Core Components
-
-### Frontend Architecture
-
-1. **React Application**
-   - Built with Vite and TypeScript
-   - State management with React hooks
-   - Real-time updates via Socket.IO
-   - Responsive design with TailwindCSS
-
-2. **Game Engine (Phaser 3)**
-   - Scene management
-   - Character animations
-   - Speech bubble system
-   - Interactive elements
-
-3. **WebSocket Client**
-   - Real-time state synchronization
-   - Automatic reconnection
-   - Event-based communication
-   - State management integration
-
-### Backend Architecture
-
-1. **FastAPI Application**
-   - WebSocket server with Socket.IO
-   - Type validation with Pydantic
-   - Async request handling
-   - SQLite/PostgreSQL integration
-
-2. **LangChain Integration**
-   - Multi-agent conversation system
-   - Memory management
-   - Tool integration
-   - Model-agnostic design
-
-3. **State Management**
-   - SQLite/PostgreSQL for persistence
-   - In-memory state for active sessions
-   - WebSocket event broadcasting
-   - Scene state management
-
-## Data Flow
-
-### Character Interaction Flow
-
-```mermaid
-sequenceDiagram
-    participant User
-    participant Frontend
-    participant Backend
-    participant LLM
-    participant Database
-
-    User->>Frontend: Views Scene
-    Frontend->>Backend: WebSocket Connection
-    Backend->>Database: Load Scene State
-    Backend->>Frontend: Initial State
-
-    loop Character Interaction
-        Backend->>LLM: Generate Response
-        LLM-->>Backend: Character Response
-        Backend->>Frontend: Update State
-        Frontend->>User: Display Update
-    end
-```
-
-### State Management Flow
-
-1. **Scene State**
-   - Character positions
-   - Conversation history
-   - Active interactions
-   - Visitor count
-
-2. **Character State**
-   - Current action
-   - Position and direction
-   - Mood and emotions
-   - Conversation context
-
-3. **Message Flow**
-   - Content validation
-   - Token management
-   - Response timing
-   - History tracking
+This document outlines the technical architecture of the PixelTales monorepo, managed using pnpm workspaces and Turborepo.
 
 ## Directory Structure
 
-### Frontend Structure
+The monorepo is organized as follows:
 
 ```
-frontend/
-├── src/
-│   ├── components/    # React components
-│   ├── game/         # Phaser game logic
-│   │   ├── scenes/   # Game scenes
-│   │   ├── objects/  # Game objects
-│   │   └── managers/ # State managers
-│   ├── hooks/        # Custom React hooks
-│   ├── services/     # API services
-│   ├── store/        # State management
-│   └── utils/        # Utility functions
+turborepo/
+├── apps/
+│   ├── backend/      # NestJS Backend Application (CJS)
+│   └── frontend/     # React + Vite Frontend Application (ESM) (To be added later)
+├── packages/
+│   ├── contracts/    # Shared TypeScript code (types, interfaces, schemas)
+│   └── ui/           # Shared React UI components (To be added later, if needed)
+├── docs/             # Project documentation (like this file)
+├── turbo.json        # Turborepo configuration
+├── pnpm-workspace.yaml # pnpm workspace definition
+├── package.json      # Root package.json (defines workspaces, root dev dependencies like turbo)
+└── tsconfig.base.json # Base TypeScript config (optional, for sharing common settings)
 ```
 
-### Backend Structure
+## Core Technologies
 
-```
-backend/
-├── app/
-│   ├── api/         # API endpoints
-│   ├── core/        # Core configuration
-│   ├── db/          # Database models
-│   ├── models/      # Pydantic models
-│   ├── schemas/     # API schemas
-│   ├── services/    # Business logic
-│   └── utils/       # Utility functions
-```
+- **Monorepo Management:** [pnpm Workspaces](https://pnpm.io/workspaces) for managing dependencies and local package linking.
+- **Task Runner & Build Cache:** [Turborepo](https://turbo.build/) for orchestrating tasks (build, dev, lint, test) across packages and providing fast build caching.
+- **Backend:** [NestJS](https://nestjs.com/) (Node.js, TypeScript). Compiles to **CommonJS (CJS)** by default.
+- **Frontend:** [React](https://react.dev/) + [Vite](https://vitejs.dev/) (TypeScript). Operates natively with **ES Modules (ESM)**.
+- **Shared Packages:** Written in TypeScript.
 
-## Security Considerations
+## Handling CJS/ESM Differences in Shared Packages
 
-1. **API Security**
-   - Rate limiting
-   - Input validation
-   - CORS configuration
-   - Authentication (future)
+This is a critical aspect of the architecture to allow seamless sharing between the CJS backend and ESM frontend.
 
-2. **Data Protection**
-   - Environment variables
-   - Secure WebSocket
-   - Database security
-   - API key management
+1. **Dedicated Build Step for Shared Packages:**
+    - Shared packages (like `packages/contracts`) **must** have their own build step.
+    - We use [`tsup`](https://tsup.egoist.dev/) for this, configured to output **both CJS and ESM** formats from the TypeScript source.
+    - The `package.json` of the shared package defines the entry points for both formats:
 
-3. **Error Handling**
-   - Graceful degradation
-   - Error logging
-   - User feedback
-   - Recovery strategies
+        ```json
+        // Example: packages/contracts/package.json
+        {
+          "name": "@pixeltales/contracts",
+          "version": "0.1.0",
+          "private": true,
+          "main": "./dist/index.js", // CJS entry point
+          "module": "./dist/index.mjs", // ESM entry point
+          "types": "./dist/index.d.ts", // TypeScript definitions
+          "scripts": {
+            "build": "tsup src/index.ts --format cjs,esm --dts",
+            "dev": "tsup src/index.ts --format cjs,esm --dts --watch"
+          },
+          "devDependencies": {
+            "tsup": "^...",
+            "typescript": "^..."
+          }
+        }
+        ```
 
-## Scalability
+2. **Backend Consumption (NestJS):**
+    - NestJS (running as CJS) will automatically resolve and import the CJS version (`dist/index.js`) based on the `main` field.
 
-1. **Horizontal Scaling**
-   - Containerized deployment
-   - Load balancing
-   - Database sharding
-   - Cache distribution
+3. **Frontend Consumption (Vite):**
+    - Vite (running as ESM) will automatically resolve and import the ESM version (`dist/index.mjs`) based on the `module` field.
+    - Vite imports the *built* JavaScript code from the shared package's `dist` folder (linked via `node_modules`), avoiding the need to transpile the shared package's source code directly within Vite.
 
-2. **Performance Optimization**
-   - Asset optimization
-   - State compression
-   - Batch processing
-   - Lazy loading
+## Build Process & Orchestration (Turborepo)
 
-3. **Monitoring**
-   - Error tracking
-   - Performance metrics
-   - User analytics
-   - Resource usage
+- Turborepo (`turbo.json`) orchestrates the build process.
+- The `build` pipeline is configured with `"dependsOn": ["^build"]`. This ensures that when `turbo run build` is executed:
+    1. Turborepo first builds all packages in `packages/*` that have a `build` script (e.g., `packages/contracts`).
+    2. Only after the dependencies are built, Turborepo builds the applications in `apps/*` (e.g., `apps/backend`, `apps/frontend`).
+- Turborepo's caching significantly speeds up subsequent builds.
 
-## Future Considerations
+## Development Workflow (Hot Reloading)
 
-1. **Planned Features**
-   - User authentication
-   - Custom characters
-   - Scene creation
-   - Advanced AI tools
+- The `dev` pipeline in `turbo.json` is configured to run the development servers/watchers for all relevant packages concurrently (`"cache": false, "persistent": true`).
+- Running `turbo run dev` will typically start:
+    - `pnpm run dev` for `packages/contracts` (`tsup --watch`).
+    - `pnpm run start:dev` for `apps/backend` (NestJS watch mode).
+    - `pnpm run dev` for `apps/frontend` (Vite dev server).
+- **Hot Reloading Behavior:**
+    - Changes in `apps/backend/src` trigger NestJS HMR/reload.
+    - Changes in `apps/frontend/src` trigger Vite HMR.
+    - Changes in `packages/contracts/src`:
+        - `tsup --watch` automatically rebuilds the package.
+        - **Vite (Frontend):** Usually detects changes in the built files (`dist`) and triggers HMR/reload automatically. 👍
+        - **NestJS (Backend):** Often **does not** automatically detect changes in the built files of dependencies. A **manual restart** of the backend (`Ctrl+C` and `turbo run dev --filter=backend`) might be necessary after the shared package rebuilds.
 
-2. **Technical Improvements**
-   - GraphQL integration
-   - WebRTC support
-   - PWA capabilities
-   - Advanced caching
+## Linting & Formatting
 
-3. **Infrastructure**
-   - Cloud deployment
-   - CDN integration
-   - Backup systems
-   - Disaster recovery
+- Linters (e.g., ESLint) and formatters (e.g., Prettier) should be configured at the root level and potentially extended/overridden in individual packages.
+- Turborepo can run linting tasks across the entire monorepo (`turbo run lint`).
