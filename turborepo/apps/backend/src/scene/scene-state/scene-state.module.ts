@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { DbModule } from 'src/db/db.module';
+import { ScenesDbModule } from '../scenes-db/scenes-db.module';
 import { SceneStateService } from './scene-state.service';
 
 @Module({
-  imports: [DbModule],
+  imports: [ScenesDbModule],
   providers: [SceneStateService],
   exports: [SceneStateService],
 })

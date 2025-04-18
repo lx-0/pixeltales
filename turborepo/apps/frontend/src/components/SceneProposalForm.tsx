@@ -1,16 +1,13 @@
 import { TILE_SIZE } from '@/game/config';
 import { getModelOptions, useConfig } from '@/hooks/use-config';
 import { useSceneProposal } from '@/hooks/use-scenes';
-import { kebabCase } from '@/utils/format';
-import { Logger } from '@/utils/logger';
-import { zodResolver } from '@hookform/resolvers/zod';
-import type { CharacterConfig, LLMConfig, SceneConfig } from '@pixeltales/contracts';
-import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
-import { ColorPalette } from './ColorPalette';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
-import { Button } from './ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/lib/shadcn-ui/accordion';
+import { Button } from '@/lib/shadcn-ui/button';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +16,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog';
+} from '@/lib/shadcn-ui/dialog';
 import {
   Form,
   FormControl,
@@ -28,8 +25,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from './ui/form';
-import { Input } from './ui/input';
+} from '@/lib/shadcn-ui/form';
+import { Input } from '@/lib/shadcn-ui/input';
 import {
   Select,
   SelectContent,
@@ -38,9 +35,17 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
-import { Slider } from './ui/slider';
-import { Textarea } from './ui/textarea';
+} from '@/lib/shadcn-ui/select';
+import { Slider } from '@/lib/shadcn-ui/slider';
+import { Textarea } from '@/lib/shadcn-ui/textarea';
+import { kebabCase } from '@/utils/format';
+import { Logger } from '@/utils/logger';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { CharacterConfig, LLMConfig, SceneConfigConfig } from '@pixeltales/contracts';
+import React, { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
+import { ColorPalette } from './ColorPalette';
 
 // Form validation schema
 const proposalFormSchema = z.object({
@@ -107,7 +112,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           color: 'blue',
           llm_config: {
             provider: 'openai',
-            model_name: 'gpt-4o-mini-2024-07-18',
+            model_name: 'gpt-4o-mini',
             temperature: 0.7,
             max_tokens: 4000,
           },
@@ -119,7 +124,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           color: 'pink',
           llm_config: {
             provider: 'openai',
-            model_name: 'gpt-4o-mini-2024-07-18',
+            model_name: 'gpt-4o-mini',
             temperature: 0.7,
             max_tokens: 4000,
           },
@@ -147,7 +152,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
 
       // Convert form values to scene config
       const sceneConfig: Omit<
-        SceneConfig,
+        SceneConfigConfig,
         'id' | 'status' | 'system_prompt' | 'votes' | 'comments'
       > = {
         name: values.sceneName,

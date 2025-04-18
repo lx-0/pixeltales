@@ -1,17 +1,21 @@
-import { Module } from '@nestjs/common';
+import { MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER } from '@nestjs/core'; // Import APP_FILTER token
-import { ScheduleModule } from '@nestjs/schedule';
+import { APP_FILTER, APP_PIPE } from '@nestjs/core'; // Import APP_FILTER token
 import { LoggerModule } from 'nestjs-pino';
 import { IncomingMessage, ServerResponse } from 'node:http'; // Import types for customLogLevel
 import { AppConfigModule } from './app-config/app-config.module'; // Import renamed module
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { AuthModule } from './auth/auth.module';
 import { CharactersModule } from './characters/characters.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'; // Import the filter
 import { DbModule } from './db/db.module';
 import { EventsModule } from './events/events.module';
+import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { ScenesModule } from './scenes/scenes.module';
+import { MeModule } from './users/me.module';
+import { UserModule } from './users/user.module';
+import { UsersModule } from './users/users.module';
 
 // Type definitions for pino serializers
 interface PinoRequest extends IncomingMessage {
@@ -137,6 +141,26 @@ interface PinoError {
                     colorize: true,
                     levelFirst: true,
                     translateTime: 'SYS:HH:MM:ss.l',
+                    // Custom pretty options with emojis!
+                    // customPrettifiers: {
+                    //   level: (logLevel: number | string): string => {
+                    //     // Add types
+                    //     // Ensure logLevel is treated as number for indexing
+                    //     const numericLogLevel =
+                    //       typeof logLevel === 'string' ? parseInt(logLevel, 10) : logLevel;
+                    //     const level = {
+                    //       10: 'TRACE 🔍',
+                    //       20: 'DEBUG 🐛',
+                    //       30: 'INFO  ℹ️',
+                    //       40: 'WARN  ⚠️',
+                    //       50: 'ERROR 🔥',
+                    //       60: 'FATAL 💀',
+                    //     }[numericLogLevel];
+                    //     return level ? `${level}` : `LVL${numericLogLevel}`;
+                    //   },
+                    //   time: (timestamp: string | number): string => `🕰️  ${timestamp}`, // Add type
+                    //   // You can add more prettifiers for hostname, pid, etc.
+                    // },
                     ignore: 'pid,hostname,context', // Ignore pid and hostname for cleaner logs
                     // Define a custom message format including context
                     messageFormat: '[{context}] {msg}',
@@ -148,11 +172,15 @@ interface PinoError {
       },
     }),
     DbModule,
-    AppConfigModule, // Use renamed module
+    AppConfigModule,
     ScenesModule,
-    EventsModule, // Import our database module
-    ScheduleModule.forRoot(),
+    EventsModule,
+    // ScheduleModule.forRoot(), // not used at the moment
     CharactersModule,
+    AuthModule,
+    UsersModule,
+    UserModule,
+    MeModule,
   ],
   controllers: [AppController],
   providers: [
@@ -163,6 +191,20 @@ interface PinoError {
       useClass: AllExceptionsFilter,
     },
     // PinoLogger wird durch LoggerModule bereitgestellt, kein expliziter Provider nötig
+    {
+      provide: APP_PIPE,
+      useValue: new ValidationPipe({
+        whitelist: true,
+        transform: true,
+        transformOptions: { enableImplicitConversion: true },
+        forbidNonWhitelisted: true,
+        disableErrorMessages: false,
+      }),
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+  }
+}

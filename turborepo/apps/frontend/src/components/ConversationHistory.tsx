@@ -1,12 +1,12 @@
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
-import type { SceneState } from '@pixeltales/contracts';
+import { Button } from '@/lib/shadcn-ui/button';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SceneProposalForm } from './SceneProposalForm';
-import { Button } from './ui/button';
 
 interface ConversationHistoryProps {
-  scene: SceneState;
+  scene: SceneStateSnapshotState;
   isSideView: boolean;
   setIsModalOpen: (isOpen: boolean) => void;
 }
@@ -86,7 +86,7 @@ export default function ConversationHistory({
       {isExpanded && (
         <div
           ref={conversationRef}
-          className={`flex-grow p-2 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto overflow-x-hidden w-full min-w-0`}
+          className="flex-grow p-2 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto overflow-x-hidden w-full min-w-0 conversation-history-container"
           style={{ height: '400px', maxHeight: '100%' }} // Respect parent height
         >
           {scene.messages.map((message, index) => {

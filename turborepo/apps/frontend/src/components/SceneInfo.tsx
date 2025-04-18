@@ -1,13 +1,13 @@
+import { Button } from '@/lib/shadcn-ui/button';
 import { formatDuration, formatTime } from '@/utils/format';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { Brain, Clock, MessageSquare, Users2 } from 'lucide-react';
 import ConversationStatsChart from './ConversationStatsChart';
 import { SceneProposalForm } from './SceneProposalForm';
 import { SceneProposalList } from './SceneProposalList';
-import { Button } from './ui/button';
 
 interface SceneInfoProps {
-  scene: SceneState;
+  scene: SceneStateSnapshotState;
   setIsModalOpen: (isOpen: boolean) => void;
 }
 

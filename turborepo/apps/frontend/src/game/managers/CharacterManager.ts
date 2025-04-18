@@ -1,6 +1,10 @@
-import type { CharacterAction, CharacterState, SceneState } from '@pixeltales/contracts';
-import { Scene } from 'phaser';
 import { Logger } from '@/utils/logger';
+import type {
+  CharacterAction,
+  CharacterState,
+  SceneStateSnapshotState,
+} from '@pixeltales/contracts';
+import { Scene } from 'phaser';
 import { TILE_SIZE } from '../config';
 
 interface Character {
@@ -149,7 +153,7 @@ export class CharacterManager {
     });
   }
 
-  updateCharacters(state: SceneState): void {
+  updateCharacters(state: SceneStateSnapshotState): void {
     Object.entries(state.characters).forEach(([id, charData]) => {
       let character = this.characters.get(id);
 

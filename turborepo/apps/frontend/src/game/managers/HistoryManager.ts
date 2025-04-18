@@ -1,12 +1,12 @@
 import { Logger } from '@/utils/logger';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { UIControlsManager } from './UIControlsManager';
 
 export class HistoryManager {
   private historyMode: boolean = false;
   private currentHistoryIndex: number = -1;
-  private conversationHistory: SceneState['messages'] = [];
+  private conversationHistory: SceneStateSnapshotState['messages'] = [];
   private scene: Scene;
   private uiControlsManager: UIControlsManager;
 
@@ -26,7 +26,7 @@ export class HistoryManager {
     this.scene.game.events.on('historyNavigateTo', this.handleHistoryNavigateTo, this);
 
     // Listen for scene state updates from the game event system
-    this.scene.game.events.on('sceneStateUpdate', (state: SceneState) => {
+    this.scene.game.events.on('sceneStateUpdate', (state: SceneStateSnapshotState) => {
       // Only update conversation history in live mode
       if (!this.historyMode) {
         this.conversationHistory = state.messages;
@@ -112,7 +112,7 @@ export class HistoryManager {
     return this.currentHistoryIndex;
   }
 
-  getConversationHistory(): SceneState['messages'] {
+  getConversationHistory(): SceneStateSnapshotState['messages'] {
     return this.conversationHistory;
   }
 

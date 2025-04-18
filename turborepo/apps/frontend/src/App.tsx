@@ -1,16 +1,20 @@
-import { useViewMode } from '@/hooks/use-view-mode';
-import { socketService } from '@/services/socket';
-import { Logger } from '@/utils/logger';
+import { Button } from '@/lib/shadcn-ui/button';
 import { SiGithub } from '@icons-pack/react-simple-icons';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout, Volume2, VolumeX } from 'lucide-react';
 import { Game } from 'phaser';
 import { useEffect, useRef, useState } from 'react';
+import LoginButton from './components/auth/LoginButton';
+import UserAvatar from './components/auth/UserAvatar';
 import ConversationHistory from './components/ConversationHistory';
 import SceneInfo from './components/SceneInfo';
-import { Button } from './components/ui/button';
 import { gameConfig } from './game/config';
+import { useAuth } from './hooks/use-auth';
+import { useSound } from './hooks/use-sound';
+import { useViewMode } from './hooks/use-view-mode';
+import { socketService } from './services/socket';
+import { Logger } from './utils/logger';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -24,11 +28,11 @@ const queryClient = new QueryClient({
 export default function App() {
   const gameRef = useRef<Game | null>(null);
   const socketInitializedRef = useRef(false);
-  const audioContextInitializedRef = useRef(false);
-  const [sceneState, setSceneState] = useState<SceneState | null>(null);
+  const [sceneState, setSceneState] = useState<SceneStateSnapshotState | null>(null);
   const { viewMode: _viewMode, toggleViewMode, isSideView } = useViewMode();
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isSoundEnabled, setIsSoundEnabled] = useState(false);
+  const { user, loading } = useAuth();
+  const { isSoundEnabled, toggleSound } = useSound();
 
   // Initialize game and socket
   useEffect(() => {
@@ -42,7 +46,7 @@ export default function App() {
       socketInitializedRef.current = true;
     }
 
-    const handleSceneState = (state: SceneState) => {
+    const handleSceneState = (state: SceneStateSnapshotState) => {
       setSceneState(state);
     };
 
@@ -54,57 +58,6 @@ export default function App() {
       gameRef.current = null;
     };
   }, []);
-
-  // Toggle sound handler
-  const toggleSound = () => {
-    const newState = !isSoundEnabled;
-    setIsSoundEnabled(newState);
-
-    if (newState && !audioContextInitializedRef.current) {
-      Logger.info('App.tsx:App()', 'Sound enabled, initializing AudioContext');
-
-      // Try to initialize AudioContext (for browsers)
-      // Define interface for the webkit prefixed audio context
-      interface WindowWithWebkitAudio {
-        webkitAudioContext: typeof AudioContext;
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const AudioContextClass =
-        window.AudioContext || (window as unknown as WindowWithWebkitAudio).webkitAudioContext;
-
-      if (AudioContextClass) {
-        // Ensure AudioContext is started after user interaction
-        const context = new AudioContextClass();
-        if (context.state !== 'running') {
-          context
-            .resume()
-            .then(() => {
-              Logger.info('App.tsx:App()', 'AudioContext resumed successfully');
-            })
-            .catch((err) => {
-              Logger.error('App.tsx:App()', `Failed to resume AudioContext: ${err}`);
-            });
-        }
-      }
-
-      audioContextInitializedRef.current = true;
-
-      // Emit sound state to game scenes
-      const game = gameRef.current;
-      if (game) {
-        const mainScene = game.scene.getScene('MainScene');
-        const uiScene = game.scene.getScene('UIScene');
-
-        if (mainScene?.events) {
-          mainScene.events.emit('soundEnabled', newState);
-        }
-        if (uiScene?.events) {
-          uiScene.events.emit('soundEnabled', newState);
-        }
-      }
-    }
-  };
 
   // Handle modal state changes
   useEffect(() => {
@@ -127,10 +80,15 @@ export default function App() {
     }
   }, [isModalOpen]);
 
+  // Handle sound toggle with current game reference
+  const handleSoundToggle = () => {
+    toggleSound(gameRef.current);
+  };
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-gray-900 text-white">
-        <header className="p-2 sm:p-4 bg-gray-800">
+        <header className="p-2 sm:p-4 bg-gray-800 border-b border-gray-700">
           <div className="mx-auto">
             <h1 className="text-xl sm:text-2xl font-bold">PixelTales</h1>
             <p className="text-sm sm:text-base text-gray-400">
@@ -141,13 +99,18 @@ export default function App() {
 
         <main className="p-2 sm:p-4 space-y-3 sm:space-y-6">
           {/* Control Buttons */}
-          <div className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 flex gap-2">
+          <div className="fixed top-2 right-2 sm:top-6 sm:right-4 z-50 flex gap-2">
+            {/* User Avatar / Login Button */}
+            <div className="flex items-center gap-2 z-10">
+              {!loading && (user ? <UserAvatar /> : <LoginButton />)}
+            </div>
+
             {/* Sound Toggle Button */}
             <Button
               variant="secondary"
               size="icon"
               className="text-white bg-gray-700 hover:bg-gray-600"
-              onClick={toggleSound}
+              onClick={handleSoundToggle}
               title={isSoundEnabled ? 'Disable Sound' : 'Enable Sound'}
             >
               {isSoundEnabled ? (
@@ -178,7 +141,7 @@ export default function App() {
           >
             {/* Game Container */}
             <div
-              className="aspect-[4/3] overflow-hidden bg-gray-800 rounded-lg shadow-lg"
+              className="aspect-[4/3] overflow-hidden bg-gray-800 rounded-lg shadow-lg border border-gray-700"
               id="game-container"
             />
 
@@ -210,7 +173,7 @@ export default function App() {
             </div>
           )}
 
-          <div className="bg-gray-800 rounded-lg p-2 sm:p-4 mx-auto w-full">
+          <div className="bg-gray-800 rounded-lg p-2 sm:p-4 mx-auto w-full border border-gray-700">
             <h2 className="text-lg sm:text-xl font-bold mb-2">About</h2>
             <p className="text-sm sm:text-base text-gray-400">
               Watch as AI characters engage in endless conversations, each with their own unique
@@ -219,7 +182,7 @@ export default function App() {
           </div>
         </main>
 
-        <footer className="p-2 sm:p-4 bg-gray-800 mt-3 sm:mt-6">
+        <footer className="p-2 sm:p-4 bg-gray-800 mt-3 sm:mt-6 border-t border-gray-700">
           <div className="mx-auto w-full">
             <p className="text-center text-gray-400 text-xs sm:text-sm">
               © 2024 PixelTales - An AI Character Interaction Experiment

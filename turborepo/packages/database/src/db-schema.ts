@@ -1,8 +1,28 @@
 import { relations, sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { SceneConfig, SceneState } from './schemas';
+import { SceneConfigConfig, SceneStateSnapshotState, UserRoleEnum } from './schemas';
 
 // --- Tables ---
+
+// Users table for authentication and role management
+export const usersTable = sqliteTable(
+  'users',
+  {
+    id: text('id').primaryKey(), // Supabase auth ID
+    email: text('email').notNull().unique(),
+    name: text('name'),
+    role: text('role', { enum: UserRoleEnum }).default('user').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
+      .notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
+      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
+      .notNull(),
+  },
+  (table) => [index('user_email_idx').on(table.email)],
+);
+export type DbUser = typeof usersTable.$inferSelect;
+export type NewDbUser = typeof usersTable.$inferInsert;
 
 export const sceneConfigsTable = sqliteTable(
   'scene_configs',
@@ -11,18 +31,27 @@ export const sceneConfigsTable = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    config: text('config').$type<SceneConfig>().notNull(),
+    // config: text('config').$type<SceneConfigConfig>().notNull(),
+    config: text('config').notNull(),
     votes: integer('votes').default(0).notNull(),
     status: text('status', { enum: ['proposed', 'active', 'rejected'] })
       .default('proposed')
       .notNull(),
-    systemPrompt: text('system_prompt').notNull().default(''), // TODO v2: remove as already in `config`
+    systemPrompt: text('system_prompt').default('').notNull(), // TODO v2: remove as already in `config`
   },
   (table) => [
     index('scene_config_created_at_idx').on(table.createdAt),
     index('scene_config_status_idx').on(table.status),
   ],
 );
+export type DbSceneConfigRaw = typeof sceneConfigsTable.$inferSelect;
+export type DbSceneConfig = Omit<DbSceneConfigRaw, 'config'> & { config: SceneConfigConfig };
+export type NewDbSceneConfigRaw = typeof sceneConfigsTable.$inferInsert;
+export type NewDbSceneConfig = Omit<NewDbSceneConfigRaw, 'config'> & { config: SceneConfigConfig };
+export type UpdateDbSceneConfigRaw = Partial<Omit<DbSceneConfigRaw, 'id'>>;
+export type UpdateDbSceneConfig = Omit<UpdateDbSceneConfigRaw, 'config'> & {
+  config?: SceneConfigConfig;
+};
 
 export const scenesTable = sqliteTable(
   'scenes',
@@ -44,6 +73,8 @@ export const scenesTable = sqliteTable(
     // index('scene_is_active_idx').on(table.isActive),
   ],
 );
+export type DbScene = typeof scenesTable.$inferSelect;
+export type NewDbScene = typeof scenesTable.$inferInsert;
 
 export const sceneStateSnapshotsTable = sqliteTable(
   'scene_state_snapshots',
@@ -52,7 +83,8 @@ export const sceneStateSnapshotsTable = sqliteTable(
     timestamp: integer('timestamp', { mode: 'timestamp_ms' })
       .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
       .notNull(),
-    state: text('state').$type<SceneState>().notNull(),
+    // state: text('state').$type<SceneState>().notNull(),
+    state: text('state').notNull(),
     configId: integer('config_id')
       .notNull()
       .references(() => sceneConfigsTable.id),
@@ -65,6 +97,18 @@ export const sceneStateSnapshotsTable = sqliteTable(
     index('snapshot_scene_id_idx').on(table.sceneId),
   ],
 );
+export type DbSceneStateSnapshotRaw = typeof sceneStateSnapshotsTable.$inferSelect;
+export type DbSceneStateSnapshot = Omit<DbSceneStateSnapshotRaw, 'state'> & {
+  state: SceneStateSnapshotState;
+};
+export type NewDbSceneStateSnapshotRaw = typeof sceneStateSnapshotsTable.$inferInsert;
+export type NewDbSceneStateSnapshot = Omit<NewDbSceneStateSnapshotRaw, 'state'> & {
+  state: SceneStateSnapshotState;
+};
+export type UpdateDbSceneStateSnapshotRaw = Partial<Omit<DbSceneStateSnapshotRaw, 'id'>>;
+export type UpdateDbSceneStateSnapshot = Omit<UpdateDbSceneStateSnapshotRaw, 'state'> & {
+  state?: SceneStateSnapshotState;
+};
 
 // NEU: Characters Table (Basisdaten)
 export const charactersTable = sqliteTable(
@@ -76,6 +120,8 @@ export const charactersTable = sqliteTable(
   },
   (table) => [index('character_name_idx').on(table.name)],
 );
+export type DbCharacter = typeof charactersTable.$inferSelect;
+export type NewDbCharacter = typeof charactersTable.$inferInsert;
 
 // NEU: Messages Table
 export const messagesTable = sqliteTable(
@@ -91,12 +137,12 @@ export const messagesTable = sqliteTable(
     characterId: text('character_id')
       .notNull()
       .references(() => charactersTable.id, { onDelete: 'cascade' }),
+    recipient: text('recipient').notNull(),
     modelUsed: text('model_used'),
     content: text('content'), // Hauptnachricht
     thoughts: text('thoughts').notNull(), // Agent thoughts
     mood: text('mood').notNull(),
     moodEmoji: text('mood_emoji').notNull(),
-    recipient: text('recipient').notNull(),
     reactionOnPrevious: text('reaction_on_previous_message'),
     calculatedSpeakingTime: real('calculated_speaking_time').notNull(), // Use real for float
     conversationRating: integer('conversation_rating'),
@@ -110,6 +156,8 @@ export const messagesTable = sqliteTable(
     index('message_character_id_idx').on(table.characterId),
   ],
 );
+export type DbMessage = typeof messagesTable.$inferSelect;
+export type NewDbMessage = typeof messagesTable.$inferInsert;
 
 // --- Relations ---
 
@@ -156,4 +204,5 @@ export const dbSchema = {
   sceneStateSnapshotsTable,
   charactersTable,
   messagesTable,
+  usersTable,
 };

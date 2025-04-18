@@ -1,11 +1,11 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
-import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from './db/drizzle.provider';
+import { DRIZZLE_INSTANCE, DatabaseSchema } from './db/drizzle.provider';
 
 @Injectable()
 export class AppService {
   constructor(
-    @Inject(DRIZZLE_INSTANCE) private readonly db: DrizzleSqliteDatabase,
+    @Inject(DRIZZLE_INSTANCE) private readonly db: DatabaseSchema,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(AppService.name);
@@ -30,12 +30,13 @@ export class AppService {
 
     return {
       status: 'healthy',
-      version: process.env.npm_package_version || '1.0.0',
+      version: process.env.npm_package_version || 'unknown',
       timestamp: new Date().toISOString(),
       database: {
         connected: dbConnected,
         type: 'SQLite (via Drizzle)',
       },
+      message: 'hello there',
     };
   }
 }

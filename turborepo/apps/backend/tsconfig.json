@@ -10,6 +10,7 @@
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
+    // "rootDir": "./src",
     "incremental": true,
     "paths": {
       "@pixeltales/database/schema": ["../../packages/database/dist/schema.d.ts"],

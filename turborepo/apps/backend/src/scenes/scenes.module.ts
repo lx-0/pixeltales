@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { DbModule } from '../db/db.module';
 import { ScenesController } from './scenes.controller';
 import { ScenesService } from './scenes.service';
+import { ScenesDbModule } from 'src/scene/scenes-db/scenes-db.module';
 
 @Module({
-  imports: [DbModule],
+  imports: [ScenesDbModule],
   controllers: [ScenesController],
   providers: [ScenesService],
   exports: [ScenesService],

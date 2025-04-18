@@ -1,5 +1,5 @@
 import { Logger } from '@/utils/logger';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { TILE_SIZE } from '../config';
 import { HistoryManager } from './HistoryManager';
@@ -248,7 +248,7 @@ export class UIControlsManager {
 
   updateHeadlineDisplay(
     isHistoryMode: boolean,
-    currentMessage: SceneState['messages'][0] | undefined,
+    currentMessage: SceneStateSnapshotState['messages'][0] | undefined,
     currentIndex: number,
     totalMessages: number,
   ): void {
@@ -271,7 +271,7 @@ export class UIControlsManager {
 
   updateMetadataDisplay(
     isHistoryMode: boolean,
-    currentMessage: SceneState['messages'][0] | undefined,
+    currentMessage: SceneStateSnapshotState['messages'][0] | undefined,
     currentIndex: number,
     totalMessages: number,
   ): void {

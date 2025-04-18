@@ -1,5 +1,5 @@
 import { Logger } from '@/utils/logger';
-import type { Message, SceneState } from '@pixeltales/contracts';
+import type { Message, SceneStateSnapshotState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { CharacterManager } from './CharacterManager';
 
@@ -44,7 +44,7 @@ export class SpeechBubbleManager {
     this.activeBubbles.clear();
   }
 
-  updateBubbles(state: SceneState): void {
+  updateBubbles(state: SceneStateSnapshotState): void {
     // Clear old bubbles first
     this.clearBubbles();
 

@@ -19,9 +19,11 @@ import {
 } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
 import { z } from 'zod';
+import { Public } from '../auth/decorators/public.decorator';
 import { ScenesService } from './scenes.service';
 
 @Controller('scenes')
+@Public()
 @UsePipes(ZodValidationPipe)
 export class ScenesController {
   constructor(

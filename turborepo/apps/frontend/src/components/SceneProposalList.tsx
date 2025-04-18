@@ -1,9 +1,5 @@
 import { useProposedScenes, useSceneVote, useVotedProposals } from '@/hooks/use-scenes';
-import { useToast } from '@/hooks/use-toast';
-import { SceneConfig } from '@pixeltales/contracts';
-import { ThumbsDown, ThumbsUp } from 'lucide-react';
-import React, { useEffect, useState } from 'react';
-import { Button } from './ui/button';
+import { Button } from '@/lib/shadcn-ui/button';
 import {
   Dialog,
   DialogContent,
@@ -11,9 +7,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog';
-import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
+} from '@/lib/shadcn-ui/dialog';
+import { useToast } from '@/lib/shadcn-ui/hooks/use-toast';
+import { ScrollArea } from '@/lib/shadcn-ui/scroll-area';
+import { Separator } from '@/lib/shadcn-ui/separator';
+import { SceneConfig } from '@pixeltales/contracts';
+import { ThumbsDown, ThumbsUp } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 interface SceneProposalListProps {
   trigger?: React.ReactNode;

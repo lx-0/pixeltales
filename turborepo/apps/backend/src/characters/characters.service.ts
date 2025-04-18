@@ -1,13 +1,12 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { DBSceneConfig, dbSchema } from '@pixeltales/database';
-import { eq } from 'drizzle-orm';
+import { Injectable } from '@nestjs/common';
+import { SceneConfig } from '@pixeltales/database';
 import { PinoLogger } from 'nestjs-pino';
-import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../db/drizzle.provider';
+import { CharactersDbService } from './characters-db/characters-db.service';
 
 @Injectable()
 export class CharactersService {
   constructor(
-    @Inject(DRIZZLE_INSTANCE) private readonly db: DrizzleSqliteDatabase,
+    private readonly charactersDb: CharactersDbService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(CharactersService.name);
@@ -27,16 +26,11 @@ export class CharactersService {
   ): Promise<{ id: string; name: string; color: string | null }> {
     this.logger.debug(`Creating character: ${id} (${name})`);
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      const character = await this.db
-        .insert(dbSchema.charactersTable)
-        .values({
-          id,
-          name,
-          color: color || null,
-        })
-        .returning()
-        .get();
+      const character = await this.charactersDb.create({
+        id,
+        name,
+        color: color || null,
+      });
 
       this.logger.info(`Created character: ${id}`);
       return character;
@@ -53,12 +47,7 @@ export class CharactersService {
    */
   async characterExists(id: string): Promise<boolean> {
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      const character = await this.db
-        .select()
-        .from(dbSchema.charactersTable)
-        .where(eq(dbSchema.charactersTable.id, id))
-        .get();
+      const character = await this.charactersDb.findById(id);
 
       return !!character;
     } catch (error) {
@@ -79,12 +68,7 @@ export class CharactersService {
     id: string,
   ): Promise<{ id: string; name: string; color: string | null } | null> {
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      const character = await this.db
-        .select()
-        .from(dbSchema.charactersTable)
-        .where(eq(dbSchema.charactersTable.id, id))
-        .get();
+      const character = await this.charactersDb.findById(id);
 
       return character || null;
     } catch (error) {
@@ -98,7 +82,7 @@ export class CharactersService {
    * This is necessary to avoid foreign key constraint errors when saving messages
    * @param sceneConfig The scene configuration containing characters
    */
-  async ensureCharactersExistInDatabase(sceneConfig: DBSceneConfig): Promise<void> {
+  async ensureCharactersExistInDatabase(sceneConfig: SceneConfig): Promise<void> {
     this.logger.info('Ensuring all characters exist in database...');
     if (!sceneConfig?.config?.characters_config) {
       this.logger.warn('No characters config found in scene config');
@@ -148,13 +132,7 @@ export class CharactersService {
     data: { name?: string; color?: string },
   ): Promise<{ id: string; name: string; color: string | null } | null> {
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      const updatedCharacter = await this.db
-        .update(dbSchema.charactersTable)
-        .set(data)
-        .where(eq(dbSchema.charactersTable.id, id))
-        .returning()
-        .get();
+      const updatedCharacter = await this.charactersDb.update(id, data);
 
       this.logger.info(`Updated character: ${id}`);
       return updatedCharacter;

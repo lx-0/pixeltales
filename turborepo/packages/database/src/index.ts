@@ -3,21 +3,8 @@ import { z } from 'zod';
 import * as schema from './db-schema';
 
 // === Schema Export ===
-export * from './client';
 export * from './db-schema';
 export * from './schemas';
-
-// === TypeScript Type Exports ===
-export type DBSceneConfig = typeof schema.sceneConfigsTable.$inferSelect;
-export type NewDBSceneConfig = typeof schema.sceneConfigsTable.$inferInsert;
-export type DBScene = typeof schema.scenesTable.$inferSelect;
-export type NewDBScene = typeof schema.scenesTable.$inferInsert;
-export type DBSceneStateSnapshot = typeof schema.sceneStateSnapshotsTable.$inferSelect;
-export type NewDBSceneStateSnapshot = typeof schema.sceneStateSnapshotsTable.$inferInsert;
-export type DBCharacter = typeof schema.charactersTable.$inferSelect;
-export type NewDBCharacter = typeof schema.charactersTable.$inferInsert;
-export type DBMessage = typeof schema.messagesTable.$inferSelect;
-export type NewDBMessage = typeof schema.messagesTable.$inferInsert;
 
 // === Zod Schema Exports ===
 

@@ -1,6 +1,7 @@
 import { FactoryProvider, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { dbSchema } from '@pixeltales/database';
+import { toBoolean } from '@pixeltales/utils';
 import BetterSqlite3 from 'better-sqlite3';
 import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import { symlinkPathRelativeToConfig } from 'drizzle.config';
@@ -9,9 +10,9 @@ import * as path from 'node:path';
 
 export const DRIZZLE_INSTANCE = 'DRIZZLE_INSTANCE';
 
-export type DrizzleSqliteDatabase = BetterSQLite3Database<typeof dbSchema>;
+export type DatabaseSchema = BetterSQLite3Database<typeof dbSchema>;
 
-export const DrizzleProvider: FactoryProvider<DrizzleSqliteDatabase> = {
+export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
   provide: DRIZZLE_INSTANCE,
   inject: [ConfigService, Logger],
   useFactory: (configService: ConfigService, logger: Logger) => {
@@ -63,7 +64,9 @@ export const DrizzleProvider: FactoryProvider<DrizzleSqliteDatabase> = {
 
       const db = drizzle(sqlite, {
         schema: dbSchema,
-        logger: configService.get<boolean>('DB_DEBUG_LOGGING', false) ? customLogger : false,
+        logger: toBoolean(configService.get<boolean>('DB_DEBUG_LOGGING', false))
+          ? customLogger
+          : false,
       });
 
       logger.log('Drizzle instance created successfully', 'DrizzleProvider');

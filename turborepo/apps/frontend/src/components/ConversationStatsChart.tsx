@@ -1,5 +1,6 @@
+import { Card, CardContent, CardHeader } from '@/lib/shadcn-ui/card';
 import { formatTime } from '@/utils/format';
-import { type SceneState } from '@pixeltales/contracts';
+import { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -13,10 +14,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { Card, CardContent, CardHeader } from './ui/card';
 
 interface ConversationStatsChartProps {
-  scene: SceneState;
+  scene: SceneStateSnapshotState;
 }
 
 interface DotProps {

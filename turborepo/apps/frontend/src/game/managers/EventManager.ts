@@ -1,6 +1,6 @@
 import { socketService } from '@/services/socket';
 import { Logger } from '@/utils/logger';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { StateManager } from './StateManager';
 
@@ -34,7 +34,7 @@ export class EventManager {
     this.stateManager.navigateHistory(index);
   }
 
-  private handleSceneStateUpdate(state: SceneState): void {
+  private handleSceneStateUpdate(state: SceneStateSnapshotState): void {
     Logger.info(this.constructor.name, 'Handling scene state update');
     this.stateManager.updateState(state);
   }

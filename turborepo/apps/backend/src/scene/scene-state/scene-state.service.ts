@@ -1,23 +1,23 @@
-import { Inject, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   CharacterState,
   CharacterStateSchema,
-  DBScene,
   Message,
-  NewDBSceneStateSnapshot,
-  SceneState,
+  NewSceneStateSnapshot,
+  Scene,
+  SceneConfig,
+  SceneStateSnapshotState,
 } from '@pixeltales/contracts';
-import { DBSceneConfig, dbSchema, SceneStateSchema } from '@pixeltales/database';
-import { desc, eq } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
-import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../../db/drizzle.provider';
+import { ScenesDbService } from '../scenes-db/scenes-db.service';
 
 @Injectable()
 export class SceneStateService {
-  private currentState: SceneState | null = null;
+  private currentStateId: number | null = null;
+  private currentState: SceneStateSnapshotState | null = null;
 
   constructor(
-    @Inject(DRIZZLE_INSTANCE) private readonly db: DrizzleSqliteDatabase,
+    private readonly scenesDb: ScenesDbService,
     private readonly logger: PinoLogger,
   ) {
     this.logger.setContext(SceneStateService.name);
@@ -25,12 +25,18 @@ export class SceneStateService {
 
   // --- State Access ---
 
-  getCurrentState(): SceneState | null {
+  getCurrentState(): SceneStateSnapshotState | null {
     return this.currentState;
   }
 
-  setCurrentState(state: SceneState | null): void {
+  setCurrentState(id: number, state: SceneStateSnapshotState): void {
+    this.currentStateId = id;
     this.currentState = state;
+  }
+
+  resetCurrentState(): void {
+    this.currentStateId = null;
+    this.currentState = null;
   }
 
   getCharacterState(characterId: string): CharacterState | undefined {
@@ -51,7 +57,7 @@ export class SceneStateService {
     // orchestrated by SceneManager or another service.
   }
 
-  updateState(updates: Partial<SceneState>): void {
+  updateState(updates: Partial<SceneStateSnapshotState>): void {
     if (!this.currentState) {
       this.logger.warn('Cannot update state: No current state exists.');
       return;
@@ -62,20 +68,16 @@ export class SceneStateService {
 
   // --- Message Management ---
 
-  addMessageToState(message: Message): void {
-    if (!this.currentState) {
+  async addMessageToState(message: Message): Promise<void> {
+    if (!this.currentState || !this.currentStateId) {
       this.logger.warn('Cannot add message: No current state exists.');
       return;
     }
 
-    // Create a new messages array with the new message appended
-    const updatedMessages = [...(this.currentState.messages || []), message];
+    const updatedState = await this.scenesDb.addMessageToState(this.currentStateId, message);
 
     // Update the state with the new messages array
-    this.currentState = {
-      ...this.currentState,
-      messages: updatedMessages,
-    };
+    this.currentState = updatedState.state;
 
     this.logger.debug(
       { timestamp: message.timestamp, characterId: message.character },
@@ -86,10 +88,10 @@ export class SceneStateService {
   // --- Initialization ---
 
   initializeStateFromConfig(
-    scene: DBScene,
-    sceneConfig: DBSceneConfig,
+    scene: Scene,
+    sceneConfig: SceneConfig,
     initialVisitorCount: number,
-  ): SceneState {
+  ): SceneStateSnapshotState {
     this.logger.info(`Initializing scene state from config ${scene.sceneConfigId}`);
     const characters: Record<string, CharacterState> = {};
 
@@ -125,7 +127,7 @@ export class SceneStateService {
       }
     }
 
-    const initialState: SceneState = {
+    const initialState: SceneStateSnapshotState = {
       scene_id: scene.id,
       scene_config_id: scene.sceneConfigId,
       characters: characters,
@@ -144,35 +146,16 @@ export class SceneStateService {
 
   // --- Snapshot Management ---
 
-  async loadLatestSnapshotForScene(sceneId: number): Promise<SceneState | null> {
+  async loadLatestSnapshotForScene(sceneId: number): Promise<SceneStateSnapshotState | null> {
     this.logger.debug(`Loading latest snapshot for scene ${sceneId}...`);
-    // eslint-disable-next-line @typescript-eslint/await-thenable
-    const latestSnapshot = await this.db
-      .select()
-      .from(dbSchema.sceneStateSnapshotsTable)
-      .where(eq(dbSchema.sceneStateSnapshotsTable.sceneId, sceneId))
-      .orderBy(desc(dbSchema.sceneStateSnapshotsTable.timestamp))
-      .limit(1)
-      .get();
+    const latestSnapshot = await this.scenesDb.findLatestState(sceneId);
 
     if (!latestSnapshot) {
       this.logger.warn(`No snapshot found for scene ${sceneId}`);
       return null;
     }
 
-    const stateParseResult = SceneStateSchema.safeParse(
-      JSON.parse(latestSnapshot.state as unknown as string),
-    );
-
-    if (!stateParseResult.success || !stateParseResult.data) {
-      this.logger.error(
-        stateParseResult.error.issues,
-        `Failed to parse state for scene ${sceneId}`,
-      );
-      return null;
-    }
-
-    this.currentState = stateParseResult.data;
+    this.currentState = latestSnapshot.state;
 
     return this.currentState;
   }
@@ -190,15 +173,14 @@ export class SceneStateService {
     }
 
     this.logger.debug(`Saving snapshot for scene ${sceneId}...`);
-    const newStateSnapshot: NewDBSceneStateSnapshot = {
-      state: JSON.stringify(this.currentState) as unknown as NewDBSceneStateSnapshot['state'],
+    const newStateSnapshotData: NewSceneStateSnapshot = {
+      state: this.currentState,
       sceneId: sceneId,
       configId: this.currentState.scene_config_id,
-      // timestamp is defaulted by DB
     };
     try {
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      await this.db.insert(dbSchema.sceneStateSnapshotsTable).values(newStateSnapshot);
+      const newStateSnapshot = await this.scenesDb.createStateSnapshot(newStateSnapshotData);
+      this.currentStateId = newStateSnapshot.id;
       this.logger.info(`Snapshot saved for scene ${sceneId}.`);
     } catch (error) {
       this.logger.error({ error }, `Failed to save state snapshot for scene ${sceneId}`);

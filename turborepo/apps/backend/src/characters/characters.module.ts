@@ -1,9 +1,9 @@
 import { Module } from '@nestjs/common';
-import { DbModule } from 'src/db/db.module';
+import { CharactersDbModule } from './characters-db/characters-db.module';
 import { CharactersService } from './characters.service';
 
 @Module({
-  imports: [DbModule],
+  imports: [CharactersDbModule],
   providers: [CharactersService],
   exports: [CharactersService],
 })

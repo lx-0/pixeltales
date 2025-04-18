@@ -36,6 +36,17 @@ export function up() {
 
     CREATE INDEX IF NOT EXISTS snapshot_timestamp_idx ON scene_state_snapshots (timestamp);
     CREATE INDEX IF NOT EXISTS snapshot_scene_id_idx ON scene_state_snapshots (scene_id);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id TEXT PRIMARY KEY,
+      email TEXT NOT NULL UNIQUE,
+      name TEXT,
+      role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
+      created_at INTEGER NOT NULL DEFAULT (cast(strftime('%s', 'now') as integer) * 1000),
+      updated_at INTEGER NOT NULL DEFAULT (cast(strftime('%s', 'now') as integer) * 1000)
+    );
+
+    CREATE INDEX IF NOT EXISTS user_email_idx ON users(email);
   `;
 }
 
@@ -44,5 +55,6 @@ export function down() {
     DROP TABLE IF EXISTS scene_state_snapshots;
     DROP TABLE IF EXISTS scenes;
     DROP TABLE IF EXISTS scene_configs;
+    DROP TABLE IF EXISTS users;
   `;
 }

@@ -1,5 +1,6 @@
+import { scenesApi } from '@/lib/api';
 import { Logger } from '@/utils/logger';
-import { SceneConfig } from '@pixeltales/contracts';
+import { SceneConfigConfig } from '@pixeltales/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 
@@ -53,14 +54,10 @@ export function useVotedProposals(): [Set<number>, (proposalId: number) => void]
 }
 
 export function useProposedScenes() {
-  return useQuery<SceneConfig[]>({
+  return useQuery<SceneConfigConfig[]>({
     queryKey: ['scenes', 'proposed'],
     queryFn: async () => {
-      const response = await fetch('/api/v1/scenes/proposed');
-      if (!response.ok) {
-        throw new Error('Failed to fetch proposed scenes');
-      }
-      return response.json();
+      return scenesApi.getProposedScenes();
     },
   });
 }
@@ -70,19 +67,12 @@ export function useSceneProposal() {
 
   return useMutation({
     mutationFn: async (
-      sceneConfig: Omit<SceneConfig, 'id' | 'status' | 'system_prompt' | 'votes' | 'comments'>,
+      sceneConfig: Omit<
+        SceneConfigConfig,
+        'id' | 'status' | 'system_prompt' | 'votes' | 'comments'
+      >,
     ) => {
-      const response = await fetch('/api/v1/scenes/propose', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(sceneConfig),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to propose scene');
-      }
-      return response.json();
+      return scenesApi.proposeScene(sceneConfig);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scenes', 'proposed'] });
@@ -102,29 +92,26 @@ export function useSceneVote() {
         throw new Error('You have already voted on this proposal');
       }
 
-      Logger.info(`use-scenes`, `Voting on scene config ${sceneConfigId} with vote ${vote}`);
-      const response = await fetch(`/api/v1/scenes/${sceneConfigId}/vote`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ vote }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to vote on scene');
+      // Only allow valid vote values
+      if (vote !== 1 && vote !== -1) {
+        throw new Error('Vote value must be 1 or -1');
       }
-      return response.json();
+
+      return scenesApi.voteOnScene(sceneConfigId, vote as 1 | -1);
     },
     onMutate: async ({ sceneConfigId, vote }) => {
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['scenes', 'proposed'] });
 
       // Snapshot the previous value
-      const previousProposals = queryClient.getQueryData<SceneConfig[]>(['scenes', 'proposed']);
+      const previousProposals = queryClient.getQueryData<SceneConfigConfig[]>([
+        'scenes',
+        'proposed',
+      ]);
 
       // Optimistically update the proposals
       if (previousProposals) {
-        queryClient.setQueryData<SceneConfig[]>(['scenes', 'proposed'], (old) => {
+        queryClient.setQueryData<SceneConfigConfig[]>(['scenes', 'proposed'], (old) => {
           if (!old) return [];
           return old.map((proposal) =>
             proposal.id === sceneConfigId
@@ -168,17 +155,7 @@ export function useSceneComment() {
       user: string;
       comment: string;
     }) => {
-      const response = await fetch(`/api/v1/scenes/${sceneConfigId}/comment`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ user, comment }),
-      });
-      if (!response.ok) {
-        throw new Error('Failed to comment on scene');
-      }
-      return response.json();
+      return scenesApi.commentOnScene(sceneConfigId, user, comment);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scenes', 'proposed'] });

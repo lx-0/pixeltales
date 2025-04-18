@@ -1,15 +1,18 @@
-import { Inject, Injectable, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
+import { Injectable, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { SchedulerRegistry } from '@nestjs/schedule';
-import { DBScene, SceneStateSchema } from '@pixeltales/contracts'; // Import necessary types/schemas
-import { DBSceneConfig, dbSchema, NewDBScene } from '@pixeltales/database';
+import {
+  NewDbScene,
+  Scene,
+  SceneConfig,
+  SceneStateSnapshotStateSchema,
+} from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
 import { CharactersService } from '../../characters/characters.service';
-import { DRIZZLE_INSTANCE, DrizzleSqliteDatabase } from '../../db/drizzle.provider';
+import { ConversationOrchestratorService } from '../../conversation/conversation-orchestrator/conversation-orchestrator.service';
 import { EventsGateway } from '../../events/events.gateway'; // To emit updates
 import { ScenesService } from '../../scenes/scenes.service'; // Assuming DB access logic is here
-import { ConversationOrchestratorService } from '../conversation-orchestrator/conversation-orchestrator.service';
 import { SceneStateService } from '../scene-state/scene-state.service';
+import { ScenesDbService } from '../scenes-db/scenes-db.service';
 
 const CONVERSATION_LOOP_INTERVAL = 'CONVERSATION_LOOP_INTERVAL';
 const LOOP_INTERVAL_MS = 500; // Check loop every 500ms
@@ -19,8 +22,8 @@ const ALWAYS_RUN_CONVERSATION = false; // Set to true to always run the conversa
 
 @Injectable()
 export class SceneManagerService implements OnModuleInit {
-  private activeScene: DBScene | null = null;
-  private activeSceneConfig: DBSceneConfig | null = null; // Store the DB record WITH parsed config
+  private activeScene: Scene | null = null;
+  private activeSceneConfig: SceneConfig | null = null; // Store the DB record WITH parsed config
   private activeVisitors: Set<string> = new Set();
   private conversationLoopTimeout: NodeJS.Timeout | null = null;
   private isLoopRunning = false; // Prevent concurrent loops
@@ -32,10 +35,9 @@ export class SceneManagerService implements OnModuleInit {
 
   constructor(
     private readonly configService: ConfigService,
-    @Inject(DRIZZLE_INSTANCE) private readonly db: DrizzleSqliteDatabase,
-    private readonly scenesService: ScenesService, // For complex DB operations
+    private readonly scenesDb: ScenesDbService,
+    private readonly scenesService: ScenesService,
     private readonly logger: PinoLogger,
-    private readonly schedulerRegistry: SchedulerRegistry, // Inject SchedulerRegistry
     private readonly sceneStateService: SceneStateService,
     private readonly conversationOrchestratorService: ConversationOrchestratorService,
     private readonly charactersService: CharactersService,
@@ -70,13 +72,7 @@ export class SceneManagerService implements OnModuleInit {
     this.logger.info('Attempting to load active scene...');
     try {
       // 1. Find the latest scene record (assuming latest is active)
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      const latestSceneRecord = await this.db
-        .select()
-        .from(dbSchema.scenesTable)
-        .orderBy(dbSchema.scenesTable.createdAt)
-        .limit(1)
-        .get();
+      const latestSceneRecord = await this.scenesDb.findLatest();
 
       if (latestSceneRecord) {
         this.logger.info(`Found latest scene: ${latestSceneRecord.id}`);
@@ -128,7 +124,7 @@ export class SceneManagerService implements OnModuleInit {
       this.logger.error(error, `Error loading active scene:`);
       this.activeScene = null; // Reset state on failure
       this.activeSceneConfig = null;
-      this.sceneStateService.setCurrentState(null);
+      this.sceneStateService.resetCurrentState();
       this.stopConversationLoop();
       throw new InternalServerErrorException('Failed to initialize scene manager');
     }
@@ -148,15 +144,10 @@ export class SceneManagerService implements OnModuleInit {
       }
       this.logger.info(`Selected scene config: ${targetConfig.id}`);
 
-      const newSceneData: NewDBScene = {
+      const newSceneData: NewDbScene = {
         sceneConfigId: targetConfig.id,
       };
-      // eslint-disable-next-line @typescript-eslint/await-thenable
-      const newScene = await this.db
-        .insert(dbSchema.scenesTable)
-        .values(newSceneData)
-        .returning()
-        .get();
+      const newScene = await this.scenesDb.create(newSceneData);
       this.logger.info(`Created new scene record: ${newScene.id}`);
 
       this.activeScene = newScene;
@@ -175,6 +166,9 @@ export class SceneManagerService implements OnModuleInit {
       // Save initial snapshot using SceneStateService
       await this.sceneStateService.saveSnapshot(this.activeScene.id);
 
+      // Init Scene
+      this.conversationOrchestratorService.initConversation(targetConfig.config);
+
       this.logger.info(
         `Successfully started new scene ${newScene.id} with config ${targetConfig.id}`,
       );
@@ -184,7 +178,7 @@ export class SceneManagerService implements OnModuleInit {
       this.logger.error(error, 'Failed to start new scene:');
       this.activeScene = null;
       this.activeSceneConfig = null;
-      this.sceneStateService.setCurrentState(null);
+      this.sceneStateService.resetCurrentState();
       // Loop should already be stopped from the top of the try block
       throw new InternalServerErrorException('Failed to start a new scene');
     }
@@ -197,6 +191,7 @@ export class SceneManagerService implements OnModuleInit {
 
     if (!currentState || !this.activeScene) {
       this.logger.warn('Cannot process visitor add: No active scene or state.');
+      // TODO: Maybe try to load/start a scene here?
       return;
     }
 
@@ -294,7 +289,7 @@ export class SceneManagerService implements OnModuleInit {
     }
 
     try {
-      const validatedState = SceneStateSchema.parse(currentState);
+      const validatedState = SceneStateSnapshotStateSchema.parse(currentState);
       if (sid) {
         this.gateway.server.to(sid).emit('scene_state', validatedState);
       } else {

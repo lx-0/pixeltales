@@ -8,7 +8,8 @@ async function bootstrap() {
   app.useLogger(app.get(PinoLogger));
 
   // Setze globales API-Präfix mit korrekter Wildcard-Konfiguration
-  app.setGlobalPrefix('/api/v1', {
+  const globalPrefix = '/api/v1';
+  app.setGlobalPrefix(globalPrefix, {
     exclude: ['health', 'metrics'],
   });
 
@@ -19,13 +20,21 @@ async function bootstrap() {
   //   prefix: 'api/v',
   // });
 
-  // Aktiviere CORS für Frontend-Zugriff
-  app.enableCors();
+  // Enable CORS for development with specific configuration
+  app.enableCors({
+    origin: process.env.FRONTEND_URL || true,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: true,
+  });
 
   app.useWebSocketAdapter(new IoAdapter(app));
 
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
+
   app.get(PinoLogger).log(`🚀 Server listening on port ${port}`, 'Bootstrap');
 }
-bootstrap();
+bootstrap().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});

@@ -1,10 +1,6 @@
 import { ChatAnthropic } from '@langchain/anthropic';
-import { BaseMessage, HumanMessage } from '@langchain/core/messages';
-import {
-  ChatPromptTemplate,
-  MessagesPlaceholder,
-  SystemMessagePromptTemplate,
-} from '@langchain/core/prompts';
+import { BaseMessage } from '@langchain/core/messages';
+import { ChatPromptTemplate, MessagesPlaceholder } from '@langchain/core/prompts';
 import { Runnable } from '@langchain/core/runnables';
 import { ChatOpenAI } from '@langchain/openai';
 import { Injectable, Logger } from '@nestjs/common';
@@ -14,48 +10,49 @@ import {
   CharacterResponseSchema,
   LLMConfig,
   LLMProviderId,
-  SceneConfig,
+  SceneConfigConfig,
 } from '@pixeltales/contracts';
+import { getMessageFromUnknownError } from '@pixeltales/utils';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { DEFAULT_SYSTEM_PROMPT, SystemMessageVars } from '../scene/scene.const';
 import { stripUnsupportedZod } from './strip-unsupported-zod.func';
 
 // Type aliases similar to the Python version
 type LLMConfigHash = number;
-type AnyRunnable = Runnable<any, CharacterResponse>;
+type ConversationRunnable = Runnable<StructuredOutputInput, CharacterResponse>;
+
+// Type definition for system message template variables - using the ORIGINAL variable names
+export interface SystemMessageVars {
+  character_name: string;
+  character_visual: string;
+  character_role: string;
+  message_recipient: string;
+  scene_description: string;
+  input: string;
+  conversation_length: string;
+  current_time: string;
+  character_mood?: string;
+}
 
 // Define input type for structured output chain by extending SystemMessageVars
 interface StructuredOutputInput extends SystemMessageVars {
   history: BaseMessage[];
-  [key: string]: string | BaseMessage[] | Record<string, unknown> | undefined;
+  // [key: string]: string | BaseMessage[] | Record<string, unknown> | undefined;
 }
 
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private llms: Map<LLMConfigHash, AnyRunnable> = new Map();
-  private prompt: ChatPromptTemplate | null = null;
-  private chains: Map<LLMConfigHash, AnyRunnable> = new Map();
   private llmConfigs: Map<LLMConfigHash, LLMConfig> = new Map();
-  private modelInitialized = false;
-  private chatModel: ChatOpenAI | null = null;
+  private llms: Map<LLMConfigHash, ChatOpenAI | ChatAnthropic> = new Map();
+  private chains: Map<LLMConfigHash, ConversationRunnable> = new Map();
 
-  constructor(private readonly configService: ConfigService) {
-    try {
-      this.initializeModel();
-      this.logger.log('Model initialized successfully');
-      this.modelInitialized = true;
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error({ err: error }, `Failed to initialize model: ${errorMessage}`);
-    }
-  }
+  constructor(private readonly configService: ConfigService) {}
 
   /**
    * Initialize the LLMs for a scene, similar to Python's init_scene
    */
-  initScene(sceneConfig: SceneConfig): void {
+  initScene(sceneConfig: SceneConfigConfig): void {
     this.logger.log('Initializing LLMs for scene');
 
     const llmConfigsByExternalId = Object.fromEntries(
@@ -133,6 +130,24 @@ export class LlmService {
     return hash;
   }
 
+  private initLlm(config: LLMConfig): void {
+    const hash = this.hashLlmConfig(config);
+    try {
+      // Get the chat model
+      const model = this.getChatModel(config);
+
+      this.llms.set(hash, model);
+      this.logger.debug(`Initialized LLM for config hash ${hash}`);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      this.logger.error(
+        { err: error },
+        `Failed to initialize LLM for config hash ${hash}: ${errorMessage}`,
+      );
+      throw error;
+    }
+  }
+
   /**
    * Initialize LLMs for each unique config
    */
@@ -144,34 +159,8 @@ export class LlmService {
     }
 
     // Create LLM for each unique config
-    for (const [hash, config] of this.llmConfigs.entries()) {
-      try {
-        const model = this.getChatModel(config);
-
-        // Strip unsupported Zod features before sending to LLM API
-        const strippedSchema = stripUnsupportedZod(CharacterResponseSchema);
-
-        // Use withStructuredOutput with stripped schema
-        const llmWithStripped = model.withStructuredOutput(strippedSchema, {
-          method: config.provider === 'openai' ? 'tool_calling' : 'function_calling',
-        });
-
-        // Create a chain that validates the output with original schema
-        const llm = llmWithStripped.pipe((rawResult) => {
-          // Validate against the original schema
-          return CharacterResponseSchema.parse(rawResult);
-        });
-
-        this.llms.set(hash, llm);
-        this.logger.debug(`Initialized LLM for config hash ${hash}`);
-      } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          { err: error },
-          `Failed to initialize LLM for config hash ${hash}: ${errorMessage}`,
-        );
-        throw error;
-      }
+    for (const [_hash, config] of this.llmConfigs.entries()) {
+      this.initLlm(config);
     }
 
     this.logger.log(`Initialized ${this.llms.size} unique LLM instances`);
@@ -188,8 +177,8 @@ export class LlmService {
     }
 
     // Create prompt template
-    this.prompt = ChatPromptTemplate.fromMessages([
-      ['system', systemPrompt],
+    const prompt = ChatPromptTemplate.fromMessages<StructuredOutputInput>([
+      ['system', systemPrompt + '\n\n' + this.getFormatInstructions(CharacterResponseSchema)],
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
     ]);
@@ -197,8 +186,21 @@ export class LlmService {
     // Create chains for each LLM
     for (const [hash, llm] of this.llms.entries()) {
       try {
-        // Use pipe() method instead of RunnableSequence.from()
-        const chain = this.prompt.pipe(llm);
+        // Get the LLM config for the given hash
+        const llmConfig = this.llmConfigs.get(hash);
+        if (!llmConfig) {
+          throw new Error(`LLM config not found for hash ${hash}`);
+        }
+
+        // Create a chain that validates the output with original schema
+        const chain = prompt.pipe(
+          llm
+            .withStructuredOutput(stripUnsupportedZod(CharacterResponseSchema), {
+              method: llmConfig.provider === 'openai' ? 'tool_calling' : 'function_calling',
+            })
+            .pipe((rawResult) => CharacterResponseSchema.parse(rawResult)),
+        );
+
         this.chains.set(hash, chain);
         this.logger.debug(`Created conversation chain for config hash ${hash}`);
       } catch (error) {
@@ -217,7 +219,7 @@ export class LlmService {
   /**
    * Create a chat model instance based on the provider
    */
-  getChatModel(llmConfig: LLMConfig): ChatOpenAI | ChatAnthropic {
+  private getChatModel(llmConfig: LLMConfig): ChatOpenAI | ChatAnthropic {
     this.logger.debug(`Creating chat model for config: ${JSON.stringify(llmConfig)}`);
     const apiKey = this.getApiKey(llmConfig.provider);
 
@@ -246,21 +248,16 @@ export class LlmService {
   /**
    * Helper to prepare input variables with defaults for any SystemMessageVars
    */
-  private prepareInputVars(
-    externalId: string,
-    input: Record<string, unknown>,
-  ): StructuredOutputInput {
+  private prepareInputVars(input: StructuredOutputInput): StructuredOutputInput {
     // Prepare history separately as it's not part of SystemMessageVars
     const history = Array.isArray(input.history) ? input.history : [];
 
-    this.logger.debug(
-      `[prepareInputVars] Preparing input vars for ${externalId}, history length: ${history.length}`,
-    );
+    this.logger.debug(`[prepareInputVars] Preparing input vars, history length: ${history.length}`);
     this.logger.debug(`[prepareInputVars] Input keys: ${Object.keys(input).join(', ')}`);
 
     // Get keys from SystemMessageVars by creating a dummy instance
     const dummyVars = {} as SystemMessageVars;
-    const sysVarKeys = Object.keys(dummyVars);
+    const sysVarKeys = Object.keys(dummyVars); // TODO: check if character_mood is also in this list (as it is optional)
 
     this.logger.debug(`[prepareInputVars] SystemMessageVars keys: ${sysVarKeys.join(', ')}`);
 
@@ -271,29 +268,20 @@ export class LlmService {
     );
 
     // Override with special case defaults only when input doesn't provide a value
-    if (!input.character_name) {
-      baseVars.character_name = externalId;
-    }
-
     if (!input.conversation_length) {
       baseVars.conversation_length = history.length.toString();
     }
-
     if (!input.current_time) {
       baseVars.current_time = new Date().toLocaleTimeString();
     }
 
-    // Merge input values on top of defaults
-    const mergedVars = {
+    // Return the complete object with history and any additional properties
+    const result = {
       ...baseVars,
+      // Merge input values on top of defaults
       ...Object.fromEntries(
         Object.entries(input).filter(([key, value]) => value != null && sysVarKeys.includes(key)),
       ),
-    };
-
-    // Return the complete object with history and any additional properties
-    const result = {
-      ...mergedVars,
       // Add any additional properties from input not in SystemMessageVars
       ...Object.fromEntries(
         Object.entries(input).filter(
@@ -312,114 +300,34 @@ export class LlmService {
    * Generate a character response based on conversation history and character info
    */
   async generateResponse(
-    externalId: string,
-    input: {
-      history: BaseMessage[];
-      [key: string]: any;
-    },
+    llmConfig: LLMConfig,
+    input: StructuredOutputInput,
   ): Promise<z.infer<typeof CharacterResponseSchema>> {
     try {
-      this.logger.debug(`[generateResponse] Starting for ${externalId}`);
+      const hash = this.hashLlmConfig(llmConfig);
 
-      if (!this.modelInitialized || !this.chatModel) {
-        this.logger.error('[generateResponse] Model not initialized');
-        throw new Error('Model not initialized');
+      this.logger.log(`[generateResponse] Starting response generation for ${hash}`);
+
+      // Get the chain for the given hash / llm config
+      const chain = this.chains.get(hash);
+      if (!chain) {
+        this.logger.error('[generateResponse] LLM chain not initialized');
+        throw new Error('LLM chain not initialized');
       }
 
-      this.logger.log('[generateResponse] Preparing input', { externalId });
+      // Use helper function to prepare input variables
+      const preparedInput = this.prepareInputVars(input);
 
-      try {
-        // Use helper function to prepare input variables
-        const preparedInput = this.prepareInputVars(externalId, input);
-
-        this.logger.debug(
-          `[generateResponse] Prepared input with ${preparedInput.history.length} history items`,
-        );
-
-        // Extract history messages
-        const historyMessages = Array.isArray(preparedInput.history) ? preparedInput.history : [];
-
-        // Debug logs for template variables
-        const inputKeys = Object.keys(preparedInput).filter((key) => key !== 'history');
-        this.logger.debug(`[generateResponse] Template variables: ${inputKeys.join(', ')}`);
-
-        try {
-          // Get format instructions for the output schema
-          const formatInstructions = this.getFormatInstructions(CharacterResponseSchema);
-
-          // Create a combined system prompt with format instructions
-          const fullPrompt = DEFAULT_SYSTEM_PROMPT + '\n\n' + formatInstructions;
-
-          // Create a system message from the template
-          const template = SystemMessagePromptTemplate.fromTemplate(fullPrompt);
-          const systemMessage = await template.format(
-            Object.fromEntries(Object.entries(preparedInput).filter(([key]) => key !== 'history')),
-          );
-
-          // Build the full message list
-          const allMessages = [systemMessage, ...historyMessages].filter(
-            (message): message is BaseMessage => message !== undefined,
-          );
-
-          if (preparedInput.input) {
-            allMessages.push(new HumanMessage(preparedInput.input));
-          }
-
-          this.logger.debug(`[generateResponse] Created ${allMessages.length} messages`);
-
-          // Strip unsupported Zod features before sending to LLM API
-          const strippedSchema = stripUnsupportedZod(CharacterResponseSchema);
-
-          // Call the model with structured output using stripped schema
-          const rawResult = await this.chatModel
-            .withStructuredOutput(strippedSchema, {
-              method: 'tool_calling', // Explicitly use tool_calling for OpenAI models
-            })
-            .invoke(allMessages);
-
-          // Validate against the original schema to ensure all constraints are satisfied
-          const result = CharacterResponseSchema.parse(rawResult);
-
-          this.logger.debug(`[generateResponse] Successfully generated response`);
-          return result;
-        } catch (templateError) {
-          // If there's a template error, log it in detail and rethrow for central error handling
-          const errorMsg =
-            templateError instanceof Error ? templateError.message : String(templateError);
-          this.logger.error(`[generateResponse] Template error: ${errorMsg}`);
-
-          if (templateError instanceof Error && templateError.stack) {
-            this.logger.error(`[generateResponse] Stack: ${templateError.stack}`);
-          }
-
-          // Rethrow the error for the central error handling
-          throw new Error(`Template processing error: ${errorMsg}`);
-        }
-      } catch (error) {
-        const errorJson =
-          error instanceof Error
-            ? JSON.stringify({ message: error.message, stack: error.stack })
-            : JSON.stringify(error);
-        this.logger.error(`[generateResponse] Error details: ${errorJson}`);
-
-        if (error instanceof Error) {
-          this.logger.error(`[generateResponse] Stack trace: ${error.stack}`);
-        }
-
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        this.logger.error(
-          { err: error },
-          `[generateResponse] Error generating character response: ${errorMessage}`,
-        );
-        throw new Error(`Failed to generate response: ${errorMessage}`);
-      }
+      // Call the model with structured output using stripped schema
+      const result = await chain.invoke(preparedInput);
+      this.logger.debug(`[generateResponse] Successfully generated response`);
+      return result;
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error('[generateResponse] Error in outer try/catch', {
-        error: errorMessage,
-        externalId,
-      });
-      throw error;
+      this.logger.error(
+        { error },
+        `[generateResponse] Error while generating response: ${getMessageFromUnknownError(error)}`,
+      );
+      throw new Error(`Error while generating response: ${getMessageFromUnknownError(error)}`);
     }
   }
 
@@ -446,47 +354,5 @@ Here is the JSON Schema instance your output must adhere to. Include the enclosi
 ${escapedJsonString}
 \`\`\`
 `;
-  }
-
-  /**
-   * Initialize the ChatModel needed for generating structured responses
-   */
-  private initializeModel(): void {
-    try {
-      this.logger.log('[initializeModel] Starting initialization');
-
-      this.chatModel = new ChatOpenAI({
-        temperature: 0.7,
-        modelName: 'gpt-4o',
-        openAIApiKey: this.configService.get<string>('OPENAI_API_KEY'),
-        maxTokens: 1000,
-      });
-
-      this.logger.debug('[initializeModel] Created chat model');
-
-      // Debug logs for template inspection
-      this.logger.debug(
-        '[initializeModel] DEFAULT_SYSTEM_PROMPT first 100 chars: ' +
-          DEFAULT_SYSTEM_PROMPT.substring(0, 100),
-      );
-
-      // Check for any potential unescaped braces in system prompt
-      const openBraces = (DEFAULT_SYSTEM_PROMPT.match(/\{/g) || []).length;
-      const closeBraces = (DEFAULT_SYSTEM_PROMPT.match(/\}/g) || []).length;
-      this.logger.debug(
-        `[initializeModel] Brace count in system prompt: { = ${openBraces}, } = ${closeBraces}`,
-      );
-
-      this.logger.debug('[initializeModel] Model initialized successfully');
-      // Note: modelInitialized is set in the constructor's then() callback
-      return; // Explicitly return to satisfy linter
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      this.logger.error(`[initializeModel] Error creating model: ${errorMessage}`);
-      if (error instanceof Error && error.stack) {
-        this.logger.error(`[initializeModel] Stack: ${error.stack}`);
-      }
-      throw new Error(`Failed to initialize model: ${errorMessage}`);
-    }
   }
 }

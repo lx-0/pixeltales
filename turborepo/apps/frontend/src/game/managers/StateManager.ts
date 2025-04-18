@@ -1,11 +1,11 @@
 import { Logger } from '@/utils/logger';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { CharacterManager } from './CharacterManager';
 import { SpeechBubbleManager } from './SpeechBubbleManager';
 
 export class StateManager {
-  private currentState: SceneState | null = null;
+  private currentState: SceneStateSnapshotState | null = null;
   private isInHistoryMode = false;
 
   constructor(
@@ -20,7 +20,7 @@ export class StateManager {
     this.isInHistoryMode = false;
   }
 
-  updateState(newState: SceneState): void {
+  updateState(newState: SceneStateSnapshotState): void {
     Logger.info(this.constructor.name, 'Updating state', {
       newState,
       isInHistoryMode: this.isInHistoryMode,
