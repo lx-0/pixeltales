@@ -2,7 +2,7 @@ import 'dotenv/config';
 import { defineConfig } from 'drizzle-kit';
 
 // Use the symlink path relative to this config file (apps/backend/)
-export const symlinkPathRelativeToConfig = '../../../data/sqlite/pixeltales.db';
+export const symlinkPathRelativeToConfig = '../../data/sqlite/pixeltales.db';
 
 // Use environment variable if set, otherwise use the default relative symlink path
 const dbUrl = process.env.DATABASE_URL ?? symlinkPathRelativeToConfig;

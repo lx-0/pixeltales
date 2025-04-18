@@ -11,11 +11,15 @@
       "outputs": ["dist/**"]
     },
     "backend#build": {
-      "dependsOn": ["@pixeltales/database#build", "@pixeltales/contracts#build"],
+      "dependsOn": [
+        "@pixeltales/database#build",
+        "@pixeltales/contracts#build",
+        "@pixeltales/utils#build"
+      ],
       "outputs": ["dist/**"]
     },
     "frontend#build": {
-      "dependsOn": ["@pixeltales/contracts#build"],
+      "dependsOn": ["@pixeltales/contracts#build", "@pixeltales/utils#build"],
       "outputs": ["dist/**"]
     },
     "dev": {
@@ -23,7 +27,7 @@
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["@pixeltales/contracts#build"]
+      "dependsOn": ["@pixeltales/contracts#build", "@pixeltales/utils#build"]
     },
     "clean": {
       "cache": false
