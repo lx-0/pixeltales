@@ -22,6 +22,7 @@ export class ConversationOrchestratorService {
   }
 
   initConversation(sceneConfig: SceneConfigConfig): void {
+    this.logger.info('Initializing conversation...');
     this.llmService.initScene(sceneConfig);
   }
 

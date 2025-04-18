@@ -108,13 +108,27 @@ export class BaseApiService {
   }
 
   /**
-   * Generic GET request with type safety and optional Zod validation
+   * GET with Zod schema validation - returns the proper output type
    */
-  protected async get<T>(
+  protected async get<Schema extends z.ZodType<unknown>>(
+    url: string,
+    config: AxiosRequestConfig | undefined,
+    schema: Schema,
+  ): Promise<z.output<Schema>>;
+
+  /**
+   * Generic GET request without schema validation
+   */
+  protected async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T>;
+
+  /**
+   * Implementation of both GET overloads
+   */
+  protected async get<T = unknown, Schema extends z.ZodType<unknown> = z.ZodType<T>>(
     url: string,
     config?: AxiosRequestConfig,
-    schema?: z.ZodType<T>,
-  ): Promise<T> {
+    schema?: Schema,
+  ): Promise<T | z.output<Schema>> {
     try {
       const response = await this.api.get(url, config);
       const data = response.data;
@@ -133,7 +147,7 @@ export class BaseApiService {
   /**
    * Generic POST request with type safety and optional Zod validation
    */
-  protected async post<T, D = unknown>(
+  protected async post<T = unknown, D = unknown>(
     url: string,
     data?: D,
     config?: AxiosRequestConfig,
@@ -157,7 +171,7 @@ export class BaseApiService {
   /**
    * Generic PUT request with type safety and optional Zod validation
    */
-  protected async put<T, D = unknown>(
+  protected async put<T = unknown, D = unknown>(
     url: string,
     data?: D,
     config?: AxiosRequestConfig,
@@ -181,7 +195,7 @@ export class BaseApiService {
   /**
    * Generic DELETE request with type safety and optional Zod validation
    */
-  protected async delete<T>(
+  protected async delete<T = unknown>(
     url: string,
     config?: AxiosRequestConfig,
     schema?: z.ZodType<T>,

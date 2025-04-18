@@ -1,40 +1,12 @@
+import { configApi } from '@/lib/api/config-api';
+import { ConfigOptions, LLMProvider } from '@pixeltales/contracts';
 import { useQuery } from '@tanstack/react-query';
-
-interface LLMModel {
-  id: string;
-  name: string;
-  max_tokens: number;
-  default_temperature: number;
-  description?: string;
-}
-
-interface LLMProvider {
-  id: string;
-  name: string;
-  models: LLMModel[];
-}
-
-interface ColorOption {
-  id: string;
-  name: string;
-  hex: string;
-  group: string;
-}
-
-interface ConfigOptions {
-  llm_providers: LLMProvider[];
-  colors: ColorOption[];
-}
 
 export function useConfig() {
   return useQuery<ConfigOptions>({
     queryKey: ['config'],
     queryFn: async () => {
-      const response = await fetch('/api/v1/config');
-      if (!response.ok) {
-        throw new Error('Failed to fetch config');
-      }
-      return response.json();
+      return configApi.getConfig();
     },
     staleTime: Infinity, // Cache forever as this rarely changes
   });

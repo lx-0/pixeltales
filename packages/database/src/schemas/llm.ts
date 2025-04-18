@@ -8,6 +8,7 @@ export const LLMModelSchema = z.object({
   description: z.string().optional().nullable(),
 });
 export type LLMModel = z.infer<typeof LLMModelSchema>;
+export type NewLlmModel = z.input<typeof LLMModelSchema>;
 
 export const LLMProviderEnum = ['openai', 'anthropic'] as const;
 export type LLMProviderId = (typeof LLMProviderEnum)[number];

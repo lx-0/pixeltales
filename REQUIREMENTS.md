@@ -94,6 +94,7 @@ Role: You are a woman who is not interested in love.
         - Total tokens grouped by model
     - Conversation message:
         - Tokens used
+- Character Builder
 
 ### Notes
 

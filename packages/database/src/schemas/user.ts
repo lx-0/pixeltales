@@ -8,15 +8,15 @@ export type UserRole = z.infer<typeof UserRoleSchema>;
 // User schema
 export const UserSchema = z.object({
   id: z.string().describe('Supabase auth ID'),
-  role: UserRoleSchema.describe('Role of the user'),
+  role: UserRoleSchema.default('user').describe('Role of the user'),
   email: z.string().email().describe('Email address of the user (from Supabase)'),
-  name: z.string().nullable().optional().describe('Name of the user'),
+  name: z.string().nullable().default(null).describe('Name of the user'),
   createdAt: z.date().describe('Timestamp when the user was created'),
   updatedAt: z.date().describe('Timestamp when the user was last updated'),
 });
-export type User = z.infer<typeof UserSchema>;
-export type NewUser = Omit<User, 'createdAt' | 'updatedAt'>;
-export type UpdateUser = Partial<Omit<User, 'id'>>;
+export type User = z.output<typeof UserSchema>; // z.output = z.infer
+export type NewUser = Omit<z.input<typeof UserSchema>, 'createdAt' | 'updatedAt'>; // z.input -> defaults are optional
+export type UpdateUser = Partial<Omit<User, 'id' | 'createdAt' | 'updatedAt'>>;
 
 // Comments (kept from previous schema)
 export const CommentSchema = z.object({

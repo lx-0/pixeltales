@@ -8,7 +8,7 @@ async function bootstrap() {
   app.useLogger(app.get(PinoLogger));
 
   // Setze globales API-Präfix mit korrekter Wildcard-Konfiguration
-  const globalPrefix = '/api/v1';
+  const globalPrefix = 'api/v1';
   app.setGlobalPrefix(globalPrefix, {
     exclude: ['health', 'metrics'],
   });

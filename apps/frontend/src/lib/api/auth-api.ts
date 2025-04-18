@@ -4,18 +4,20 @@ import {
   ApiResponseSchema,
   JwtUser,
   JwtUserSchema,
+  Login,
+  LoginResponse,
   LoginResponseSchema,
-  LoginSchema,
-  RegisterSchema,
+  Register,
+  RegistrationEnabled,
   RegistrationEnabledSchema,
   SuccessApiResponse,
+  SupabaseUserSessionResponse,
   SupabaseUserSessionResponseSchema,
   User,
   UserSchema,
   VoidApiResponse,
   VoidApiResponseSchema,
 } from '@pixeltales/contracts';
-import { z } from 'zod';
 import { BaseApiService } from './base-api';
 
 /**
@@ -29,58 +31,55 @@ export class AuthApiService extends BaseApiService {
   /**
    * Login with email and password
    */
-  async login(
-    credentials: z.infer<typeof LoginSchema>,
-  ): Promise<z.infer<typeof LoginResponseSchema>> {
+  async login(credentials: Login): Promise<LoginResponse> {
     Logger.info('AuthApi', `Logging in user: ${credentials.email}`);
 
-    return this.post('/auth/login', credentials, undefined, LoginResponseSchema);
+    const result = await this.post('/auth/login', credentials, undefined, LoginResponseSchema);
+    return result as LoginResponse;
   }
 
   /**
    * Register a new user
    */
-  async register(
-    userData: z.infer<typeof RegisterSchema>,
-  ): Promise<z.infer<typeof LoginResponseSchema>> {
+  async register(userData: Register): Promise<LoginResponse> {
     Logger.info('AuthApi', `Registering new user: ${userData.email}`);
 
-    return this.post('/auth/register', userData, undefined, LoginResponseSchema);
+    const result = await this.post('/auth/register', userData, undefined, LoginResponseSchema);
+    return result as LoginResponse;
   }
 
   /**
    * Create a new admin user (requires admin permissions)
    */
-  async createAdmin(
-    userData: z.infer<typeof RegisterSchema>,
-  ): Promise<z.infer<typeof LoginResponseSchema>> {
+  async createAdmin(userData: Register): Promise<LoginResponse> {
     Logger.info('AuthApi', `Creating admin user: ${userData.email}`);
 
-    return this.post('/auth/admin/create', userData, undefined, LoginResponseSchema);
+    const result = await this.post('/auth/admin/create', userData, undefined, LoginResponseSchema);
+    return result as LoginResponse;
   }
 
   /**
    * Get the current user's profile
    */
-  async getProfile(): Promise<z.infer<typeof UserSchema>> {
+  async getProfile(): Promise<User> {
     Logger.info('AuthApi', 'Getting user profile');
 
-    return this.get<User>('/auth/me', undefined, UserSchema);
+    return this.get('/auth/me', undefined, UserSchema);
   }
 
   /**
    * Validate the current authentication token
    */
-  async validateToken(): Promise<z.infer<typeof JwtUserSchema>> {
+  async validateToken(): Promise<JwtUser> {
     Logger.info('AuthApi', 'Validating auth token');
 
-    return this.get<JwtUser>('/auth/validate', undefined, JwtUserSchema);
+    return this.get('/auth/validate', undefined, JwtUserSchema);
   }
 
   /**
    * Get session from cookies (used for SSR)
    */
-  async getSessionFromCookies(): Promise<z.infer<typeof SupabaseUserSessionResponseSchema>> {
+  async getSessionFromCookies(): Promise<SupabaseUserSessionResponse> {
     Logger.info('AuthApi', 'Getting session from cookies');
 
     return this.get('/auth/session', undefined, SupabaseUserSessionResponseSchema);
@@ -89,11 +88,11 @@ export class AuthApiService extends BaseApiService {
   /**
    * Check if registration is currently enabled
    */
-  async isRegistrationEnabled(): Promise<ApiResponse<z.infer<typeof RegistrationEnabledSchema>>> {
+  async isRegistrationEnabled(): Promise<ApiResponse<RegistrationEnabled>> {
     Logger.info('AuthApi', 'Checking if registration is enabled');
 
     try {
-      return this.get<ApiResponse<z.infer<typeof RegistrationEnabledSchema>>>(
+      return this.get(
         '/auth/registration-enabled',
         undefined,
         ApiResponseSchema(RegistrationEnabledSchema),

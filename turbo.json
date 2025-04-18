@@ -23,6 +23,25 @@
       "outputs": ["dist/**"]
     },
     "dev": {
+      "dependsOn": [
+        "@pixeltales/contracts#build",
+        "@pixeltales/database#build",
+        "@pixeltales/utils#build"
+      ],
+      "cache": false,
+      "persistent": true
+    },
+    "backend#dev": {
+      "dependsOn": [
+        "@pixeltales/contracts#build",
+        "@pixeltales/database#build",
+        "@pixeltales/utils#build"
+      ],
+      "cache": false,
+      "persistent": true
+    },
+    "frontend#dev": {
+      "dependsOn": ["@pixeltales/contracts#build", "@pixeltales/utils#build"],
       "cache": false,
       "persistent": true
     },

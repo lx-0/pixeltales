@@ -1,4 +1,4 @@
-import { CharacterConfig, LLMConfig, Position, SceneConfigConfig } from '@pixeltales/contracts';
+import { CharacterConfig, SceneConfigConfig } from '@pixeltales/contracts';
 
 export const DEFAULT_SYSTEM_PROMPT = `You are {character_name}.
 {character_visual}
@@ -45,11 +45,11 @@ Key traits:
       model_name: process.env.DEFAULT_MODEL || 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 4096,
-    } as LLMConfig,
+    },
     initial_position: {
       x: TILE_SIZE * 7.5,
       y: TILE_SIZE * 7.5,
-    } as Position,
+    },
     initial_direction: 'right',
     initial_action: 'idle',
     initial_mood: 'neutral',
@@ -73,11 +73,11 @@ Key traits:
       model_name: process.env.DEFAULT_MODEL || 'gpt-4o-mini',
       temperature: 0.7,
       max_tokens: 4096,
-    } as LLMConfig,
+    },
     initial_position: {
       x: TILE_SIZE * 9.5,
       y: TILE_SIZE * 7.5,
-    } as Position,
+    },
     initial_direction: 'front',
     initial_action: 'idle',
     initial_mood: 'neutral',

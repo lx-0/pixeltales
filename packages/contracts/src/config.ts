@@ -15,4 +15,4 @@ export const ConfigOptionsSchema = z.object({
   llm_providers: z.array(LLMProviderSchema),
   colors: z.array(ColorOptionSchema),
 });
-export type ConfigOptions = z.infer<typeof ConfigOptionsSchema>;
+export type ConfigOptions = z.output<typeof ConfigOptionsSchema>;

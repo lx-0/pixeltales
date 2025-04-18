@@ -120,11 +120,13 @@ export const RegisterSchema = z.object({
   password: z.string().min(6),
   name: z.string().optional(),
 });
+export type Register = z.infer<typeof RegisterSchema>;
 
 export const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(6),
 });
+export type Login = z.infer<typeof LoginSchema>;
 
 export const LoginResponseSchema = z.object({
   user: JwtUserSchema,
@@ -134,7 +136,9 @@ export const LoginResponseSchema = z.object({
   requiresEmailConfirmation: z.boolean().optional(),
   message: z.string().optional(),
 });
+export type LoginResponse = z.output<typeof LoginResponseSchema>;
 
 export const RegistrationEnabledSchema = z.object({
   enabled: z.boolean(),
 });
+export type RegistrationEnabled = z.infer<typeof RegistrationEnabledSchema>;
