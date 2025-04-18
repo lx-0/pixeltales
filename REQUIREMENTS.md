@@ -95,6 +95,24 @@ Role: You are a woman who is not interested in love.
     - Conversation message:
         - Tokens used
 - Character Builder
+    - Integrated in "Propose New Scene" screen
+    - Character visual section
+      1. I want to have a selection of defined character spritesheets in the form, so that the selection is not hard-coded by index.
+      2. There should be an option to upload or generate new character spritesheets.
+      3. the whole character spritesheet selection / generation is an own reusable component
+      use shadcn components defined in apps/frontend/src/lib/shadcn-ui
+      4. the character spritesheet generation will be a multi step llm and image manipulation workflow (backend). the user can see the results of each step during the generation in the frontend and confirm or give feedback (human feedback).
+      5. the rough generation process is:
+         a. user defines prompt to generate a new character (e.g. "a young lady")
+         b. backend uses single dummy character sprite to generate a new character sprite based on the users prompt
+         c. resulting sprite is displayed in the frontend, user confirms or gives feedback (regeneration)
+         d. if the user confirms, the sprite then is used together with a whole dummy animation sprite sheet together with a list of defined sprite ids to generate a new animation sprite sheet based on the generated character sprite. the goal is to match the exact style, form and pose of the original animation sprite sheet.
+         e. the new animation sprite sheet is displayed in the frontend and the user can confirm or give feedback (regeneration)
+         f. if the user confirms, the new animation sprite sheet is once again interpreted by an llm to extract the exact coordinates of the character sprites in the sprite sheet. it also labels each sprite with the sprite id. the llm uses structured output to get exact coordinates, labels etc.
+         g. the determined sprites are highlighted on the generated spritesheet and presented to the user for confirmation. the user can then confirm or give feedback (regeneration)
+         h. if the user confirms, the labeled sprites are cut from the generated spritesheet. the screen now shows the target spritesheet (defined format and sprite ids / lables) with the generated sprites filled in. if any are missing, the user can regenerate individual sprites using the default dummy character sprite of that sprite id together with the generated base character sprite.
+         j. if the user is finalizing the character, the spritesheet is stored as file and can be used for new scenes.
+      6. we obviously need central image editing tool service and spritesheet service.
 
 ### Notes
 

@@ -1,12 +1,8 @@
 import { Injectable, InternalServerErrorException, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import {
-  NewDbScene,
-  Scene,
-  SceneConfig,
-  SceneStateSnapshotStateSchema,
-} from '@pixeltales/contracts';
+import { NewDbScene, SceneStateSnapshotStateSchema } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
+import assert from 'node:assert';
 import { CharactersService } from '../../characters/characters.service';
 import { ConversationOrchestratorService } from '../../conversation/conversation-orchestrator/conversation-orchestrator.service';
 import { EventsGateway } from '../../events/events.gateway'; // To emit updates
@@ -22,8 +18,8 @@ const ALWAYS_RUN_CONVERSATION = false; // Set to true to always run the conversa
 
 @Injectable()
 export class SceneManagerService implements OnModuleInit {
-  private activeScene: Scene | null = null;
-  private activeSceneConfig: SceneConfig | null = null; // Store the DB record WITH parsed config
+  // private activeScene: Scene | null = null;
+  // private activeSceneConfig: SceneConfig | null = null; // Store the DB record WITH parsed config
   private activeVisitors: Set<string> = new Set();
   private conversationLoopTimeout: NodeJS.Timeout | null = null;
   private isLoopRunning = false; // Prevent concurrent loops
@@ -47,19 +43,7 @@ export class SceneManagerService implements OnModuleInit {
 
   async onModuleInit() {
     this.logger.info('Initializing SceneManagerService...');
-    await this.loadActiveScene();
-
-    // Only start the conversation loop if ALWAYS_RUN_CONVERSATION is true
-    if (this.activeScene && this.activeSceneConfig && ALWAYS_RUN_CONVERSATION) {
-      this.logger.info(
-        'ALWAYS_RUN_CONVERSATION is enabled, starting conversation loop immediately',
-      );
-      this.startConversationLoop();
-    } else if (this.activeScene && this.activeSceneConfig) {
-      this.logger.info('Scene loaded, waiting for visitors to start conversation loop');
-    } else {
-      this.logger.error('SceneManager initialization failed: Could not load active scene.');
-    }
+    await this.startActiveScene();
   }
 
   // Method for the gateway to register itself (alternative to DI if cyclic)
@@ -68,74 +52,70 @@ export class SceneManagerService implements OnModuleInit {
     this.logger.info('EventsGateway registered with SceneManagerService.');
   }
 
-  private async loadActiveScene() {
+  private async loadActiveScene(): Promise<void> {
     this.logger.info('Attempting to load active scene...');
     try {
       // 1. Find the latest scene record (assuming latest is active)
       const latestSceneRecord = await this.scenesDb.findLatest();
-
-      if (latestSceneRecord) {
-        this.logger.info(`Found latest scene: ${latestSceneRecord.id}`);
-        this.activeScene = latestSceneRecord;
-
-        // Load the associated SceneConfig
-        const sceneConfigRecord = await this.scenesService.getById(latestSceneRecord.sceneConfigId);
-        if (!sceneConfigRecord) {
-          this.logger.error(
-            `Config ${latestSceneRecord.sceneConfigId} not found for latest scene ${latestSceneRecord.id}. Starting new scene. `,
-          );
-          await this.startNewScene(); // Attempt to start default scene
-          return;
-        }
-        this.activeSceneConfig = sceneConfigRecord;
-        this.logger.info(`Loaded config ${sceneConfigRecord.id} for scene ${this.activeScene.id}`);
-
-        // Ensure all characters from config exist in the database
-        await this.charactersService.ensureCharactersExistInDatabase(sceneConfigRecord);
-
-        // 2. Load the latest snapshot using SceneStateService
-        const loadedState = await this.sceneStateService.loadLatestSnapshotForScene(
-          this.activeScene.id,
-        );
-
-        if (!loadedState) {
-          this.logger.warn(
-            `No valid snapshot for scene ${this.activeScene.id}. Initializing state from config.`,
-          );
-          // Initialize state using SceneStateService (result not needed here)
-          this.sceneStateService.initializeStateFromConfig(
-            this.activeScene,
-            this.activeSceneConfig,
-            this.activeVisitors.size,
-          );
-          // Save initial snapshot using SceneStateService
-          await this.sceneStateService.saveSnapshot(this.activeScene.id);
-          this.logger.info('Initialized and saved new state snapshot.');
-        } else {
-          // Update visitor count in loaded state
-          this.sceneStateService.updateState({ visitor_count: this.activeVisitors.size });
-          this.logger.info('Successfully loaded state from snapshot.');
-        }
-      } else {
+      if (!latestSceneRecord) {
         this.logger.info('No scenes found in DB. Starting a new one.');
-        await this.startNewScene();
+        await this.loadNewScene();
+        return;
+      }
+
+      this.logger.info(`Found latest scene: ${latestSceneRecord.id}`);
+
+      // Load the associated SceneConfig
+      const sceneConfigRecord = await this.scenesService.getById(latestSceneRecord.sceneConfigId);
+      if (!sceneConfigRecord) {
+        this.logger.error(
+          `Config ${latestSceneRecord.sceneConfigId} not found for latest scene ${latestSceneRecord.id}. Starting new scene. `,
+        );
+        await this.loadNewScene(); // Attempt to start default scene
+        return;
+      }
+      this.logger.info(`Loaded config ${sceneConfigRecord.id} for scene ${latestSceneRecord.id}`);
+
+      // Ensure all characters from config exist in the database
+      await this.charactersService.ensureCharactersExistInDatabase(sceneConfigRecord);
+
+      // 2. Load the latest snapshot using SceneStateService
+      const loadedState = await this.sceneStateService.loadLatestSnapshotForScene(
+        latestSceneRecord.id,
+      );
+
+      if (!loadedState) {
+        this.logger.warn(
+          `No valid snapshot for scene ${latestSceneRecord.id}. Initializing state from config.`,
+        );
+        // Initialize state using SceneStateService (result not needed here)
+        this.sceneStateService.initializeStateFromConfig(
+          latestSceneRecord,
+          sceneConfigRecord,
+          this.activeVisitors.size,
+        );
+        // Save initial snapshot using SceneStateService
+        await this.sceneStateService.saveSnapshot();
+        this.logger.info('Initialized and saved new state snapshot.');
+      } else {
+        this.sceneStateService.setCurrentScene(latestSceneRecord, sceneConfigRecord);
+        // Update visitor count in loaded state
+        this.sceneStateService.updateState({ visitor_count: this.activeVisitors.size });
+        this.logger.info('Successfully loaded state from snapshot.');
       }
     } catch (error) {
       this.logger.error(error, `Error loading active scene:`);
-      this.activeScene = null; // Reset state on failure
-      this.activeSceneConfig = null;
       this.sceneStateService.resetCurrentState();
       this.stopConversationLoop();
       throw new InternalServerErrorException('Failed to initialize scene manager');
     }
   }
 
-  private async startNewScene(configId?: number) {
+  private async loadNewScene(configId?: number) {
     this.logger.info(
-      `Starting new scene${configId ? ` with config ${configId}` : ' (default/highest voted)'}...`,
+      `Loading new scene${configId ? ` with config ${configId}` : ' (default/highest voted)'}...`,
     );
-    // Stop any existing loop before starting new scene
-    this.stopConversationLoop();
+
     try {
       const targetConfig = await this.scenesService.getNextConfig(configId);
       if (!targetConfig) {
@@ -150,13 +130,10 @@ export class SceneManagerService implements OnModuleInit {
       const newScene = await this.scenesDb.create(newSceneData);
       this.logger.info(`Created new scene record: ${newScene.id}`);
 
-      this.activeScene = newScene;
-      this.activeSceneConfig = targetConfig;
-
       // Initialize SceneState using SceneStateService (result not needed)
       this.sceneStateService.initializeStateFromConfig(
-        this.activeScene,
-        this.activeSceneConfig,
+        newScene,
+        targetConfig,
         this.activeVisitors.size, // Pass current visitor count
       );
 
@@ -164,33 +141,84 @@ export class SceneManagerService implements OnModuleInit {
       await this.charactersService.ensureCharactersExistInDatabase(targetConfig);
 
       // Save initial snapshot using SceneStateService
-      await this.sceneStateService.saveSnapshot(this.activeScene.id);
+      await this.sceneStateService.saveSnapshot();
+    } catch (error: unknown) {
+      this.logger.error(error, 'Failed to load new scene:');
+      this.sceneStateService.resetCurrentState();
+      this.sceneStateService.resetCurrentScene();
+      throw new InternalServerErrorException('Failed to load a new scene');
+    }
+  }
 
-      // Init Scene
-      this.conversationOrchestratorService.initConversation(targetConfig.config);
+  private async startScene(): Promise<void> {
+    if (!this.sceneStateService.isLoaded()) {
+      this.logger.error('Cannot start scene: Missing active scene or config.');
+      throw new InternalServerErrorException('Cannot start scene: Missing active scene or config.');
+    }
 
-      this.logger.info(
-        `Successfully started new scene ${newScene.id} with config ${targetConfig.id}`,
-      );
+    try {
+      this.logger.info(`Starting scene...`);
+      // Stop any existing loop before starting new scene
+      this.stopConversationLoop();
+
+      // Init Conversation
+      const sceneConfig = this.sceneStateService.getCurrentSceneConfig();
+      assert(sceneConfig, 'Cannot start scene: Missing active scene config.');
+      this.conversationOrchestratorService.initConversation(sceneConfig.config);
+
+      // Emit State Update
+      await this.emitStateUpdate(null, true);
+
       // Ensure loop is started for the new scene
-      this.startConversationLoop();
+      // Only start the conversation loop if ALWAYS_RUN_CONVERSATION is true
+      if (this.sceneStateService.isLoaded() && ALWAYS_RUN_CONVERSATION) {
+        this.logger.info(
+          'ALWAYS_RUN_CONVERSATION is enabled, starting conversation loop immediately',
+        );
+        this.startConversationLoop();
+      } else if (this.sceneStateService.isLoaded()) {
+        this.logger.info('Scene loaded, waiting for visitors to start conversation loop');
+      }
     } catch (error: unknown) {
       this.logger.error(error, 'Failed to start new scene:');
-      this.activeScene = null;
-      this.activeSceneConfig = null;
       this.sceneStateService.resetCurrentState();
+      this.sceneStateService.resetCurrentScene();
       // Loop should already be stopped from the top of the try block
       throw new InternalServerErrorException('Failed to start a new scene');
     }
+  }
+
+  private stopScene() {
+    // Stop any existing loop before starting new scene
+    this.stopConversationLoop();
+  }
+
+  private resetScene() {
+    this.stopScene();
+    this.sceneStateService.resetCurrentState();
+    this.sceneStateService.resetCurrentScene();
+  }
+
+  private async startActiveScene() {
+    this.logger.info('Starting active scene...');
+    await this.loadActiveScene();
+    await this.startScene();
+  }
+
+  private async startNewScene() {
+    this.logger.info('Starting new scene...');
+    // Stop any existing loop before starting new scene
+    this.stopScene();
+    await this.loadNewScene();
+    await this.startScene();
   }
 
   async addVisitor(sid: string) {
     this.logger.info(`Visitor added: ${sid}`);
     this.activeVisitors.add(sid);
     const currentState = this.sceneStateService.getCurrentState();
-
-    if (!currentState || !this.activeScene) {
-      this.logger.warn('Cannot process visitor add: No active scene or state.');
+    if (!currentState || !this.sceneStateService.isActive()) {
+      this.logger.warn('Cannot process visitor add: No active state.');
       // TODO: Maybe try to load/start a scene here?
       return;
     }
@@ -223,9 +251,8 @@ export class SceneManagerService implements OnModuleInit {
   async removeVisitor(sid: string) {
     this.logger.info(`Visitor removed: ${sid}`);
     this.activeVisitors.delete(sid);
-    const currentState = this.sceneStateService.getCurrentState();
 
-    if (!currentState || !this.activeScene) {
+    if (!this.sceneStateService.isActive()) {
       this.logger.warn('Cannot process visitor remove: No active scene or state.');
       return;
     }
@@ -244,7 +271,7 @@ export class SceneManagerService implements OnModuleInit {
       );
       this.stopConversationLoop();
       // Save snapshot on pause
-      await this.sceneStateService.saveSnapshot(this.activeScene.id);
+      await this.sceneStateService.saveSnapshot();
     } else {
       if (this.activeVisitors.size === 0 && ALWAYS_RUN_CONVERSATION) {
         this.logger.info(
@@ -270,18 +297,20 @@ export class SceneManagerService implements OnModuleInit {
       this.logger.warn('Cannot emit state update: No active state.');
       return;
     }
-    if (!this.activeScene) {
+    if (!this.sceneStateService.isActive()) {
       this.logger.error(
         'Consistency error: Cannot emit state update without an active scene record.',
       );
       return;
     }
 
-    this.logger.debug(`Emitting scene state update (Save Snapshot: ${saveSnapshot})...`);
+    this.logger.debug(
+      `Emitting scene state update${sid ? ` for visitor ${sid}` : ''} (Save Snapshot: ${saveSnapshot})...`,
+    );
 
     if (saveSnapshot) {
       try {
-        await this.sceneStateService.saveSnapshot(this.activeScene.id);
+        await this.sceneStateService.saveSnapshot();
       } catch (e) {
         this.logger.error(e, 'Failed to save snapshot during emitStateUpdate');
         // Continue with emit even if save fails?
@@ -302,7 +331,7 @@ export class SceneManagerService implements OnModuleInit {
   }
 
   private startConversationLoop() {
-    if (!this.activeScene || !this.activeSceneConfig) {
+    if (!this.sceneStateService.isActive()) {
       this.logger.warn('Cannot start conversation loop: Missing active scene or config.');
       return;
     }
@@ -366,8 +395,8 @@ export class SceneManagerService implements OnModuleInit {
 
   private async executeConversationStep(): Promise<boolean> {
     // Get current data at the beginning of the step
-    const currentScene = this.activeScene;
-    const currentConfig = this.activeSceneConfig;
+    const currentScene = this.sceneStateService.getCurrentScene();
+    const currentConfig = this.sceneStateService.getCurrentSceneConfig();
     const currentState = this.sceneStateService.getCurrentState();
 
     // Essential data check

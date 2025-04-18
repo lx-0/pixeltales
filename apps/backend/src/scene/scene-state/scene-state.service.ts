@@ -15,6 +15,8 @@ import { ScenesDbService } from '../scenes-db/scenes-db.service';
 export class SceneStateService {
   private currentStateId: number | null = null;
   private currentState: SceneStateSnapshotState | null = null;
+  private currentScene: Scene | null = null;
+  private currentSceneConfig: SceneConfig | null = null;
 
   constructor(
     private readonly scenesDb: ScenesDbService,
@@ -25,8 +27,31 @@ export class SceneStateService {
 
   // --- State Access ---
 
-  getCurrentState(): SceneStateSnapshotState | null {
+  public isActive(): boolean {
+    return this.currentStateId !== null;
+  }
+
+  public isLoaded(): boolean {
+    return (
+      this.currentState !== null && this.currentScene !== null && this.currentSceneConfig !== null
+    );
+  }
+
+  public getCurrentState(): SceneStateSnapshotState | null {
     return this.currentState;
+  }
+
+  public getCurrentScene(): Scene | null {
+    return this.currentScene;
+  }
+
+  public getCurrentSceneConfig(): SceneConfig | null {
+    return this.currentSceneConfig;
+  }
+
+  public setCurrentScene(scene: Scene, config: SceneConfig): void {
+    this.currentScene = scene;
+    this.currentSceneConfig = config;
   }
 
   setCurrentState(id: number, state: SceneStateSnapshotState): void {
@@ -37,6 +62,12 @@ export class SceneStateService {
   resetCurrentState(): void {
     this.currentStateId = null;
     this.currentState = null;
+  }
+
+  resetCurrentScene(): void {
+    this.resetCurrentState();
+    this.currentScene = null;
+    this.currentSceneConfig = null;
   }
 
   getCharacterState(characterId: string): CharacterState | undefined {
@@ -93,6 +124,7 @@ export class SceneStateService {
     initialVisitorCount: number,
   ): SceneStateSnapshotState {
     this.logger.info(`Initializing scene state from config ${scene.sceneConfigId}`);
+
     const characters: Record<string, CharacterState> = {};
 
     for (const charId in sceneConfig.config.characters_config) {
@@ -140,6 +172,10 @@ export class SceneStateService {
     };
 
     this.currentState = initialState; // Set the internal state
+    this.currentStateId = null;
+    this.currentScene = scene;
+    this.currentSceneConfig = sceneConfig;
+
     this.logger.info('Scene state initialized successfully from config.');
     return initialState;
   }
@@ -156,34 +192,45 @@ export class SceneStateService {
     }
 
     this.currentState = latestSnapshot.state;
+    this.currentStateId = latestSnapshot.id;
 
     return this.currentState;
   }
 
-  async saveSnapshot(sceneId: number): Promise<void> {
+  async saveSnapshot(): Promise<void> {
     if (!this.currentState) {
       this.logger.warn('Cannot save snapshot: No current state exists.');
       return;
     }
-    if (this.currentState.scene_id !== sceneId) {
+    if (!this.currentScene) {
+      this.logger.warn('Cannot save snapshot: No current scene exists.');
+      return;
+    }
+
+    if (this.currentState.scene_id !== this.currentScene.id) {
       this.logger.error(
-        `Cannot save snapshot: Current state scene ID (${this.currentState.scene_id}) does not match provided scene ID (${sceneId}).`,
+        `Cannot save snapshot: Current state scene ID (${this.currentState.scene_id}) does not match provided scene ID (${this.currentScene.id}).`,
       );
       return;
     }
 
-    this.logger.debug(`Saving snapshot for scene ${sceneId}...`);
+    this.logger.debug(`Saving snapshot for scene ${this.currentScene.id}...`);
     const newStateSnapshotData: NewSceneStateSnapshot = {
       state: this.currentState,
-      sceneId: sceneId,
+      sceneId: this.currentScene.id,
       configId: this.currentState.scene_config_id,
     };
     try {
       const newStateSnapshot = await this.scenesDb.createStateSnapshot(newStateSnapshotData);
+
       this.currentStateId = newStateSnapshot.id;
-      this.logger.info(`Snapshot saved for scene ${sceneId}.`);
+
+      this.logger.info(`Snapshot saved for scene ${this.currentScene.id}.`);
     } catch (error) {
-      this.logger.error({ error }, `Failed to save state snapshot for scene ${sceneId}`);
+      this.logger.error(
+        { error },
+        `Failed to save state snapshot for scene ${this.currentScene.id}`,
+      );
       // Potentially re-throw or handle differently
       throw error;
     }
