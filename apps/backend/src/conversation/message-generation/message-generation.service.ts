@@ -10,12 +10,13 @@ import {
 } from '@pixeltales/contracts';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
-import { LlmService, SystemMessageVars } from '../../llm/llm.service';
+import { ConversationSystemMessageVars, LlmService } from '../../llm/llm.service';
 import { SceneStateService } from '../../scene/scene-state/scene-state.service';
 import { MessagesDbService } from '../conversation-db/messages-db.service';
 
 // Constants
 const END_CONVERSATION_REQUEST_VALIDITY_S = 180; // 3 minutes
+const SPEAKING_TIME_DELAY_FACTOR = 12 * 5; // 5 min delay (base is 5 seconds)
 
 @Injectable()
 export class MessageGenerationService {
@@ -277,7 +278,7 @@ export class MessageGenerationService {
     sceneConfig: SceneConfig,
     characterId: string,
     recipientId?: string,
-  ): SystemMessageVars {
+  ): ConversationSystemMessageVars {
     // Get character info
     const character = sceneState.characters[characterId];
     if (!character) {
@@ -320,8 +321,7 @@ export class MessageGenerationService {
    * Calculate speaking time based on message length
    */
   calculateSpeakingTime(messageLength: number): number {
-    // const baseSpeakingTime = 5000; // 5 seconds base time
-    const baseSpeakingTime = 60000; // 1 minute base time (for testing)
+    const baseSpeakingTime = 5000 * SPEAKING_TIME_DELAY_FACTOR; // 5 seconds base time
     const charSpeakingTime = 50; // 50ms per character
 
     return baseSpeakingTime + messageLength * charSpeakingTime;

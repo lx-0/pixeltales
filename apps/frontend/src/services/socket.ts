@@ -1,9 +1,9 @@
 import { Logger } from '@/utils/logger';
-import type { SceneState } from '@pixeltales/contracts';
+import type { SceneStateSnapshotState } from '@pixeltales/contracts';
 import { io, Socket } from 'socket.io-client';
 
 type EventData = {
-  scene_state: SceneState;
+  scene_state: SceneStateSnapshotState;
   connect: void;
   disconnect: void;
   connect_error: Error;
@@ -99,7 +99,7 @@ class SocketService {
       this.isConnecting = false;
     });
 
-    this.socket.on('scene_state', (state: SceneState) => {
+    this.socket.on('scene_state', (state: SceneStateSnapshotState) => {
       Logger.info(this.constructor.name, 'Received scene state update');
       this.notifyListeners('scene_state', state);
     });

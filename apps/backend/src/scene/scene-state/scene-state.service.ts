@@ -187,7 +187,7 @@ export class SceneStateService {
     const latestSnapshot = await this.scenesDb.findLatestState(sceneId);
 
     if (!latestSnapshot) {
-      this.logger.warn(`No snapshot found for scene ${sceneId}`);
+      this.logger.warn(`⚠️ No snapshot found for scene ${sceneId}`);
       return null;
     }
 
@@ -225,11 +225,11 @@ export class SceneStateService {
 
       this.currentStateId = newStateSnapshot.id;
 
-      this.logger.info(`Snapshot saved for scene ${this.currentScene.id}.`);
+      this.logger.info(`💾 Snapshot saved for scene ${this.currentScene.id}.`);
     } catch (error) {
       this.logger.error(
         { error },
-        `Failed to save state snapshot for scene ${this.currentScene.id}`,
+        `❌ Failed to save state snapshot for scene ${this.currentScene.id}`,
       );
       // Potentially re-throw or handle differently
       throw error;

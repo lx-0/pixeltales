@@ -7,9 +7,13 @@ import type {
 import { Scene } from 'phaser';
 import { TILE_SIZE } from '../config';
 
+// Temporary type augmentation until contracts are updated
+type CharacterStateWithSpriteKey = CharacterState & { spritesheet_key?: string };
+
 interface Character {
   id: string;
   state: CharacterState;
+  keyUsed: string; // Store the actual key used for sprite/animation
   sprite: Phaser.GameObjects.Sprite;
   activeTween: Phaser.Tweens.Tween | null;
   thinkingSprite: Phaser.GameObjects.Sprite | null;
@@ -54,9 +58,12 @@ export class CharacterManager {
   }
 
   create(): void {
-    if (!this.animationsCreated) {
-      this.createAnimations();
-    }
+    // Don't create default animations automatically here anymore
+    // They will be created on demand when a character needs them
+    // if (!this.animationsCreated) {
+    //   this.createAnimations();
+    // }
+    this.setupEventListeners(); // Keep listener setup
   }
 
   reset(): void {
@@ -92,44 +99,93 @@ export class CharacterManager {
     }
   }
 
-  private createAnimations(): void {
-    Logger.info(this.constructor.name, 'Creating character animations');
-    const directions = ['right', 'back', 'left', 'front'] as const;
-    const characters = ['bob', 'alice'] as const;
+  private createAnimations(spritesheetKey?: string): void {
+    if (spritesheetKey) {
+      // Create animations for a specific key
+      Logger.info(this.constructor.name, `Creating animations for: ${spritesheetKey}`);
+      const directions = ['right', 'back', 'left', 'front'] as const;
 
-    characters.forEach((char) => {
+      if (!this.scene.textures.exists(spritesheetKey)) {
+        Logger.error(this.constructor.name, `Texture key does not exist: ${spritesheetKey}`);
+        return;
+      }
+
+      // Basic validation assuming 4x6 layout (can be made more robust)
+      const texture = this.scene.textures.get(spritesheetKey);
+      const totalFrames = texture.getFrameNames(false).length;
+      const framesPerDirection = 6;
+      if (totalFrames < directions.length * framesPerDirection) {
+        Logger.warn(
+          this.constructor.name,
+          `Spritesheet ${spritesheetKey} has insufficient frames (${totalFrames}).`,
+        );
+        // Potentially create a single-frame fallback? For now, just log.
+        return;
+      }
+
       directions.forEach((dir, index) => {
-        const animKey = `${char}_idle_${dir}`;
+        const animKey = `${spritesheetKey}_idle_${dir}`;
         if (!this.scene.anims.exists(animKey)) {
-          Logger.debug(this.constructor.name, `Creating animation: ${animKey}`);
+          const startFrame = index * framesPerDirection;
+          const endFrame = startFrame + framesPerDirection - 1;
+          if (startFrame >= totalFrames || endFrame >= totalFrames) {
+            Logger.error(
+              this.constructor.name,
+              `Invalid frame range [${startFrame}-${endFrame}] for ${spritesheetKey}`,
+            );
+            return;
+          }
+          Logger.debug(this.constructor.name, `Creating anim: ${animKey}`);
           this.scene.anims.create({
             key: animKey,
-            frames: this.scene.anims.generateFrameNumbers(char, {
-              start: index * 6,
-              end: index * 6 + 5,
+            frames: this.scene.anims.generateFrameNumbers(spritesheetKey, {
+              start: startFrame,
+              end: endFrame,
             }),
             frameRate: 8,
             repeat: -1,
           });
         }
       });
-    });
+    } else if (!this.animationsCreated) {
+      // --- Original Default Animation Logic ---
+      Logger.info(this.constructor.name, 'Creating DEFAULT character animations (bob, alice)');
+      const directions = ['right', 'back', 'left', 'front'] as const;
+      const characters = ['bob', 'alice'] as const; // Default characters
 
-    // Create thinking animation
-    if (!this.scene.anims.exists('thinking')) {
-      Logger.info(this.constructor.name, 'Creating thinking animation');
-      this.scene.anims.create({
-        key: 'thinking',
-        frames: this.scene.anims.generateFrameNumbers('thinking', {
-          start: 0,
-          end: 9,
-        }),
-        frameRate: 12,
-        repeat: -1,
+      characters.forEach((char) => {
+        directions.forEach((dir, index) => {
+          const animKey = `${char}_idle_${dir}`;
+          if (!this.scene.anims.exists(animKey)) {
+            Logger.debug(this.constructor.name, `Creating anim: ${animKey}`);
+            this.scene.anims.create({
+              key: animKey,
+              frames: this.scene.anims.generateFrameNumbers(char, {
+                start: index * 6,
+                end: index * 6 + 5,
+              }),
+              frameRate: 8,
+              repeat: -1,
+            });
+          }
+        });
       });
-    }
 
-    this.animationsCreated = true;
+      // Create thinking animation
+      if (!this.scene.anims.exists('thinking')) {
+        Logger.info(this.constructor.name, 'Creating thinking animation');
+        this.scene.anims.create({
+          key: 'thinking',
+          frames: this.scene.anims.generateFrameNumbers('thinking', {
+            start: 0,
+            end: 9,
+          }),
+          frameRate: 12,
+          repeat: -1,
+        });
+      }
+      this.animationsCreated = true; // Mark defaults as created
+    }
   }
 
   clearCharacterAnimations(characterId: string): void {
@@ -156,13 +212,34 @@ export class CharacterManager {
   updateCharacters(state: SceneStateSnapshotState): void {
     Object.entries(state.characters).forEach(([id, charData]) => {
       let character = this.characters.get(id);
+      const charDataWithKey = charData as CharacterStateWithSpriteKey;
+      const keyToUse = charDataWithKey.spritesheet_key || id; // Use spritesheet_key if available, else id
+
+      // Ensure default animations are created if needed (for thinking, bob, alice)
+      this.createAnimations();
+      // Ensure specific animations are created if a key was provided
+      if (charDataWithKey.spritesheet_key) {
+        this.createAnimations(charDataWithKey.spritesheet_key);
+      }
 
       if (!character) {
         // Create new character if it doesn't exist
-        const sprite = this.scene.add.sprite(charData.position.x, charData.position.y, id);
+        Logger.info(this.constructor.name, `Creating character ${id} using key: ${keyToUse}`);
+        const sprite = this.scene.add.sprite(charData.position.x, charData.position.y, keyToUse);
+
+        if (!sprite.texture.key || sprite.texture.key === '__MISSING') {
+          Logger.error(
+            this.constructor.name,
+            `Failed to create sprite for ${id}. Texture key "${keyToUse}" invalid or not loaded.`,
+          );
+          sprite.destroy();
+          return; // Skip this character
+        }
+
         character = {
           id,
           state: charData,
+          keyUsed: keyToUse, // Store the key we actually used
           sprite,
           activeTween: null,
           thinkingSprite: null,
@@ -174,9 +251,41 @@ export class CharacterManager {
         character.color = charData.color;
       }
 
+      // Check if key changed (might happen if state updates mid-creation)
+      if (character.keyUsed !== keyToUse) {
+        Logger.warn(
+          this.constructor.name,
+          `Key changed for ${id} from ${character.keyUsed} to ${keyToUse}. Recreating sprite.`,
+        );
+        character.sprite.destroy();
+        character.sprite = this.scene.add.sprite(
+          charData.position.x,
+          charData.position.y,
+          keyToUse,
+        );
+        character.keyUsed = keyToUse;
+        if (character.activeTween) character.activeTween.stop();
+        if (character.thinkingSprite) character.thinkingSprite.destroy();
+        character.activeTween = null;
+        character.thinkingSprite = null;
+        // Re-trigger animation creation for the new key if needed
+        this.createAnimations(keyToUse);
+      }
+
       // Update character position and animation
       character.sprite.setPosition(charData.position.x, charData.position.y);
-      character.sprite.play(`${id}_idle_${charData.direction}`, true);
+      const animKey = `${character.keyUsed}_idle_${charData.direction}`;
+      if (this.scene.anims.exists(animKey)) {
+        character.sprite.play(animKey, true);
+      } else {
+        Logger.warn(
+          this.constructor.name,
+          `Anim key ${animKey} missing for ${id}. Setting frame 0.`,
+        );
+        if (character.sprite.texture.key !== '__MISSING') {
+          character.sprite.setFrame(0); // Fallback
+        }
+      }
 
       // Update character tint and thinking state based on action
       this.updateCharacterState(character, charData);
@@ -216,6 +325,8 @@ export class CharacterManager {
     // Update thinking animation
     if (action.startsWith('thinking')) {
       if (!character.thinkingSprite) {
+        // Use the specific action name (e.g., 'thinking') for animation key
+        // but ensure the sprite uses the 'thinking' texture key
         this.createThinkingSprite(character, action);
       }
     } else if (character.thinkingSprite) {
@@ -228,10 +339,10 @@ export class CharacterManager {
     const thinkingSprite = this.scene.add.sprite(
       character.sprite.x,
       character.sprite.y + this.THINKING_OFFSET_Y,
-      action,
+      'thinking', // Always use 'thinking' texture key for the sprite
     );
     character.thinkingSprite = thinkingSprite;
-    thinkingSprite.play(action);
+    thinkingSprite.play(action); // Play the specific thinking animation (e.g., 'thinking')
   }
 
   private createBounceTween(character: Character): void {

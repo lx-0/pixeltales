@@ -7,5 +7,6 @@
 export { BaseApiService } from './base-api';
 
 // API services
-export { AuthApiService, authApi } from './auth-api';
-export { ScenesApiService, scenesApi } from './scenes-api';
+export { authApi, AuthApiService } from './auth-api';
+export { scenesApi, ScenesApiService } from './scenes-api';
+export { spritesheetApi, SpritesheetApiService } from './spritesheet-api';

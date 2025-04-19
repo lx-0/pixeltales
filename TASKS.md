@@ -133,7 +133,41 @@
 - Implemented differentiated error handling for LLM vs database errors
 - Updated LlmService to use modern `.pipe()` method instead of RunnableSequence.from()
 
-### 4. Character State Management
+### 4. Spritesheet Builder Implementation
+
+**Status**: 🚧 IN PROGRESS
+**Date Added**: 2023-06-20
+**Priority**: HIGH
+**Requirements**:
+- [x] Build core UI components for character sprite generation
+    - [x] Create multi-step generation process UI
+    - [x] Implement character name input fields
+    - [x] Add preview components for sprites and animation sheets
+    - [x] Create coordinate extraction visualization
+- [ ] Implement backend API endpoints
+    - [x] Generate base sprite endpoint
+    - [ ] Generate animation sheet endpoint (not yet tested)
+    - [ ] Extract coordinates endpoint (not yet tested)
+    - [ ] Finalize spritesheet endpoint (not yet tested)
+- [x] Create spritesheet service in backend
+    - [x] Implement image extraction and manipulation
+    - [ ] Add coordinate extraction logic (not yet tested)
+    - [ ] Implement template-based animation generation (not yet tested)
+- [ ] Fix image generation with sprite references
+    - [x] Extract reference sprites correctly
+    - [x] Pass reference to LLM properly
+    - [ ] Debug LLM response handling for image generation
+    - [ ] Address API limitations for image generation with references
+
+**Implementation Notes**:
+- Sprite reference extraction is working correctly
+- Reference is properly passed to the LLM service
+- Current issue: LLM response doesn't include the expected image output when using sprite references
+- Further investigation needed to determine if the API supports this functionality or if an alternative approach is required
+- Potential workaround: Implement local image manipulation for simple sprite modifications instead of relying on LLM for all image generation steps
+- Since we're still testing and fixing step 1 (generate base sprite), we haven't been able to test the other steps in the process yet
+
+### 5. Character State Management
 
 **Status**: ⭕ NOT STARTED
 **Requirements**:
@@ -143,7 +177,7 @@
 - [ ] Add character mood indicators
 - [ ] Implement proper character interaction zones
 
-### 5. UI/UX Improvements
+### 6. UI/UX Improvements
 
 **Status**: 🚧 IN PROGRESS
 **Requirements**:
@@ -159,7 +193,7 @@
 
 ## Medium Priority Tasks
 
-### 6. Backend Migration: Tests
+### 7. Backend Migration: Tests
 
 **Status**: ⭕ NOT STARTED
 **Date Added**: 2023-06-10
@@ -176,7 +210,7 @@
     - [ ] LLM API Mocks
     - [ ] Datenbank Mocks
 
-### 7. Backend Migration: Prompt Engineering
+### 8. Backend Migration: Prompt Engineering
 
 **Status**: 🚧 IN PROGRESS
 **Date Added**: 2023-06-10
@@ -197,7 +231,7 @@
 
 ## Low Priority Tasks
 
-### 8. Scene Polish
+### 9. Scene Polish
 
 **Status**: ⭕ DEPRIORITIZED
 **Requirements**:
@@ -206,7 +240,7 @@
 - [ ] Optimize asset loading
 - [ ] Add loading screen
 
-### 9. Conversation History Display
+### 10. Conversation History Display
 
 **Background**: History mode implemented but needs polish and improvements.
 **Current Status**: ✅ COMPLETED
@@ -231,7 +265,7 @@
 - ✅ Add smooth transitions between messages
 - ✅ Add loading states for message navigation
 
-### 10. Message Timing System Refinement
+### 11. Message Timing System Refinement
 
 **Status**: ✅ COMPLETED
 **Current**: Implementation complete with:
@@ -240,7 +274,7 @@
 - ✅ Visual countdown indicator
 - ✅ Smooth transitions between messages
 
-### 11. Error Handling & Connection Management
+### 12. Error Handling & Connection Management
 
 **Status**: ✅ COMPLETED
 **Current**: Core functionality complete with UI improvements:
@@ -251,7 +285,7 @@
 - ✅ Visual connection status indicator added
 - ✅ Error messages displayed appropriately
 
-### 12. Performance Optimization
+### 13. Performance Optimization
 
 **Background**: Ensure smooth operation with many messages
 **Requirements**:
@@ -261,7 +295,7 @@
 - [ ] Implement proper memory management
 - [ ] Add performance monitoring
 
-### 13. Documentation
+### 14. Documentation
 
 **Background**: Need proper documentation for MVP
 **Requirements**:
@@ -271,7 +305,7 @@
 - [ ] Document API endpoints
 - [ ] Document WebSocket events
 
-### 14. Token Usage Optimization & Analytics
+### 15. Token Usage Optimization & Analytics
 
 **Status**: ⭕ NOT STARTED
 **Priority**: MEDIUM

@@ -17,12 +17,17 @@ import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { stripUnsupportedZod } from './strip-unsupported-zod.func';
 
+// Define supported task types
+export type TaskType = 'conversation' | 'image_generation' | 'image_recognition';
+
 // Type aliases similar to the Python version
 type LLMConfigHash = number;
-type ConversationRunnable = Runnable<StructuredOutputInput, CharacterResponse>;
+type ConversationRunnable = Runnable<ConversationInput, CharacterResponse>;
+// Generic Runnable type for the chains map
+type GenericRunnable = Runnable<any, any>;
 
-// Type definition for system message template variables - using the ORIGINAL variable names
-export interface SystemMessageVars {
+// Type definition for system message template variables - specific to conversation
+export interface ConversationSystemMessageVars {
   character_name: string;
   character_visual: string;
   character_role: string;
@@ -34,18 +39,37 @@ export interface SystemMessageVars {
   character_mood?: string;
 }
 
-// Define input type for structured output chain by extending SystemMessageVars
-interface StructuredOutputInput extends SystemMessageVars {
+// Input type specific to conversation task
+interface ConversationInput extends ConversationSystemMessageVars {
   history: BaseMessage[];
-  // [key: string]: string | BaseMessage[] | Record<string, unknown> | undefined;
 }
+
+type LlmChatModel = ChatOpenAI | ChatAnthropic;
 
 @Injectable()
 export class LlmService {
   private readonly logger = new Logger(LlmService.name);
-  private llmConfigs: Map<LLMConfigHash, LLMConfig> = new Map();
-  private llms: Map<LLMConfigHash, ChatOpenAI | ChatAnthropic> = new Map();
-  private chains: Map<LLMConfigHash, ConversationRunnable> = new Map();
+
+  // Use nested maps keyed by TaskType
+  private llmConfigs: Record<TaskType, Map<LLMConfigHash, LLMConfig>> = {
+    conversation: new Map<LLMConfigHash, LLMConfig>(),
+    image_generation: new Map<LLMConfigHash, LLMConfig>(),
+    image_recognition: new Map<LLMConfigHash, LLMConfig>(),
+  };
+  private llms: Record<TaskType, Map<LLMConfigHash, LlmChatModel>> = {
+    conversation: new Map<LLMConfigHash, LlmChatModel>(),
+    image_generation: new Map<LLMConfigHash, LlmChatModel>(),
+    image_recognition: new Map<LLMConfigHash, LlmChatModel>(),
+  };
+  private chains: {
+    conversation: Map<LLMConfigHash, ConversationRunnable>;
+    image_generation: Map<LLMConfigHash, GenericRunnable>;
+    image_recognition: Map<LLMConfigHash, GenericRunnable>;
+  } = {
+    conversation: new Map<LLMConfigHash, ConversationRunnable>(),
+    image_generation: new Map<LLMConfigHash, GenericRunnable>(),
+    image_recognition: new Map<LLMConfigHash, GenericRunnable>(),
+  };
 
   constructor(private readonly configService: ConfigService) {}
 
@@ -53,7 +77,7 @@ export class LlmService {
    * Initialize the LLMs for a scene, similar to Python's init_scene
    */
   initScene(sceneConfig: SceneConfigConfig): void {
-    this.logger.log('Initializing LLMs for scene');
+    this.logger.log(`✨ Initializing LLMs 🧠 for scene 🎭`);
 
     const llmConfigsByExternalId = Object.fromEntries(
       Object.entries(sceneConfig.characters_config).map(([charId, charConfig]) => [
@@ -66,7 +90,7 @@ export class LlmService {
     const [llmConfigs, _externalIdToLlmHashMap] = this.reduceLlmConfig(llmConfigsByExternalId);
 
     // Convert to Maps
-    this.llmConfigs = new Map(
+    this.llmConfigs.conversation = new Map(
       Object.entries(llmConfigs).map(([hash, config]) => [Number(hash), config]),
     );
 
@@ -74,7 +98,7 @@ export class LlmService {
     this.initConversationChain(sceneConfig.system_prompt);
 
     this.logger.log(
-      `Initialized LLMs for ${Object.keys(llmConfigsByExternalId).length} characters`,
+      `✨ Initialized LLMs 🧠 for ${Object.keys(llmConfigsByExternalId).length} characters 🤖`,
     );
   }
 
@@ -136,7 +160,7 @@ export class LlmService {
       // Get the chat model
       const model = this.getChatModel(config);
 
-      this.llms.set(hash, model);
+      this.llms.conversation.set(hash, model);
       this.logger.debug(`Initialized LLM for config hash ${hash}`);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -152,18 +176,18 @@ export class LlmService {
    * Initialize LLMs for each unique config
    */
   private initLlms(): void {
-    this.logger.debug('Initializing LLMs');
+    this.logger.debug(`✨ Initializing LLMs 🧠`);
 
-    if (this.llmConfigs.size === 0) {
+    if (this.llmConfigs.conversation.size === 0) {
       throw new Error('LLM configs not initialized');
     }
 
     // Create LLM for each unique config
-    for (const [_hash, config] of this.llmConfigs.entries()) {
+    for (const [_hash, config] of this.llmConfigs.conversation.entries()) {
       this.initLlm(config);
     }
 
-    this.logger.log(`Initialized ${this.llms.size} unique LLM instances`);
+    this.logger.log(`Initialized ${this.llms.conversation.size} unique LLM instances`);
   }
 
   /**
@@ -172,22 +196,22 @@ export class LlmService {
   private initConversationChain(systemPrompt: string): void {
     this.logger.debug('Initializing conversation chains');
 
-    if (this.llms.size === 0) {
+    if (this.llms.conversation.size === 0) {
       throw new Error('LLMs not initialized');
     }
 
     // Create prompt template
-    const prompt = ChatPromptTemplate.fromMessages<StructuredOutputInput>([
+    const prompt = ChatPromptTemplate.fromMessages<ConversationInput>([
       ['system', systemPrompt + '\n\n' + this.getFormatInstructions(CharacterResponseSchema)],
       new MessagesPlaceholder('history'),
       ['human', '{input}'],
     ]);
 
     // Create chains for each LLM
-    for (const [hash, llm] of this.llms.entries()) {
+    for (const [hash, llm] of this.llms.conversation.entries()) {
       try {
         // Get the LLM config for the given hash
-        const llmConfig = this.llmConfigs.get(hash);
+        const llmConfig = this.llmConfigs.conversation.get(hash);
         if (!llmConfig) {
           throw new Error(`LLM config not found for hash ${hash}`);
         }
@@ -201,7 +225,7 @@ export class LlmService {
             .pipe((rawResult) => CharacterResponseSchema.parse(rawResult)),
         );
 
-        this.chains.set(hash, chain);
+        this.chains.conversation.set(hash, chain);
         this.logger.debug(`Created conversation chain for config hash ${hash}`);
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -213,7 +237,7 @@ export class LlmService {
       }
     }
 
-    this.logger.log(`Initialized ${this.chains.size} conversation chains`);
+    this.logger.log(`Initialized ${this.chains.conversation.size} conversation chains`);
   }
 
   /**
@@ -248,7 +272,7 @@ export class LlmService {
   /**
    * Helper to prepare input variables with defaults for any SystemMessageVars
    */
-  private prepareInputVars(input: StructuredOutputInput): StructuredOutputInput {
+  private prepareInputVars(input: ConversationInput): ConversationInput {
     // Prepare history separately as it's not part of SystemMessageVars
     const history = Array.isArray(input.history) ? input.history : [];
 
@@ -256,7 +280,7 @@ export class LlmService {
     this.logger.debug(`[prepareInputVars] Input keys: ${Object.keys(input).join(', ')}`);
 
     // Get keys from SystemMessageVars by creating a dummy instance
-    const dummyVars = {} as SystemMessageVars;
+    const dummyVars = {} as ConversationSystemMessageVars;
     const sysVarKeys = Object.keys(dummyVars); // TODO: check if character_mood is also in this list (as it is optional)
 
     this.logger.debug(`[prepareInputVars] SystemMessageVars keys: ${sysVarKeys.join(', ')}`);
@@ -264,7 +288,7 @@ export class LlmService {
     // Create a base object with empty strings for all SystemMessageVars fields
     const baseVars = sysVarKeys.reduce(
       (result, key) => ({ ...result, [key]: '' }),
-      {} as SystemMessageVars,
+      {} as ConversationSystemMessageVars,
     );
 
     // Override with special case defaults only when input doesn't provide a value
@@ -301,15 +325,15 @@ export class LlmService {
    */
   async generateResponse(
     llmConfig: LLMConfig,
-    input: StructuredOutputInput,
+    input: ConversationInput,
   ): Promise<z.infer<typeof CharacterResponseSchema>> {
     try {
       const hash = this.hashLlmConfig(llmConfig);
 
-      this.logger.log(`[generateResponse] Starting response generation for ${hash}`);
+      this.logger.log(`[generateResponse] ✨ Generating response 💬`);
 
       // Get the chain for the given hash / llm config
-      const chain = this.chains.get(hash);
+      const chain = this.chains.conversation.get(hash);
       if (!chain) {
         this.logger.error('[generateResponse] LLM chain not initialized');
         throw new Error('LLM chain not initialized');

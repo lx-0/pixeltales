@@ -13,6 +13,7 @@ import { DbModule } from './db/db.module';
 import { EventsModule } from './events/events.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { ScenesModule } from './scenes/scenes.module';
+import { SpritesheetModule } from './spritesheet/spritesheet.module';
 import { MeModule } from './users/me.module';
 import { UserModule } from './users/user.module';
 import { UsersModule } from './users/users.module';
@@ -181,6 +182,7 @@ interface PinoError {
     UsersModule,
     UserModule,
     MeModule,
+    SpritesheetModule,
   ],
   controllers: [AppController],
   providers: [

@@ -83,6 +83,12 @@
 }
 
 @layer utilities {
+  /* Pixel art rendering */
+  .image-rendering-pixelated {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+  }
+
   /* Scrollbar Styling */
   ::-webkit-scrollbar {
     width: 10px;

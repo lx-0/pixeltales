@@ -55,9 +55,11 @@ export function useAuth() {
         await refreshUser();
 
         // Check if registration is enabled
+        Logger.info('useAuth', 'Attempting to check if registration is enabled...');
         const registrationEnabled = await authService.isRegistrationEnabled();
         if (isMounted) {
           setIsRegistrationEnabled(registrationEnabled);
+          Logger.info('useAuth', 'Registration enabled status set:', { registrationEnabled });
         }
       } catch (err) {
         const errorMessage = err instanceof Error ? err.message : String(err);

@@ -45,6 +45,7 @@ import type { CharacterConfig, LLMConfig, SceneConfigConfig } from '@pixeltales/
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import { CharacterSpriteSelector } from './CharacterSpriteSelector';
 import { ColorPalette } from './ColorPalette';
 
 // Form validation schema
@@ -73,6 +74,7 @@ const proposalFormSchema = z.object({
           .string()
           .min(10, 'Visual description must be at least 10 characters')
           .max(500, 'Visual description must not exceed 500 characters'),
+        spritesheetKey: z.string().min(1, 'Spritesheet selection is required'),
         color: z.string().min(1, 'Color is required'),
         llm_config: z.object({
           provider: z.string().min(1, 'Provider is required'),
@@ -109,6 +111,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           name: '',
           role: '',
           visual: '',
+          spritesheetKey: '',
           color: 'blue',
           llm_config: {
             provider: 'openai',
@@ -121,6 +124,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           name: '',
           role: '',
           visual: '',
+          spritesheetKey: '',
           color: 'pink',
           llm_config: {
             provider: 'openai',
@@ -167,15 +171,19 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
               throw new Error(`Color ${char.color} not found in config`);
             }
 
-            acc[kebabCase(char.name)] = {
-              id: kebabCase(char.name),
-              ...char,
-              color: colorOption.hex, // Use hex code instead of color ID
+            const characterId = kebabCase(char.name);
+
+            acc[characterId] = {
+              id: characterId,
+              name: char.name,
+              role: char.role,
+              visual: char.visual,
+              spritesheet_key: char.spritesheetKey,
+              color: colorOption.hex,
               llm_config: {
                 ...char.llm_config,
                 provider: char.llm_config.provider as LLMConfig['provider'],
               },
-              // Add required initial state fields
               initial_position: {
                 x: TILE_SIZE * (7.5 + index), // Start at x=7.5 tiles, increment by 1 tile
                 y: TILE_SIZE * 7.5, // Center vertically
@@ -183,7 +191,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
               initial_direction: 'right' as const,
               initial_action: 'idle' as const,
               initial_mood: 'neutral',
-            };
+            } as CharacterConfig;
             return acc;
           },
           {} as Record<string, CharacterConfig>,
@@ -349,20 +357,12 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
 
                   <FormField
                     control={form.control}
-                    name={`characters.${index}.visual`}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="text-gray-200">Visual Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Describe the character's appearance..."
-                            className="bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-500"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
+                    name={`characters.${index}.spritesheetKey`}
+                    render={({ field }) => {
+                      return (
+                        <CharacterSpriteSelector value={field.value} onChange={field.onChange} />
+                      );
+                    }}
                   />
 
                   <div className="space-y-4 bg-gray-800/50 p-4 rounded-lg border border-gray-700">

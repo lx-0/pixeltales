@@ -21,6 +21,7 @@ export class BaseApiService {
         'Content-Type': 'application/json',
       },
     });
+    Logger.info(this.context, `Initialized with Base URL: ${this.api.defaults.baseURL}`);
 
     // Add request interceptor for logging
     this.api.interceptors.request.use(

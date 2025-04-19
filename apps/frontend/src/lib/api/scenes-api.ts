@@ -52,11 +52,7 @@ export class ScenesApiService extends BaseApiService {
   async getProposedScenes(): Promise<SceneConfigConfig[]> {
     Logger.info('ScenesApi', 'Getting proposed scenes');
     // We can safely cast here since the schema validation guarantees the structure
-    return this.get<SceneConfigConfig[]>(
-      '/scenes/proposed',
-      undefined,
-      sceneConfigArraySchema as z.ZodType<SceneConfigConfig[]>,
-    );
+    return this.get('/scenes/proposed', undefined, sceneConfigArraySchema);
   }
 
   /**
@@ -80,12 +76,7 @@ export class ScenesApiService extends BaseApiService {
         : {}),
     };
 
-    return this.post<SceneConfigConfig>(
-      '/scenes/propose',
-      createDto,
-      undefined,
-      sceneConfigSchema as z.ZodType<SceneConfigConfig>,
-    );
+    return this.post<SceneConfigConfig>('/scenes/propose', createDto, undefined, sceneConfigSchema);
   }
 
   /**

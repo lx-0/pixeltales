@@ -1,7 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ScenesDbModule } from '../scene/scenes-db/scenes-db.module';
 import { ScenesController } from './scenes.controller';
 import { ScenesService } from './scenes.service';
-import { ScenesDbModule } from 'src/scene/scenes-db/scenes-db.module';
 
 @Module({
   imports: [ScenesDbModule],

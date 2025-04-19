@@ -41,7 +41,7 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   handleConnection(client: Socket /*, ...args: any[] */) {
     const clientId = client.id;
-    this.logger.log(`Client connected: ${clientId}`);
+    this.logger.log(`🌐 Client connected: ${clientId}`);
 
     // Register visitor with SceneManager
     this.sceneManager.addVisitor(clientId);
@@ -60,14 +60,14 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection, OnGate
 
   handleDisconnect(client: Socket) {
     const clientId = client.id;
-    this.logger.log(`Client disconnected: ${clientId}`);
+    this.logger.log(`⛓️‍💥 Client disconnected: ${clientId}`);
     this.sceneManager.removeVisitor(clientId);
   }
 
   // Example message handler
   @SubscribeMessage('messageToServer')
   handleMessage(client: Socket, payload: any): string {
-    this.logger.debug(`[${client.id}] Received messageToServer:`, payload);
+    this.logger.debug(`[${client.id}] 🌐➡️ Received messageToServer:`, payload);
     // Example: Echo back or broadcast
     this.server.to(client.id).emit('messageToClient', `Server received: ${payload}`);
     return 'Acknowledged!'; // Acknowledgement

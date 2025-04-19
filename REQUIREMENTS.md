@@ -94,7 +94,7 @@ Role: You are a woman who is not interested in love.
         - Total tokens grouped by model
     - Conversation message:
         - Tokens used
-- Character Builder
+- (Character) Sprites/Spritesheet Builder
     - Integrated in "Propose New Scene" screen
     - Character visual section
       1. I want to have a selection of defined character spritesheets in the form, so that the selection is not hard-coded by index.
@@ -113,6 +113,7 @@ Role: You are a woman who is not interested in love.
          h. if the user confirms, the labeled sprites are cut from the generated spritesheet. the screen now shows the target spritesheet (defined format and sprite ids / labels) with the generated sprites filled in. if any are missing, the user can regenerate individual sprites using the default dummy character sprite of that sprite id together with the generated base character sprite.
          j. if the user is finalizing the character, the spritesheet is stored as file and can be used for new scenes.
       6. we obviously need central image editing tool service and spritesheet service.
+      7. For the character builder, we are using a special llm to handle the image generation and recognition tasks. we still want to reuse the current llm service in backend @ . please establish a grouping of llm configs for task 'conversation' and 'image_processing'
 
 ### Notes
 

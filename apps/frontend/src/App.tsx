@@ -9,6 +9,7 @@ import LoginButton from './components/auth/LoginButton';
 import UserAvatar from './components/auth/UserAvatar';
 import ConversationHistory from './components/ConversationHistory';
 import SceneInfo from './components/SceneInfo';
+import { SceneProposalForm } from './components/SceneProposalForm';
 import { gameConfig } from './game/config';
 import { useAuth } from './hooks/use-auth';
 import { useSound } from './hooks/use-sound';
@@ -100,6 +101,20 @@ export default function App() {
         <main className="p-2 sm:p-4 space-y-3 sm:space-y-6">
           {/* Control Buttons */}
           <div className="fixed top-2 right-2 sm:top-6 sm:right-4 z-50 flex gap-2">
+            {/* Scene Proposal Button */}
+            <SceneProposalForm
+              trigger={
+                <Button
+                  className="text-withe bg-gray-700 hover:bg-gray-600 w-full sm:w-auto"
+                  variant="secondary"
+                  size="sm"
+                >
+                  Propose Next Scene
+                </Button>
+              }
+              setIsModalOpen={setIsModalOpen}
+            />
+
             {/* User Avatar / Login Button */}
             <div className="flex items-center gap-2 z-10">
               {!loading && (user ? <UserAvatar /> : <LoginButton />)}
@@ -186,6 +201,12 @@ export default function App() {
           <div className="mx-auto w-full">
             <p className="text-center text-gray-400 text-xs sm:text-sm">
               © 2024 PixelTales - An AI Character Interaction Experiment
+            </p>
+            <p className="text-center text-gray-400 text-xs sm:text-sm mt-1">
+              Powered by{' '}
+              <a href="https://yesterday-ai.de" target="_blank" rel="noopener noreferrer">
+                Yesterday AI ✨
+              </a>
             </p>
             <div className="flex items-center justify-center gap-2 mt-2">
               <a
