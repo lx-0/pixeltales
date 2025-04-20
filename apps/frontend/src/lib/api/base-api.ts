@@ -1,4 +1,5 @@
 import { API_BASE_URL } from '@/config';
+import { authService } from '@/services/auth';
 import { Logger } from '@/utils/logger';
 import { ApiResponse } from '@pixeltales/contracts';
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
@@ -25,9 +26,20 @@ export class BaseApiService {
 
     // Add request interceptor for logging
     this.api.interceptors.request.use(
-      (config) => {
+      async (config) => {
         Logger.debug(this.context, `Request: ${config.method?.toUpperCase()} ${config.url}`);
-        return config;
+
+        // Get the current token from AuthService
+        const token = authService.getCurrentAccessToken(); // Using the sync getter
+
+        if (token) {
+          Logger.debug(this.context, 'Attaching Auth token to request header');
+          config.headers.Authorization = `Bearer ${token}`;
+        } else {
+          Logger.debug(this.context, 'No auth token found, sending request without it');
+        }
+
+        return config; // Return the modified config
       },
       (error) => {
         Logger.error(this.context, 'Request failed:', error);
@@ -38,7 +50,7 @@ export class BaseApiService {
     // Add response interceptor for logging
     this.api.interceptors.response.use(
       (response) => {
-        Logger.debug(this.context, `Response: ${response.status} from ${response.config.url}`);
+        Logger.debug(this.context, `🛬 Response: ${response.status} from ${response.config.url}`);
         return response;
       },
       (error: AxiosError) => {

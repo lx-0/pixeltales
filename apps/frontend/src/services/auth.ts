@@ -1,4 +1,5 @@
 import { authApi } from '@/lib/api';
+import { userApi } from '@/lib/api/user-api';
 import { Logger } from '@/utils/logger';
 import {
   CreateUserDTO,
@@ -8,7 +9,7 @@ import {
   User,
   VoidApiResponse,
 } from '@pixeltales/contracts';
-import { API_BASE_URL, SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
+import { SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
 import { supabase } from './supabase';
 
 // Helper to identify the specific Supabase "no session" error
@@ -25,6 +26,7 @@ type AuthStateListener = (user: User | null, supabaseUser: SupabaseUser | null) 
  */
 export class AuthService {
   private static instance: AuthService;
+  private currentSessionToken: string | null = null;
   private currentUser: User | null = null;
   private currentSupabaseUser: SupabaseUser | null = null; // Store supabase user too
   private authStateListenerAttached = false; // <-- Add flag here
@@ -77,10 +79,17 @@ export class AuthService {
     // Setup auth state change listener
     supabase.auth.onAuthStateChange(async (event, session) => {
       Logger.info('AuthService', `Auth state changed: ${event}, user: ${!!session?.user}`);
+      this.currentSessionToken = session?.access_token ?? null;
       this.currentSupabaseUser = session?.user ?? null;
 
       if (session?.user) {
-        await this.syncUserWithBackend(session.user);
+        // Only sync if the user wasn't already logged in or the ID changed
+        if (!this.currentUser || this.currentUser.id !== session.user.id) {
+          Logger.info('AuthService', 'New user session detected, syncing with backend...');
+          await this.syncUserWithBackend(session.user);
+        } else {
+          Logger.debug('AuthService', 'User session already known, skipping redundant sync.');
+        }
 
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
           this.setupTokenRefresh(session);
@@ -88,6 +97,7 @@ export class AuthService {
       } else {
         this.currentUser = null;
         this.clearTokenRefresh();
+        this.currentSessionToken = null;
       }
       // Notify listeners about the state change
       this.notifyListeners();
@@ -182,7 +192,7 @@ export class AuthService {
   private async syncUserWithBackend(supabaseUser: SupabaseUser): Promise<User | null> {
     try {
       if (!supabaseUser) {
-        Logger.warn('AuthService', '🔴 No Supabase user provided for sync');
+        Logger.warn('AuthService', '🔴 [syncUserWithBackend] No Supabase user provided for sync');
         return null;
       }
 
@@ -195,34 +205,26 @@ export class AuthService {
 
       // Skip if no email (should not happen)
       if (!userData.email) {
-        Logger.warn('AuthService', '🔴 No email found for user');
+        Logger.warn('AuthService', '🔴 [syncUserWithBackend] No email found for user');
         return null;
       }
 
-      Logger.info('AuthService', `Syncing user with backend: ${userData.email}`);
-
-      const response = await fetch(`${API_BASE_URL}/api/v1/users`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(userData),
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        Logger.error('AuthService', `❌ Backend sync failed: ${response.status} - ${errorText}`);
-        throw new Error(`Failed to sync user: ${response.statusText}`);
-      }
-
-      this.currentUser = await response.json();
       Logger.info(
         'AuthService',
-        `✅ User synced successfully: ${this.currentUser?.id || 'unknown'}`,
+        `[syncUserWithBackend] Calling userApi.syncProfile for: ${userData.email}`,
+      );
+
+      // Use the dedicated API service
+      const syncedUser = await userApi.syncProfile(userData);
+
+      this.currentUser = syncedUser;
+      Logger.info(
+        'AuthService',
+        `✅ [syncUserWithBackend] User synced successfully: ${this.currentUser?.id || 'unknown'}`,
       );
       return this.currentUser;
     } catch (error) {
-      Logger.error('AuthService', 'Error syncing user with backend', error);
+      Logger.error('AuthService', '❌ [syncUserWithBackend] Error syncing user', error);
       return null;
     }
   }
@@ -301,6 +303,7 @@ export class AuthService {
       await supabase.auth.signOut();
       this.currentUser = null;
       this.currentSupabaseUser = null;
+      this.currentSessionToken = null;
       this.notifyListeners(); // Notify about sign out
       Logger.info('AuthService', '✅ User signed out successfully');
     } catch (error) {
@@ -424,6 +427,13 @@ export class AuthService {
       Logger.error('AuthService', '❌ Failed to create admin user', error);
       throw error;
     }
+  }
+
+  /**
+   * Synchronously get the current Supabase session access token, if available.
+   */
+  public getCurrentAccessToken(): string | null {
+    return this.currentSessionToken;
   }
 
   // Method for components/hooks to subscribe to state changes

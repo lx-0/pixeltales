@@ -1,7 +1,8 @@
-import { Controller, Get, Logger, UseGuards } from '@nestjs/common';
-import { ApiResponse, SuccessApiResponse, User } from '@pixeltales/contracts';
+import { Body, Controller, Get, Logger, Post, UseGuards } from '@nestjs/common';
+import { ApiResponse, CreateUserDTO, SuccessApiResponse, User } from '@pixeltales/contracts';
 import { SupabaseAuthGuard } from '../auth/auth.guard';
 import { JwtUser } from '../auth/decorators/jwt-user.decorator';
+import { UsersService } from '../users/users.service';
 
 /**
  * Controller for operations related to the current authenticated user
@@ -11,7 +12,7 @@ import { JwtUser } from '../auth/decorators/jwt-user.decorator';
 export class MeController {
   private readonly logger = new Logger(MeController.name);
 
-  constructor() {}
+  constructor(private readonly usersService: UsersService) {}
 
   // Add an endpoint that requires authentication for testing
   @UseGuards(SupabaseAuthGuard)
@@ -28,5 +29,32 @@ export class MeController {
   legacyProfile(@JwtUser() user: JwtUser) {
     this.logger.log('Legacy user profile path accessed');
     return this.getUserProfile(user);
+  }
+
+  /**
+   * Endpoint called by frontend after Supabase login/state change
+   * to ensure the user exists in the backend DB.
+   */
+  @Post('sync')
+  @UseGuards(SupabaseAuthGuard)
+  async syncUserProfile(
+    @JwtUser() jwtUser: JwtUser,
+    @Body() body: CreateUserDTO,
+  ): Promise<ApiResponse<User>> {
+    this.logger.log(`Syncing profile for user ID: ${jwtUser.profile.id}`);
+
+    if (body.id !== jwtUser.profile.id) {
+      this.logger.warn(
+        `Mismatch between JWT user ID (${jwtUser.profile.id}) and sync body ID (${body.id})`,
+      );
+    }
+
+    const syncedUser = await this.usersService.findOrCreateUser({
+      id: jwtUser.profile.id,
+      email: jwtUser.user.email || '',
+      name: body.name,
+    });
+
+    return SuccessApiResponse(syncedUser, 'User profile synced successfully');
   }
 }

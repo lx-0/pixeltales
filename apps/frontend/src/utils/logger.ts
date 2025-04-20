@@ -24,12 +24,14 @@ export class Logger {
   /** Contexts that should be excluded from debug logging */
   private static debugBlacklist: Set<string> = new Set([
     ...(DEBUG && DEBUG_APP ? [] : ['App']),
-    ...(DEBUG && DEBUG_API ? [] : ['AuthApi', 'ScenesApi', 'ConfigApi', 'SpritesheetApi']),
+    ...(DEBUG && DEBUG_API
+      ? []
+      : ['AuthApi', 'UserApi', 'ScenesApi', 'ConfigApi', 'SpritesheetApi']),
     ...(DEBUG && DEBUG_AUTH ? [] : ['useAuth', 'AuthService', 'AuthApi']),
     ...(DEBUG && DEBUG_WEBSOCKET ? [] : ['EventManager', '📡']),
     ...(DEBUG && DEBUG_SCENE ? [] : ['MainScene']),
     ...(DEBUG && DEBUG_SCENE_STATE ? [] : ['SceneManager', 'StateManager']),
-    ...(DEBUG && DEBUG_UI_CONTROLS ? [] : ['UIControlsManager']),
+    ...(DEBUG && DEBUG_UI_CONTROLS ? [] : ['UIControlsManager', 'UIScene']),
     ...(DEBUG && DEBUG_SPEECH_BUBBLES ? [] : ['SpeechBubbleManager']),
     ...(DEBUG && DEBUG_CHARACTER_MANAGER ? [] : ['CharacterManager']),
     ...(DEBUG && DEBUG_CHAT_MESSAGES_UI ? [] : ['ChatMessages:ui']),
@@ -38,12 +40,14 @@ export class Logger {
   /** Contexts that should be excluded from info logging */
   private static infoBlacklist: Set<string> = new Set([
     ...(DEBUG && DEBUG_APP ? [] : ['App']),
-    ...(DEBUG && DEBUG_API ? [] : ['AuthApi', 'ScenesApi', 'ConfigApi', 'SpritesheetApi']),
+    ...(DEBUG && DEBUG_API
+      ? []
+      : ['AuthApi', 'UserApi', 'ScenesApi', 'ConfigApi', 'SpritesheetApi']),
     ...(DEBUG && DEBUG_AUTH ? [] : ['useAuth', 'AuthService', 'AuthApi']),
     ...(DEBUG && DEBUG_WEBSOCKET ? [] : ['EventManager', '📡']),
     ...(DEBUG && DEBUG_SCENE ? [] : ['MainScene']),
     ...(DEBUG && DEBUG_SCENE_STATE ? [] : ['SceneManager', 'StateManager']),
-    ...(DEBUG && DEBUG_UI_CONTROLS ? [] : ['UIControlsManager']),
+    ...(DEBUG && DEBUG_UI_CONTROLS ? [] : ['UIControlsManager', 'UIScene']),
     ...(DEBUG && DEBUG_SPEECH_BUBBLES ? [] : ['SpeechBubbleManager']),
     ...(DEBUG && DEBUG_CHARACTER_MANAGER ? [] : ['CharacterManager']),
     ...(DEBUG && DEBUG_CHAT_MESSAGES_UI ? [] : ['ChatMessages:ui']),

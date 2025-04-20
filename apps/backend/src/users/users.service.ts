@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { CreateUserDTO } from '@pixeltales/contracts';
 import { NewUser, User } from '@pixeltales/database';
 import { PinoLogger } from 'nestjs-pino';
 import { UsersDbService } from './users-db.service';
@@ -59,6 +60,51 @@ export class UsersService {
   }
 
   /**
+   * Finds a user by ID, or creates them if they don't exist.
+   * Used for syncing Supabase auth users with the backend DB.
+   */
+  async findOrCreateUser(userData: CreateUserDTO): Promise<User> {
+    this.logger.info(`Finding or creating user: ${userData.email}`);
+    let user = await this.findById(userData.id);
+
+    if (user) {
+      this.logger.info(`User found: ${userData.id}. Checking for updates...`);
+      // Update name/email if changed?
+      // Potentially check if name needs update:
+      if (userData.name && user.name !== userData.name) {
+        user = await this.update(user.id, { name: userData.name });
+        if (!user) {
+          throw new Error('Failed to update user name');
+        }
+      }
+      if (userData.email && user.email !== userData.email) {
+        user = await this.update(user.id, { email: userData.email });
+        if (!user) {
+          throw new Error('Failed to update user email');
+        }
+      }
+      return user;
+    } else {
+      this.logger.info(`User not found, creating new user: ${userData.id}`);
+      // Determine role based on email domain
+      const role = this.isAdminEmail(userData.email) ? 'admin' : 'user';
+      const newUser: NewUser = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name || null, // Use DTO name, default null
+        role,
+      };
+      const createdUser = await this.usersDb.create(newUser);
+      if (!createdUser) {
+        // Handle the case where creation might fail (though usersDb.create should handle errors)
+        this.logger.error(`Failed to create user after check for user ID: ${userData.id}`);
+        throw new Error('User creation failed during findOrCreate operation');
+      }
+      return createdUser;
+    }
+  }
+
+  /**
    * Find a user by their ID
    */
   async findById(id: string): Promise<User | null> {
@@ -95,7 +141,7 @@ export class UsersService {
    */
   async update(
     id: string,
-    updateData: Pick<NewUser, 'role' | 'email' | 'name'>,
+    updateData: Partial<Pick<NewUser, 'role' | 'email' | 'name'>>,
   ): Promise<User | null> {
     this.logger.info(`Updating user: ${id}`);
 
