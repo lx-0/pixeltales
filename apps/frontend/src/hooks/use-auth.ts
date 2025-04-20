@@ -2,7 +2,7 @@ import { authService } from '@/services/auth';
 import { Logger } from '@/utils/logger';
 import { User } from '@pixeltales/contracts';
 import { User as SupabaseUser } from '@supabase/supabase-js';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // Helper to identify the specific Supabase "no session" error
 function isAuthSessionMissingError(error: unknown): boolean {
@@ -14,7 +14,6 @@ function isAuthSessionMissingError(error: unknown): boolean {
  * for authentication data from authService
  */
 export function useAuth() {
-  const useAuthInitialized = useRef(false); // Ref to track if hook setup ran
   // User state
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -38,65 +37,56 @@ export function useAuth() {
 
   // Initialize and load user on mount
   useEffect(() => {
-    // Prevent setup logic from running twice due to StrictMode
-    if (useAuthInitialized.current) {
-      return; // Don't re-run setup on second mount
-    }
-
-    Logger.debug('useAuth', 'useEffect mount');
+    Logger.debug('useAuth', 'useEffect mount - Initializing AuthService and subscribing');
 
     let isMounted = true; // Use simple mount flag
+    let initialLoadingState = true; // Track if we are still in the initial loading phase
 
     // 1. Ensure AuthService listener is attached
     authService.init(); // Safe to call multiple times due to internal check
 
-    // 2. Get current state *synchronously* if available from service
-    // This avoids waiting for the async listener if state is already known
-    const initialSupabaseUser = authService.getSupabaseUserNow(); // Need to add this sync getter
-    const initialUser = authService.getCurrentUserNow(); // Need to add this sync getter
-
-    // Set initial state immediately
-    setSupabaseUser(initialSupabaseUser);
-    Logger.debug('useAuth', 'Setting initial state', { initialUser, initialSupabaseUser });
-    setUser(initialUser);
-    setLoading(false); // Assume loaded after sync check
-
-    // 3. Subscribe to subsequent changes
+    // 2. Subscribe to subsequent changes (REMOVED sync check)
     const unsubscribe = authService.subscribe((newUser, newSupabaseUser) => {
       if (isMounted) {
-        // Use isMounted for state setting safety
         Logger.info('useAuth', '🔄 Received state update from AuthService subscription', {
           userId: newUser?.id ?? 'null',
           supabaseUserId: newSupabaseUser?.id ?? 'null',
         });
         setUser(newUser);
         setSupabaseUser(newSupabaseUser);
-        // No longer need to set loading here, initial state handles it
-        // setLoading(false);
+
+        // Set loading to false only after the first update arrives
+        if (initialLoadingState) {
+          setLoading(false);
+          initialLoadingState = false; // Prevent setting loading state again
+          Logger.debug(
+            'useAuth',
+            'First state update received from subscription, setting loading to false.',
+          );
+        }
       }
     });
 
-    // 4. Check registration status (can run async after initial render)
+    // 3. Check registration status (can run async after initial render)
     const checkRegistration = async () => {
-      const registrationEnabled = await authService.isRegistrationEnabled();
-      if (isMounted) {
-        setIsRegistrationEnabled(registrationEnabled);
-        Logger.info('useAuth', 'Registration enabled status set:', { registrationEnabled });
+      try {
+        const registrationEnabled = await authService.isRegistrationEnabled();
+        if (isMounted) {
+          setIsRegistrationEnabled(registrationEnabled);
+          Logger.info('useAuth', 'Registration enabled status set:', { registrationEnabled });
+        }
+      } catch (err) {
+        Logger.error('useAuth', '❌ Failed to check registration status', err);
+        // Optionally set an error state here if needed
       }
     };
-    checkRegistration().catch((err) => {
-      Logger.error('useAuth', '❌ Failed to check registration status', err);
-      // Optionally set an error state here if needed
-    });
-
-    useAuthInitialized.current = true; // Mark setup as complete
+    checkRegistration(); // No need to await here
 
     // Cleanup subscription and mounted state
     return () => {
       Logger.debug('useAuth', 'useEffect cleanup');
       isMounted = false; // Mark as unmounted
       unsubscribe(); // Unsubscribe from AuthService
-      // DO NOT reset useAuthInitialized.current here
     };
   }, []); // Empty dependency array ensures this runs only once on mount
 

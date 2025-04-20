@@ -1,5 +1,4 @@
 import { API_BASE_URL } from '@/config';
-import { authService } from '@/services/auth';
 import { Logger } from '@/utils/logger';
 import { ApiResponse } from '@pixeltales/contracts';
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
@@ -24,13 +23,17 @@ export class BaseApiService {
     });
     Logger.info(this.context, `Initialized with Base URL: ${this.api.defaults.baseURL}`);
 
-    // Add request interceptor for logging
+    // Add request interceptor for token handling and logging
     this.api.interceptors.request.use(
       async (config) => {
         Logger.debug(this.context, `Request: ${config.method?.toUpperCase()} ${config.url}`);
 
+        // Dynamically access the authService singleton *inside* the interceptor
+        // IMPORTANT: This assumes authService from '@/services/auth' is initialized before the first API call.
+        const authServiceInstance = (await import('@/services/auth')).authService;
+
         // Get the current token from AuthService
-        const token = authService.getCurrentAccessToken(); // Using the sync getter
+        const token = authServiceInstance.getCurrentAccessToken();
 
         if (token) {
           Logger.debug(this.context, 'Attaching Auth token to request header');

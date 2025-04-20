@@ -9,6 +9,9 @@ export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhos
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
 export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Development environment check
+export const DEV = import.meta.env.VITE_DEV === 'true';
+
 // Debug flags
 export const DEBUG = import.meta.env.VITE_DEBUG === 'true';
 export const DEBUG_APP = import.meta.env.VITE_DEBUG_APP === 'true';

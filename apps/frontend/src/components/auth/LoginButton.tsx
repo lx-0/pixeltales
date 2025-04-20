@@ -10,10 +10,9 @@ import {
   DialogTitle,
 } from '@/lib/shadcn-ui/dialog';
 import { authService } from '@/services/auth';
-import { Logger } from '@/utils/logger';
 import { Auth } from '@supabase/auth-ui-react';
 import { ThemeSupa } from '@supabase/auth-ui-shared';
-import { AlertCircle, LogIn, RefreshCw } from 'lucide-react';
+import { LogIn } from 'lucide-react';
 import { useState } from 'react';
 
 // Development environment check
@@ -21,22 +20,7 @@ const isDev = import.meta.env.DEV;
 
 export default function LoginButton() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const { error: authError, refreshUser } = useAuth();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  // Handle manual refresh of auth state
-  const handleRefresh = async () => {
-    try {
-      setIsRefreshing(true);
-      Logger.info('LoginButton', 'Manually refreshing auth state');
-      await refreshUser();
-      Logger.info('LoginButton', 'Auth state refreshed');
-    } catch (error) {
-      Logger.error('LoginButton', 'Error refreshing auth state', error);
-    } finally {
-      setIsRefreshing(false);
-    }
-  };
+  const { error: authError } = useAuth();
 
   return (
     <div className="flex items-center gap-2">
@@ -50,35 +34,10 @@ export default function LoginButton() {
         <span>Login</span>
       </Button>
 
-      {/* For development: Manual refresh button */}
-      {isDev && (
-        <>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleRefresh}
-            disabled={isRefreshing}
-            title="Manually refresh auth state"
-            className="p-1 h-7 w-7 bg-gray-800 border-gray-600"
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
-          {authError && (
-            <span title={authError.message} className="text-red-500">
-              <AlertCircle className="h-4 w-4" />
-            </span>
-          )}
-        </>
-      )}
-
       <Dialog
         open={isDialogOpen}
         onOpenChange={(open) => {
           setIsDialogOpen(open);
-          // When the dialog closes, refresh user data in case authentication happened
-          if (!open) {
-            handleRefresh();
-          }
         }}
       >
         <DialogContent className="sm:max-w-md bg-gray-900 border-gray-700">

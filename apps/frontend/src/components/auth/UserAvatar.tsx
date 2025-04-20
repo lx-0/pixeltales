@@ -1,5 +1,5 @@
 import { useAuth } from '@/hooks/use-auth';
-import { Avatar, AvatarFallback, AvatarImage } from '@/lib/shadcn-ui/avatar';
+import { Avatar, AvatarFallback } from '@/lib/shadcn-ui/avatar';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,8 +8,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/lib/shadcn-ui/dropdown-menu';
+import { getFrameStyle } from '@/lib/spritesheet';
+import { SPRITESHEET_STRUCTURES } from '@pixeltales/contracts';
 import { LogOut, UserCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
+
+// Define a default structure for the avatar spritesheet
+// Assuming a 48x96 sheet where the first frame is the desired idle state
+const defaultAvatarStructure = SPRITESHEET_STRUCTURES.character;
 
 export default function UserAvatar() {
   const { user, signOut } = useAuth();
@@ -50,7 +56,6 @@ export default function UserAvatar() {
     const characters = [
       '/assets/characters/Bob_idle_anim_48x48.png',
       '/assets/characters/Cleaner_girl_idle_anim_48x48.png',
-      '/assets/characters/ui_thinking_48x96.png',
     ];
     const randomIndex = Math.floor(Math.random() * characters.length);
     setCharacterImage(characters[randomIndex] || null);
@@ -63,13 +68,15 @@ export default function UserAvatar() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Avatar className="h-10 w-10 cursor-pointer border-2 border-primary">
-          {characterImage ? (
-            <AvatarImage src={characterImage} alt="Character avatar" className="object-cover" />
-          ) : (
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {userInitials}
-            </AvatarFallback>
-          )}
+          {/* Use AvatarFallback with background styling for the sprite */}
+          {/* TODO: center the avatar */}
+          <AvatarFallback
+            className="bg-transparent text-primary-foreground"
+            style={characterImage ? getFrameStyle(defaultAvatarStructure, characterImage, 0.3) : {}}
+          >
+            {/* Show initials only if image fails to load or isn't set */}
+            {!characterImage && userInitials}
+          </AvatarFallback>
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
