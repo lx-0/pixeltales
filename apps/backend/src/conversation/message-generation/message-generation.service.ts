@@ -18,8 +18,8 @@ import { MessagesDbService } from '../conversation-db/messages-db.service';
 
 // Constants
 const END_CONVERSATION_REQUEST_VALIDITY_S = 180; // 3 minutes
-const SPEAKING_TIME_DELAY_FACTOR = 1; // normal delay (base is 5 seconds)
-const SPEAKING_TIME_FACTOR = 2; // 5 min delay (base is 50ms per character)
+const SPEAKING_TIME_DELAY_FACTOR = 2; // double the delay (base is 5 seconds)
+const SPEAKING_TIME_FACTOR = 3; // triple the speaking time (base is 50ms per character)
 
 @Injectable()
 export class MessageGenerationService {

@@ -1,14 +1,20 @@
 import { authService } from '@/services/auth';
 import { Logger } from '@/utils/logger';
 import { User } from '@pixeltales/contracts';
-import { Session, User as SupabaseUser } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { User as SupabaseUser } from '@supabase/supabase-js';
+import { useEffect, useRef, useState } from 'react';
+
+// Helper to identify the specific Supabase "no session" error
+function isAuthSessionMissingError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Auth session missing');
+}
 
 /**
  * Main authentication hook that provides React state management
  * for authentication data from authService
  */
 export function useAuth() {
+  const useAuthInitialized = useRef(false); // Ref to track if hook setup ran
   // User state
   const [supabaseUser, setSupabaseUser] = useState<SupabaseUser | null>(null);
   const [user, setUser] = useState<User | null>(null);
@@ -32,95 +38,67 @@ export function useAuth() {
 
   // Initialize and load user on mount
   useEffect(() => {
-    let isMounted = true;
-    Logger.info('useAuth', 'Starting auth initialization');
+    // Prevent setup logic from running twice due to StrictMode
+    if (useAuthInitialized.current) {
+      return; // Don't re-run setup on second mount
+    }
 
-    const initAuth = async () => {
-      try {
-        // Check if Supabase is properly configured with valid URL and key
-        if (!authService.isSupabaseConfigured()) {
-          Logger.error('useAuth', 'Supabase is not properly configured');
-          if (isMounted) {
-            setError(new Error('Authentication service is not properly configured'));
-            setLoading(false);
-          }
-          return;
-        }
+    Logger.debug('useAuth', 'useEffect mount');
 
-        // Initialize auth service
-        Logger.info('useAuth', 'Initializing auth service');
-        await authService.init();
+    let isMounted = true; // Use simple mount flag
 
-        // Load users
-        await refreshUser();
+    // 1. Ensure AuthService listener is attached
+    authService.init(); // Safe to call multiple times due to internal check
 
-        // Check if registration is enabled
-        Logger.info('useAuth', 'Attempting to check if registration is enabled...');
-        const registrationEnabled = await authService.isRegistrationEnabled();
-        if (isMounted) {
-          setIsRegistrationEnabled(registrationEnabled);
-          Logger.info('useAuth', 'Registration enabled status set:', { registrationEnabled });
-        }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        Logger.error('useAuth', 'Failed to initialize auth', { errorMessage });
-        if (isMounted) {
-          setError(err instanceof Error ? err : new Error('Failed to initialize auth'));
-          setLoading(false);
-        }
+    // 2. Get current state *synchronously* if available from service
+    // This avoids waiting for the async listener if state is already known
+    const initialSupabaseUser = authService.getSupabaseUserNow(); // Need to add this sync getter
+    const initialUser = authService.getCurrentUserNow(); // Need to add this sync getter
+
+    // Set initial state immediately
+    setSupabaseUser(initialSupabaseUser);
+    Logger.debug('useAuth', 'Setting initial state', { initialUser, initialSupabaseUser });
+    setUser(initialUser);
+    setLoading(false); // Assume loaded after sync check
+
+    // 3. Subscribe to subsequent changes
+    const unsubscribe = authService.subscribe((newUser, newSupabaseUser) => {
+      if (isMounted) {
+        // Use isMounted for state setting safety
+        Logger.info('useAuth', '🔄 Received state update from AuthService subscription', {
+          userId: newUser?.id ?? 'null',
+          supabaseUserId: newSupabaseUser?.id ?? 'null',
+        });
+        setUser(newUser);
+        setSupabaseUser(newSupabaseUser);
+        // No longer need to set loading here, initial state handles it
+        // setLoading(false);
+      }
+    });
+
+    // 4. Check registration status (can run async after initial render)
+    const checkRegistration = async () => {
+      const registrationEnabled = await authService.isRegistrationEnabled();
+      if (isMounted) {
+        setIsRegistrationEnabled(registrationEnabled);
+        Logger.info('useAuth', 'Registration enabled status set:', { registrationEnabled });
       }
     };
+    checkRegistration().catch((err) => {
+      Logger.error('useAuth', '❌ Failed to check registration status', err);
+      // Optionally set an error state here if needed
+    });
 
-    initAuth();
-
-    // Setup auth state change listener
-    Logger.info('useAuth', 'Setting up auth state change listener');
-    const {
-      data: { subscription },
-    } = authService.supabase.auth.onAuthStateChange(
-      async (event: string, session: Session | null) => {
-        Logger.info('useAuth', `Auth state changed: ${event}, user: ${!!session?.user}`);
-
-        if (isMounted) {
-          setSupabaseUser(session?.user || null);
-
-          if (session?.user) {
-            try {
-              const backendUser = await authService.getCurrentUser();
-              setUser(backendUser);
-            } catch (err) {
-              const errorMessage = err instanceof Error ? err.message : String(err);
-              Logger.error('useAuth', 'Error fetching backend user after auth state change', {
-                errorMessage,
-              });
-              setError(
-                err instanceof Error
-                  ? err
-                  : new Error('Failed to get user after auth state change'),
-              );
-            }
-          } else {
-            setUser(null);
-          }
-        }
-      },
-    );
-
-    // Force loading to false after a timeout (failsafe)
-    const timeout = setTimeout(() => {
-      if (isMounted && loading) {
-        Logger.warn('useAuth', 'Auth initialization timeout - forcing loading state to false');
-        setLoading(false);
-      }
-    }, 5000);
+    useAuthInitialized.current = true; // Mark setup as complete
 
     // Cleanup subscription and mounted state
     return () => {
-      isMounted = false;
-      clearTimeout(timeout);
-      subscription.unsubscribe();
+      Logger.debug('useAuth', 'useEffect cleanup');
+      isMounted = false; // Mark as unmounted
+      unsubscribe(); // Unsubscribe from AuthService
+      // DO NOT reset useAuthInitialized.current here
     };
-  }, []);
+  }, []); // Empty dependency array ensures this runs only once on mount
 
   /**
    * Login with email and password
@@ -140,7 +118,7 @@ export function useAuth() {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setLoginError(error);
-      Logger.error('useAuth', 'Login failed', error);
+      Logger.error('useAuth', '❌ Login failed', error);
       throw error;
     } finally {
       setIsLoggingIn(false);
@@ -165,7 +143,7 @@ export function useAuth() {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setRegisterError(error);
-      Logger.error('useAuth', 'Registration failed', error);
+      Logger.error('useAuth', '❌ Registration failed', error);
       throw error;
     } finally {
       setIsRegistering(false);
@@ -185,7 +163,7 @@ export function useAuth() {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setCreateAdminError(error);
-      Logger.error('useAuth', 'Failed to create admin user', error);
+      Logger.error('useAuth', '❌ Failed to create admin user', error);
       throw error;
     } finally {
       setIsCreatingAdmin(false);
@@ -205,7 +183,7 @@ export function useAuth() {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setResetPasswordError(error);
-      Logger.error('useAuth', 'Password reset request failed', error);
+      Logger.error('useAuth', '❌ Password reset request failed', error);
       throw error;
     } finally {
       setIsResettingPassword(false);
@@ -225,7 +203,7 @@ export function useAuth() {
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
       setResendVerificationError(error);
-      Logger.error('useAuth', 'Failed to resend verification email', error);
+      Logger.error('useAuth', '❌ Failed to resend verification email', error);
       throw error;
     } finally {
       setIsResendingVerification(false);
@@ -242,7 +220,7 @@ export function useAuth() {
       setUser(profile);
       return profile;
     } catch (err) {
-      Logger.error('useAuth', 'Failed to get user profile', err);
+      Logger.error('useAuth', '❌ Failed to get user profile', err);
       throw err;
     }
   };
@@ -256,7 +234,7 @@ export function useAuth() {
       setSupabaseUser(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      Logger.error('useAuth', 'Failed to sign out', { errorMessage });
+      Logger.error('useAuth', '❌ Failed to sign out', { errorMessage });
       setError(err instanceof Error ? err : new Error('Failed to sign out'));
       throw err; // Re-throw to allow callers to handle the error
     }
@@ -279,9 +257,21 @@ export function useAuth() {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : String(err);
-      Logger.error('useAuth', 'Failed to refresh user', { errorMessage });
-      setError(err instanceof Error ? err : new Error('Failed to refresh user'));
-      throw err; // Re-throw to allow callers to handle the error
+      // Check if the error indicates a missing session (common case)
+      if (isAuthSessionMissingError(err)) {
+        Logger.debug('useAuth', '🔴 Refresh user: No active session found.');
+        setUser(null);
+        setSupabaseUser(null);
+        setError(null); // Clear any previous errors
+      } else {
+        // Handle other unexpected errors during refresh
+        Logger.error('useAuth', '❌ Failed to refresh user due to unexpected error', {
+          errorMessage,
+        });
+        setError(err instanceof Error ? err : new Error('Failed to refresh user'));
+        // Optionally re-throw if callers need to handle it, or just set state
+        // throw err;
+      }
     } finally {
       setLoading(false);
     }

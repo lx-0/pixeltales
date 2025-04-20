@@ -11,6 +11,14 @@ import {
 import { API_BASE_URL, SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
 import { supabase } from './supabase';
 
+// Helper to identify the specific Supabase "no session" error
+function isAuthSessionMissingError(error: unknown): boolean {
+  return error instanceof Error && error.message.includes('Auth session missing');
+}
+
+// Type for the state change listener callback
+type AuthStateListener = (user: User | null, supabaseUser: SupabaseUser | null) => void;
+
 /**
  * AuthService manages authentication and user data
  * It uses Supabase for auth but stores user data in our backend
@@ -18,8 +26,11 @@ import { supabase } from './supabase';
 export class AuthService {
   private static instance: AuthService;
   private currentUser: User | null = null;
+  private currentSupabaseUser: SupabaseUser | null = null; // Store supabase user too
+  private authStateListenerAttached = false; // <-- Add flag here
   private isRegistrationEnabledCache: boolean | null = null;
   private tokenRefreshTimer: ReturnType<typeof setTimeout> | null = null;
+  private stateListeners: Set<AuthStateListener> = new Set(); // Store listeners
 
   // Expose supabase for direct access
   public readonly supabase = supabase;
@@ -46,7 +57,7 @@ export class AuthService {
     const isConfigured = !!supabaseUrl && !!supabaseAnonKey;
 
     if (!isConfigured) {
-      Logger.error('AuthService', 'Supabase environment variables are missing');
+      Logger.error('AuthService', '❌ Supabase environment variables are missing');
     }
 
     return isConfigured;
@@ -56,41 +67,37 @@ export class AuthService {
    * Initialize auth service by checking for current session
    */
   public async init(): Promise<void> {
-    try {
-      Logger.info('AuthService', 'Initializing auth service');
-      const { data, error } = await supabase.auth.getSession();
-
-      if (error) {
-        Logger.error('AuthService', 'Error getting session', error);
-        return;
-      }
-
-      if (data.session?.user) {
-        Logger.info('AuthService', 'Session found, syncing user with backend');
-        await this.syncUserWithBackend(data.session.user);
-        this.setupTokenRefresh(data.session);
-      } else {
-        Logger.info('AuthService', 'No active session found');
-      }
-
-      // Setup auth state change listener
-      supabase.auth.onAuthStateChange(async (event, session) => {
-        Logger.info('AuthService', `Auth state changed: ${event}, user: ${!!session?.user}`);
-
-        if (session?.user) {
-          await this.syncUserWithBackend(session.user);
-
-          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-            this.setupTokenRefresh(session);
-          }
-        } else {
-          this.currentUser = null;
-          this.clearTokenRefresh();
-        }
-      });
-    } catch (error) {
-      Logger.error('AuthService', 'Error initializing auth service', error);
+    // Ensure listener is attached only once (idempotent)
+    if (this.authStateListenerAttached) {
+      return;
     }
+
+    Logger.info('AuthService', 'Attaching Supabase onAuthStateChange listener...');
+
+    // Setup auth state change listener
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      Logger.info('AuthService', `Auth state changed: ${event}, user: ${!!session?.user}`);
+      this.currentSupabaseUser = session?.user ?? null;
+
+      if (session?.user) {
+        await this.syncUserWithBackend(session.user);
+
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          this.setupTokenRefresh(session);
+        }
+      } else {
+        this.currentUser = null;
+        this.clearTokenRefresh();
+      }
+      // Notify listeners about the state change
+      this.notifyListeners();
+    });
+
+    this.authStateListenerAttached = true;
+
+    // Important: The onAuthStateChange listener fires immediately with the current state,
+    // so we don't need to explicitly getSession() or notifyListeners() here.
+    // The initial state will be pushed through the listener itself.
   }
 
   /**
@@ -113,7 +120,7 @@ export class AuthService {
 
       // Don't setup refresh if token is already expired or will expire in less than a minute
       if (timeUntilExpiry < 60 * 1000) {
-        Logger.warn('AuthService', 'Token expiring too soon, initiating immediate refresh');
+        Logger.warn('AuthService', '🟡 Token expiring too soon, initiating immediate refresh');
         this.refreshToken();
         return;
       }
@@ -128,7 +135,7 @@ export class AuthService {
         this.refreshToken();
       }, timeUntilExpiry);
     } catch (err) {
-      Logger.error('AuthService', 'Error setting up token refresh', err);
+      Logger.error('AuthService', '❌ Error setting up token refresh', err);
     }
   }
 
@@ -155,16 +162,16 @@ export class AuthService {
       }
 
       if (data.session) {
-        Logger.info('AuthService', 'Token refreshed successfully');
+        Logger.info('AuthService', '✅ Token refreshed successfully');
         this.setupTokenRefresh(data.session);
         return true;
       } else {
-        Logger.warn('AuthService', 'No session returned from token refresh');
+        Logger.warn('AuthService', '🔴 No session returned from token refresh');
         return false;
       }
     } catch (err) {
       const errorData = err instanceof Error ? err : new Error('Unknown error');
-      Logger.error('AuthService', 'Failed to refresh token', errorData);
+      Logger.error('AuthService', '❌ Failed to refresh token', errorData);
       return false;
     }
   }
@@ -175,7 +182,7 @@ export class AuthService {
   private async syncUserWithBackend(supabaseUser: SupabaseUser): Promise<User | null> {
     try {
       if (!supabaseUser) {
-        Logger.warn('AuthService', 'No Supabase user provided for sync');
+        Logger.warn('AuthService', '🔴 No Supabase user provided for sync');
         return null;
       }
 
@@ -188,7 +195,7 @@ export class AuthService {
 
       // Skip if no email (should not happen)
       if (!userData.email) {
-        Logger.warn('AuthService', 'No email found for user');
+        Logger.warn('AuthService', '🔴 No email found for user');
         return null;
       }
 
@@ -204,12 +211,15 @@ export class AuthService {
 
       if (!response.ok) {
         const errorText = await response.text();
-        Logger.error('AuthService', `Backend sync failed: ${response.status} - ${errorText}`);
+        Logger.error('AuthService', `❌ Backend sync failed: ${response.status} - ${errorText}`);
         throw new Error(`Failed to sync user: ${response.statusText}`);
       }
 
       this.currentUser = await response.json();
-      Logger.info('AuthService', `User synced successfully: ${this.currentUser?.id || 'unknown'}`);
+      Logger.info(
+        'AuthService',
+        `✅ User synced successfully: ${this.currentUser?.id || 'unknown'}`,
+      );
       return this.currentUser;
     } catch (error) {
       Logger.error('AuthService', 'Error syncing user with backend', error);
@@ -225,24 +235,32 @@ export class AuthService {
       const { data, error } = await supabase.auth.getUser();
 
       if (error) {
-        Logger.error('AuthService', 'Error getting current user from Supabase', error);
+        // Log session missing as debug, other errors as error
+        if (isAuthSessionMissingError(error)) {
+          Logger.debug('AuthService', '🔴 getCurrentUser: No active session found in Supabase.');
+        } else {
+          Logger.error('AuthService', '❌ Error getting current user from Supabase', error);
+        }
         return null;
       }
 
       if (!data.user) {
-        Logger.info('AuthService', 'No authenticated user found');
+        Logger.info('AuthService', '🔴 No authenticated user found');
         return null;
       }
 
       // Check if we need to sync with backend
       if (!this.currentUser || this.currentUser.id !== data.user.id) {
-        Logger.info('AuthService', 'Current user needs sync with backend');
-        return this.syncUserWithBackend(data.user);
+        Logger.info('AuthService', '🟡 Current user needs sync with backend');
+        // Sync happens via onAuthStateChange, just return potentially stale currentUser for now
+        // OR force sync here if immediate data is critical upon first call?
+        // Let's rely on onAuthStateChange for now.
+        // return this.syncUserWithBackend(data.user);
       }
 
       return this.currentUser;
     } catch (error) {
-      Logger.error('AuthService', 'Error getting current user', error);
+      Logger.error('AuthService', '❌ Error getting current user', error);
       return null;
     }
   }
@@ -255,13 +273,20 @@ export class AuthService {
       const { data, error } = await supabase.auth.getUser();
 
       if (error) {
-        Logger.error('AuthService', 'Error getting Supabase user', error);
+        // Log session missing as debug, other errors as error
+        if (isAuthSessionMissingError(error)) {
+          Logger.debug('AuthService', '🔴 getSupabaseUser: No active session found in Supabase.');
+        } else {
+          Logger.error('AuthService', '❌ Error getting Supabase user', error);
+        }
+        this.currentSupabaseUser = null; // Clear on error
         return null;
       }
 
       return data.user;
     } catch (error) {
-      Logger.error('AuthService', 'Error getting Supabase user', error);
+      Logger.error('AuthService', '❌ Error getting Supabase user', error);
+      this.currentSupabaseUser = null; // Clear on error
       return null;
     }
   }
@@ -275,9 +300,11 @@ export class AuthService {
       Logger.info('AuthService', 'Signing out user');
       await supabase.auth.signOut();
       this.currentUser = null;
-      Logger.info('AuthService', 'User signed out successfully');
+      this.currentSupabaseUser = null;
+      this.notifyListeners(); // Notify about sign out
+      Logger.info('AuthService', '✅ User signed out successfully');
     } catch (error) {
-      Logger.error('AuthService', 'Error signing out', error);
+      Logger.error('AuthService', '❌ Error signing out', error);
       throw error;
     }
   }
@@ -304,7 +331,7 @@ export class AuthService {
       return this.isRegistrationEnabledCache;
     } catch (error) {
       const errorData = error instanceof Error ? error : new Error('Unknown error');
-      Logger.warn('AuthService', 'Error checking registration status, defaulting to disabled', {
+      Logger.warn('AuthService', '🔴 Error checking registration status, defaulting to disabled', {
         errorData,
       });
       return false;
@@ -318,7 +345,7 @@ export class AuthService {
     try {
       return await authApi.validateToken();
     } catch (error) {
-      Logger.error('AuthService', 'Token validation failed', error);
+      Logger.error('AuthService', '❌ Token validation failed', error);
       return null;
     }
   }
@@ -334,7 +361,7 @@ export class AuthService {
       Logger.info('AuthService', `Logging in user: ${credentials.email}`);
       return await authApi.login(credentials);
     } catch (error) {
-      Logger.error('AuthService', 'Login failed', error);
+      Logger.error('AuthService', '❌ Login failed', error);
       throw error;
     }
   }
@@ -351,7 +378,7 @@ export class AuthService {
       Logger.info('AuthService', `Registering new user: ${userData.email}`);
       return await authApi.register(userData);
     } catch (error) {
-      Logger.error('AuthService', 'Registration failed', error);
+      Logger.error('AuthService', '❌ Registration failed', error);
       throw error;
     }
   }
@@ -364,7 +391,7 @@ export class AuthService {
       Logger.info('AuthService', `Requesting password reset for: ${email}`);
       return await authApi.resetPassword(email);
     } catch (error) {
-      Logger.error('AuthService', 'Password reset request failed', error);
+      Logger.error('AuthService', '❌ Password reset request failed', error);
       throw error;
     }
   }
@@ -377,7 +404,7 @@ export class AuthService {
       Logger.info('AuthService', `Resending verification email for: ${email}`);
       return await authApi.resendVerification(email);
     } catch (error) {
-      Logger.error('AuthService', 'Failed to resend verification email', error);
+      Logger.error('AuthService', '❌ Failed to resend verification email', error);
       throw error;
     }
   }
@@ -394,9 +421,37 @@ export class AuthService {
       Logger.info('AuthService', `Creating admin user: ${userData.email}`);
       return await authApi.createAdmin(userData);
     } catch (error) {
-      Logger.error('AuthService', 'Failed to create admin user', error);
+      Logger.error('AuthService', '❌ Failed to create admin user', error);
       throw error;
     }
+  }
+
+  // Method for components/hooks to subscribe to state changes
+  public subscribe(listener: AuthStateListener): () => void {
+    this.stateListeners.add(listener);
+    // Return an unsubscribe function
+    return () => {
+      this.stateListeners.delete(listener);
+    };
+  }
+
+  // Notify all registered listeners
+  private notifyListeners(): void {
+    Logger.debug(
+      'AuthService',
+      `Notifying ${this.stateListeners.size} listeners of auth state change.`,
+    );
+    this.stateListeners.forEach((listener) => listener(this.currentUser, this.currentSupabaseUser));
+  }
+
+  // Synchronous getter for current Supabase user (used by useAuth for initial state)
+  public getSupabaseUserNow(): SupabaseUser | null {
+    return this.currentSupabaseUser;
+  }
+
+  // Synchronous getter for current backend user (used by useAuth for initial state)
+  public getCurrentUserNow(): User | null {
+    return this.currentUser;
   }
 }
 
