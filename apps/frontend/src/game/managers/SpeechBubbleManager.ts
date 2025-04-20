@@ -1,5 +1,5 @@
 import { Logger } from '@/utils/logger';
-import type { Message, SceneStateSnapshotState } from '@pixeltales/contracts';
+import type { Message, SceneStateSnapshot } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { CharacterManager } from './CharacterManager';
 
@@ -23,11 +23,16 @@ export class SpeechBubbleManager {
   private readonly PROGRESS_BAR_HEIGHT = 4;
 
   private activeBubbles: Map<string, SpeechBubble> = new Map();
+  private debugLogging: boolean;
 
   constructor(
     private scene: Scene,
     private characterManager: CharacterManager,
-  ) {}
+  ) {
+    // Check if debug logging is enabled through a global window variable
+    // This should be set based on backend environment in the main app initialization
+    this.debugLogging = window.DEBUG_SPEECH_BUBBLES === true;
+  }
 
   reset(): void {
     this.clearBubbles();
@@ -38,21 +43,61 @@ export class SpeechBubbleManager {
   }
 
   clearBubbles(): void {
+    if (this.debugLogging) {
+      Logger.info(this.constructor.name, `🧹 Clearing ${this.activeBubbles.size} speech bubbles`);
+    }
+
     this.activeBubbles.forEach((bubble) => {
       bubble.container.destroy();
     });
     this.activeBubbles.clear();
   }
 
-  updateBubbles(state: SceneStateSnapshotState): void {
+  updateBubbles(state: SceneStateSnapshot): void {
     // Clear old bubbles first
     this.clearBubbles();
+
+    if (this.debugLogging) {
+      // Log all characters and their actions
+      const characters = Object.entries(state.characters).map(([id, char]) => ({
+        id,
+        name: char.name,
+        action: char.action,
+        startedAt: char.actionStartedAt,
+        duration: char.actionEstimatedDuration,
+        isSpeaking: char.action === 'speaking',
+      }));
+
+      const speakingChars = characters.filter((c) => c.isSpeaking);
+
+      Logger.info(
+        this.constructor.name,
+        `🔄 Updating speech bubbles. Characters speaking: ${speakingChars.length}/${characters.length}`,
+        { characters, speakingCharacters: speakingChars },
+      );
+    }
 
     // Create new bubble for current speaker
     for (const [key, value] of Object.entries(state.characters)) {
       if (value.action === 'speaking') {
         const character = this.characterManager.getCharacter(key);
         const message = state.messages.filter((m) => m.character === key).slice(-1)[0];
+
+        if (this.debugLogging) {
+          Logger.info(
+            this.constructor.name,
+            `📩 Found speaking character: ${key} (${value.name})`,
+            {
+              characterId: key,
+              characterName: value.name,
+              messageFound: !!message,
+              messageContent: message?.content?.substring(0, 50),
+              messageTimestamp: message?.timestamp,
+              allMessages: state.messages.length,
+            },
+          );
+        }
+
         if (character && message?.content) {
           Logger.info(
             this.constructor.name,
@@ -63,9 +108,9 @@ export class SpeechBubbleManager {
             message.content,
             key,
             value.name,
-            message.calculated_speaking_time,
+            message.calculatedSpeakingTime,
             message.mood,
-            message.mood_emoji,
+            message.moodEmoji,
           );
         } else {
           Logger.info(this.constructor.name, `No character or message found for ${key}`, {
@@ -74,6 +119,14 @@ export class SpeechBubbleManager {
           });
         }
       }
+    }
+
+    if (this.debugLogging && this.activeBubbles.size > 1) {
+      Logger.warn(
+        this.constructor.name,
+        `⚠️ MULTIPLE SPEECH BUBBLES DETECTED: ${this.activeBubbles.size} bubbles created`,
+        { bubbleCharacters: Array.from(this.activeBubbles.keys()) },
+      );
     }
   }
 
@@ -86,6 +139,19 @@ export class SpeechBubbleManager {
     _mood?: string,
     emoji?: string,
   ): void {
+    if (this.debugLogging) {
+      Logger.info(
+        this.constructor.name,
+        `🗨️ Creating speech bubble for ${characterId} (${characterName})`,
+        {
+          characterId,
+          characterName,
+          messageLength: content.length,
+          speakingTime,
+        },
+      );
+    }
+
     // Calculate bubble dimensions
     const padding = this.BUBBLE_PADDING;
     const pointerHeight = this.BUBBLE_POINTER_HEIGHT;
@@ -127,6 +193,10 @@ export class SpeechBubbleManager {
     // Create container for the bubble
     const container = this.scene.add.container(0, 0);
 
+    // Create a sub-container for elements that will pulsate
+    const pulsatingContainer = this.scene.add.container(0, 0);
+    container.add(pulsatingContainer); // Add sub-container to main container
+
     // Create bubble background
     const background = this.scene.add.graphics();
     background.lineStyle(2, 0x000000, 1);
@@ -135,10 +205,19 @@ export class SpeechBubbleManager {
     // Draw bubble background
     this.drawBubbleBackground(background, bubbleWidth, bubbleHeight, pointerHeight);
 
-    // Position texts within bubble
+    // Create pixel border effect for animation
+    const pixelBorder = this.scene.add.graphics();
+    pixelBorder.lineStyle(1, this.hexToNumber(characterColor), 0.7);
+    this.drawPixelatedBorder(pixelBorder, bubbleWidth, bubbleHeight, pointerHeight);
+
+    // Add background and border to the pulsating container
+    pulsatingContainer.add([background, pixelBorder]);
+
+    // Position texts within bubble (add directly to main container)
     nameText.setPosition(padding, padding);
     moodText.setPosition(bubbleWidth - moodText.width - padding, padding);
     text.setPosition(padding, padding * 2 + nameText.height);
+    container.add([nameText, moodText, text]); // Add text to main container
 
     // Create progress bar if speaking time is set
     let progressBar: SpeechBubble['progressBar'] | undefined;
@@ -151,7 +230,9 @@ export class SpeechBubbleManager {
     }
 
     // Add everything to container
-    container.add([background, nameText, moodText, text]);
+    // Pulsating elements are already in pulsatingContainer
+    // Text elements are added above
+    // Add progress bar elements if they exist directly to the main container
     if (progressBar) {
       container.add([progressBar.background, progressBar.fill]);
     }
@@ -160,6 +241,41 @@ export class SpeechBubbleManager {
     const bubbleX = speaker.x - bubbleWidth / 2;
     const bubbleY = speaker.y - speaker.height / 2 - bubbleHeight - pointerHeight;
     container.setPosition(bubbleX, bubbleY);
+
+    // Set origin/pivot to center for proper scaling
+    const centerX = bubbleWidth / 2;
+    const centerY = bubbleHeight / 2;
+
+    // Adjust the position of the pulsatingContainer to center its origin
+    pulsatingContainer.setPosition(centerX, centerY);
+    // Adjust the graphics within the pulsatingContainer relative to its new center
+    pulsatingContainer.each((child: Phaser.GameObjects.GameObject) => {
+      if (child instanceof Phaser.GameObjects.Graphics) {
+        child.setPosition(child.x - centerX, child.y - centerY);
+      }
+    });
+
+    // Add pulsating animation - faster speed and smaller scale for subtle effect
+    this.scene.tweens.add({
+      targets: pulsatingContainer, // Target the sub-container
+      scaleX: 1.03, // Increased scale for more pulse
+      scaleY: 1.03, // Increased scale for more pulse
+      duration: 800, // Faster animation (was 1500)
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+
+    // Add flickering animation to pixel border - also faster
+    this.scene.tweens.add({
+      targets: pixelBorder,
+      alpha: { from: 0.8, to: 1 },
+      duration: 1200, // Faster animation (was 2000)
+      ease: 'Steps',
+      easeParams: [5],
+      yoyo: true,
+      repeat: -1,
+    });
 
     // Store the bubble
     this.activeBubbles.set(characterId, {
@@ -170,6 +286,14 @@ export class SpeechBubbleManager {
       moodText,
       progressBar,
     });
+
+    if (this.debugLogging) {
+      Logger.info(
+        this.constructor.name,
+        `✅ Created speech bubble for ${characterId} (${characterName}). Total bubbles: ${this.activeBubbles.size}`,
+        { bubbleCharacters: Array.from(this.activeBubbles.keys()) },
+      );
+    }
   }
 
   private drawBubbleBackground(
@@ -246,8 +370,79 @@ export class SpeechBubbleManager {
         character.state.name,
         undefined,
         message.mood,
-        message.mood_emoji,
+        message.moodEmoji,
       );
     }
+  }
+
+  /**
+   * Draw a pixelated border for the speech bubble
+   */
+  private drawPixelatedBorder(
+    graphics: Phaser.GameObjects.Graphics,
+    width: number,
+    height: number,
+    pointerHeight: number,
+  ): void {
+    // Create a pixelated border effect
+    const pixelSize = 2;
+    graphics.beginPath();
+
+    // Top edge - pixelated
+    for (let x = 0; x < width; x += pixelSize) {
+      if (Math.random() > 0.8) {
+        // Skip some pixels for pixelated effect
+        continue;
+      }
+      graphics.moveTo(x, 0);
+      graphics.lineTo(x + pixelSize, 0);
+    }
+
+    // Right edge - pixelated
+    for (let y = 0; y < height; y += pixelSize) {
+      if (Math.random() > 0.8) {
+        continue;
+      }
+      graphics.moveTo(width, y);
+      graphics.lineTo(width, y + pixelSize);
+    }
+
+    // Bottom edge with pointer - pixelated
+    for (let x = 0; x < width; x += pixelSize) {
+      if (Math.random() > 0.8) {
+        continue;
+      }
+      if (x < width / 2 - 10 || x > width / 2 + 10) {
+        graphics.moveTo(x, height);
+        graphics.lineTo(x + pixelSize, height);
+      }
+    }
+
+    // Pointer edges - pixelated
+    for (let i = 0; i < 2; i += pixelSize) {
+      graphics.moveTo(width / 2 - 10 + i, height);
+      graphics.lineTo(width / 2 + i, height + pointerHeight);
+
+      graphics.moveTo(width / 2 + i, height + pointerHeight);
+      graphics.lineTo(width / 2 + 10 + i, height);
+    }
+
+    // Left edge - pixelated
+    for (let y = 0; y < height; y += pixelSize) {
+      if (Math.random() > 0.8) {
+        continue;
+      }
+      graphics.moveTo(0, y);
+      graphics.lineTo(0, y + pixelSize);
+    }
+
+    graphics.strokePath();
+  }
+
+  /**
+   * Convert a hex color string to a number for Phaser
+   */
+  private hexToNumber(hex: string): number {
+    return Number(hex.replace('#', '0x'));
   }
 }

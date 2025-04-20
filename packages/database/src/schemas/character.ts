@@ -1,5 +1,5 @@
 import z from 'zod';
-import { LLMConfigSchema } from './llm';
+import { LlmConfigSchema } from './llm';
 
 export const DirectionEnum = ['front', 'right', 'left', 'back'] as const;
 export type Direction = (typeof DirectionEnum)[number];
@@ -39,27 +39,28 @@ export const CharacterBaseSchema = z.object({
     .min(10)
     .max(500)
     .describe("Character's visual appearance description (10-500 characters)"),
-  llm_config: LLMConfigSchema.describe('LLM configuration for the character'),
+  llmConfig: LlmConfigSchema.describe('LLM configuration for the character'),
 });
 export type CharacterBase = z.infer<typeof CharacterBaseSchema>;
 
 export const CharacterConfigSchema = CharacterBaseSchema.extend({
-  initial_position: PositionSchema.describe('Initial position of the character'),
-  initial_direction: z.enum(DirectionEnum).describe('Initial direction of the character'),
-  initial_action: z.enum(CharacterActionEnum).describe('Initial action of the character'),
-  initial_mood: z.string().describe('Initial mood of the character'),
+  initialPosition: PositionSchema.describe('Initial position of the character'),
+  initialDirection: z.enum(DirectionEnum).describe('Initial direction of the character'),
+  initialAction: z.enum(CharacterActionEnum).describe('Initial action of the character'),
+  initialMood: z.string().describe('Initial mood of the character'),
 });
 export type CharacterConfig = z.infer<typeof CharacterConfigSchema>;
 
 export const CharacterStateSchema = CharacterBaseSchema.extend({
   position: PositionSchema,
-  direction: z.enum(DirectionEnum),
-  current_mood: z.string(),
-  action: z.enum(CharacterActionEnum),
-  action_started_at: z.number(),
-  action_estimated_duration: z.number().optional().nullable(),
-  end_conversation_requested: z.boolean().default(false),
-  end_conversation_requested_at: z.number().optional().nullable(),
-  end_conversation_requested_validity_duration: z.number().optional().nullable(),
+  direction: z.enum(DirectionEnum).default('front'),
+  currentMood: z.string().default('neutral'),
+  action: z.enum(CharacterActionEnum).default('idle'),
+  actionStartedAt: z.number().default(Date.now()),
+  actionEstimatedDuration: z.number().optional().nullable(),
+  endConversationRequested: z.boolean().default(false),
+  endConversationRequestedAt: z.number().optional().nullable(),
+  endConversationRequestedValidityDuration: z.number().optional().nullable(),
 });
 export type CharacterState = z.infer<typeof CharacterStateSchema>;
+export type NewCharacterState = z.input<typeof CharacterStateSchema>;

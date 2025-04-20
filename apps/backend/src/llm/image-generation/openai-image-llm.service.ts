@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LLMProviderId } from '@pixeltales/contracts';
+import { LlmProviderId } from '@pixeltales/contracts';
 import OpenAI from 'openai';
 import {
   BaseImageLlmService,
@@ -33,7 +33,7 @@ export class OpenAIImageLlmService extends BaseImageLlmService {
   /**
    * Get API key for the specified provider
    */
-  private getApiKey(provider: LLMProviderId): string {
+  private getApiKey(provider: LlmProviderId): string {
     let apiKey: string | undefined;
     if (provider === 'openai') {
       apiKey = this.configService.get<string>('OPENAI_API_KEY');

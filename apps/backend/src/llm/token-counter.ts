@@ -1,7 +1,7 @@
 import { AIMessage, BaseMessage, HumanMessage, SystemMessage } from '@langchain/core/messages';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LLMProviderId } from '@pixeltales/contracts';
+import { LlmProviderId } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 // We'll use a simple approximation for non-OpenAI models
@@ -24,7 +24,7 @@ export class TokenCounter {
   /**
    * Estimate tokens for a list of messages
    */
-  estimateTokensForMessages(messages: BaseMessage[], provider: LLMProviderId = 'openai'): number {
+  estimateTokensForMessages(messages: BaseMessage[], provider: LlmProviderId = 'openai'): number {
     try {
       let tokenCount = 0;
 
@@ -52,7 +52,7 @@ export class TokenCounter {
   /**
    * Estimate tokens for a single message
    */
-  estimateTokensForMessage(message: BaseMessage, provider: LLMProviderId): number {
+  estimateTokensForMessage(message: BaseMessage, provider: LlmProviderId): number {
     // Use different estimation approaches depending on model provider
     if (provider === 'anthropic') {
       return this.estimateTokensForAnthropicMessage(message);
@@ -119,7 +119,7 @@ export class TokenCounter {
   /**
    * Get overhead tokens based on message count and provider
    */
-  private getMessagesOverhead(messageCount: number, provider: LLMProviderId): number {
+  private getMessagesOverhead(messageCount: number, provider: LlmProviderId): number {
     if (provider === 'anthropic') {
       // Anthropic has a relatively small constant overhead for the conversation
       return 20;
@@ -133,7 +133,7 @@ export class TokenCounter {
   /**
    * Get the max context window size for a specific model
    */
-  getContextWindow(modelName: string, provider: LLMProviderId): number {
+  getContextWindow(modelName: string, provider: LlmProviderId): number {
     // Default context window sizes for common models
     if (provider === 'openai') {
       // OpenAI models

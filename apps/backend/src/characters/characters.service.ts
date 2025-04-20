@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { SceneConfig } from '@pixeltales/database';
 import { PinoLogger } from 'nestjs-pino';
 import { CharactersDbService } from './characters-db/characters-db.service';
+import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
 
 @Injectable()
 export class CharactersService {
@@ -9,7 +10,7 @@ export class CharactersService {
     private readonly charactersDb: CharactersDbService,
     private readonly logger: PinoLogger,
   ) {
-    this.logger.setContext(CharactersService.name);
+    this.logger.setContext(LOGGER_CONTEXT_SHORTEN ? '👤' : CharactersService.name);
   }
 
   /**
@@ -84,7 +85,7 @@ export class CharactersService {
    */
   async ensureCharactersExistInDatabase(sceneConfig: SceneConfig): Promise<void> {
     this.logger.info('Ensuring all characters exist in database...');
-    if (!sceneConfig?.config?.characters_config) {
+    if (!sceneConfig.charactersConfig) {
       this.logger.warn('No characters config found in scene config');
       return;
     }
@@ -92,8 +93,8 @@ export class CharactersService {
     try {
       const createPromises = [];
 
-      for (const charId in sceneConfig.config.characters_config) {
-        const charConfig = sceneConfig.config.characters_config[charId];
+      for (const charId in sceneConfig.charactersConfig) {
+        const charConfig = sceneConfig.charactersConfig[charId];
         if (!charConfig) continue;
 
         // Check if character already exists

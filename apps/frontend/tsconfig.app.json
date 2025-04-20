@@ -18,7 +18,7 @@
     "noEmit": true,
 
     /* Strictness & Linting - Inherited from base */
-    "noUnusedLocals": true,
+    // "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true,

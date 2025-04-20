@@ -1,9 +1,5 @@
 import { Logger } from '@/utils/logger';
-import type {
-  CharacterAction,
-  CharacterState,
-  SceneStateSnapshotState,
-} from '@pixeltales/contracts';
+import type { CharacterAction, CharacterState, SceneStateSnapshot } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { TILE_SIZE } from '../config';
 
@@ -209,11 +205,54 @@ export class CharacterManager {
     });
   }
 
-  updateCharacters(state: SceneStateSnapshotState): void {
+  updateCharacters(state: SceneStateSnapshot): void {
+    Logger.info(this.constructor.name, '[FLOW 4/5] 🔵 updateCharacters called', {
+      hasState: !!state,
+    });
+
+    Logger.info(this.constructor.name, '🔍 CharacterManager.updateCharacters called with state:', {
+      state: state ? `has ${Object.keys(state.characters).length} characters` : 'null state',
+    });
+
+    if (!state || !state.characters) {
+      Logger.error(this.constructor.name, '❌ Invalid state provided to updateCharacters', state);
+      return;
+    }
+
+    // Log all character IDs received from state
+    Logger.info(
+      this.constructor.name,
+      `Updating ${Object.keys(state.characters).length} characters: ${Object.keys(state.characters).join(', ')}`,
+    );
+    Logger.info(this.constructor.name, '📋 Available character IDs:', {
+      stateCharacters: Object.keys(state.characters),
+    });
+    Logger.info(this.constructor.name, '📋 Available sprite keys in Phaser:', {
+      spriteKeys: Object.keys(this.scene.textures.list),
+    });
+
     Object.entries(state.characters).forEach(([id, charData]) => {
+      Logger.info(this.constructor.name, `Looping for character ID: ${id}`);
       let character = this.characters.get(id);
       const charDataWithKey = charData as CharacterStateWithSpriteKey;
-      const keyToUse = charDataWithKey.spritesheet_key || id; // Use spritesheet_key if available, else id
+
+      // Debug info for this specific character
+      Logger.info(this.constructor.name, `🧍 Processing character: ${id}`, {
+        name: charData.name,
+        position: charData.position,
+        spritesheet_key: charDataWithKey.spritesheet_key || 'not set',
+        existing: !!character,
+      });
+
+      // TEMP FIX: Hard-coded mapping from character IDs to sprite keys
+      const tempSpriteMapping: Record<string, string> = {
+        character1: 'bob',
+        character2: 'alice',
+        // Add more mappings as needed for your characters
+      };
+
+      const keyToUse = charDataWithKey.spritesheet_key || tempSpriteMapping[id] || id;
+      Logger.info(this.constructor.name, `🔑 Using sprite key: ${keyToUse} for character ${id}`);
 
       // Ensure default animations are created if needed (for thinking, bob, alice)
       this.createAnimations();
@@ -225,6 +264,11 @@ export class CharacterManager {
       if (!character) {
         // Create new character if it doesn't exist
         Logger.info(this.constructor.name, `Creating character ${id} using key: ${keyToUse}`);
+
+        Logger.info(
+          this.constructor.name,
+          `✨ Attempting this.scene.add.sprite(${charData.position.x}, ${charData.position.y}, ${keyToUse})`,
+        );
         const sprite = this.scene.add.sprite(charData.position.x, charData.position.y, keyToUse);
 
         if (!sprite.texture.key || sprite.texture.key === '__MISSING') {
@@ -232,23 +276,62 @@ export class CharacterManager {
             this.constructor.name,
             `Failed to create sprite for ${id}. Texture key "${keyToUse}" invalid or not loaded.`,
           );
-          sprite.destroy();
-          return; // Skip this character
-        }
+          Logger.error(
+            this.constructor.name,
+            `❌ Failed to create sprite with key "${keyToUse}" for character ${id} - texture missing!`,
+          );
 
-        character = {
-          id,
-          state: charData,
-          keyUsed: keyToUse, // Store the key we actually used
-          sprite,
-          activeTween: null,
-          thinkingSprite: null,
-          color: charData.color, // Store character color from state
-        };
-        this.characters.set(id, character);
+          // Try fallback to a known texture
+          const fallbackKey = 'bob';
+          if (this.scene.textures.exists(fallbackKey)) {
+            Logger.warn(
+              this.constructor.name,
+              `⚠️ Attempting fallback to "${fallbackKey}" texture`,
+            );
+            sprite.destroy();
+            const fallbackSprite = this.scene.add.sprite(
+              charData.position.x,
+              charData.position.y,
+              fallbackKey,
+            );
+            character = {
+              id,
+              state: charData,
+              keyUsed: fallbackKey,
+              sprite: fallbackSprite,
+              activeTween: null,
+              thinkingSprite: null,
+              color: charData.color,
+            };
+            this.characters.set(id, character);
+          } else {
+            Logger.error(
+              this.constructor.name,
+              '❌ No fallback textures available! Characters cannot be rendered.',
+            );
+            sprite.destroy();
+            return; // Skip this character
+          }
+        } else {
+          character = {
+            id,
+            state: charData,
+            keyUsed: keyToUse,
+            sprite,
+            activeTween: null,
+            thinkingSprite: null,
+            color: charData.color,
+          };
+          this.characters.set(id, character);
+          Logger.info(
+            this.constructor.name,
+            `✅ Created character ${id} with sprite key ${keyToUse}`,
+          );
+        }
       } else {
         // Update color in case it changed
         character.color = charData.color;
+        Logger.info(this.constructor.name, `🔄 Updating existing character ${id}`);
       }
 
       // Check if key changed (might happen if state updates mid-creation)
@@ -273,14 +356,21 @@ export class CharacterManager {
       }
 
       // Update character position and animation
+      Logger.info(
+        this.constructor.name,
+        `📍 Setting position for ${id} to (${charData.position.x}, ${charData.position.y})`,
+      );
       character.sprite.setPosition(charData.position.x, charData.position.y);
       const animKey = `${character.keyUsed}_idle_${charData.direction}`;
+      Logger.info(this.constructor.name, `🎬 Attempting to play animation: ${animKey}`);
+
       if (this.scene.anims.exists(animKey)) {
         character.sprite.play(animKey, true);
+        Logger.info(this.constructor.name, `✅ Playing animation ${animKey}`);
       } else {
         Logger.warn(
           this.constructor.name,
-          `Anim key ${animKey} missing for ${id}. Setting frame 0.`,
+          `⚠️ Animation key ${animKey} missing for character ${id}. Setting frame 0.`,
         );
         if (character.sprite.texture.key !== '__MISSING') {
           character.sprite.setFrame(0); // Fallback
@@ -290,6 +380,8 @@ export class CharacterManager {
       // Update character tint and thinking state based on action
       this.updateCharacterState(character, charData);
     });
+
+    Logger.info(this.constructor.name, '[FLOW 5/5] ✅ Character update complete');
   }
 
   private updateCharacterState(character: Character, state: CharacterState): void {

@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
+import { LOGGER_CONTEXT_SHORTEN } from './common/logger/logger.const';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });
@@ -32,7 +33,9 @@ async function bootstrap() {
   const port = process.env.PORT ?? 3000;
   await app.listen(port);
 
-  app.get(PinoLogger).log(`🚀 Server listening on port ${port}`, 'Bootstrap');
+  app
+    .get(PinoLogger)
+    .log(`Server listening on port ${port}`, LOGGER_CONTEXT_SHORTEN ? '🚀' : 'Bootstrap');
 }
 bootstrap().catch((error) => {
   console.error(error);

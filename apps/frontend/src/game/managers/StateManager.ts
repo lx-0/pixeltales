@@ -1,11 +1,11 @@
 import { Logger } from '@/utils/logger';
-import type { SceneStateSnapshotState } from '@pixeltales/contracts';
+import type { SceneStateSnapshot } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { CharacterManager } from './CharacterManager';
 import { SpeechBubbleManager } from './SpeechBubbleManager';
 
 export class StateManager {
-  private currentState: SceneStateSnapshotState | null = null;
+  private currentState: SceneStateSnapshot | null = null;
   private isInHistoryMode = false;
 
   constructor(
@@ -20,8 +20,8 @@ export class StateManager {
     this.isInHistoryMode = false;
   }
 
-  updateState(newState: SceneStateSnapshotState): void {
-    Logger.info(this.constructor.name, 'Updating state', {
+  updateState(newState: SceneStateSnapshot): void {
+    Logger.info(this.constructor.name, '[FLOW 3/5] Updating state', {
       newState,
       isInHistoryMode: this.isInHistoryMode,
     });
@@ -29,17 +29,22 @@ export class StateManager {
     this.currentState = newState;
 
     if (!this.isInHistoryMode) {
+      Logger.info(this.constructor.name, '🟢 Not in history mode, proceeding with scene update');
       // Log character moods
       Object.entries(newState.characters).forEach(([charId, char]) => {
-        Logger.info(this.constructor.name, `Character ${charId} mood: ${char.current_mood}`, {
+        Logger.info(this.constructor.name, `Character ${charId} mood: ${char.currentMood}`, {
           action: char.action,
         });
       });
 
       // Only update scene in live mode
+      Logger.info(this.constructor.name, '➡️ Calling CharacterManager.updateCharacters');
       this.characterManager.updateCharacters(newState);
+      Logger.info(this.constructor.name, '➡️ Calling SpeechBubbleManager.updateBubbles');
       this.speechBubbleManager.updateBubbles(newState);
       this.scene.game.events.emit('sceneStateUpdate', newState);
+    } else {
+      Logger.warn(this.constructor.name, '🟡 In history mode, skipping live scene update');
     }
   }
 

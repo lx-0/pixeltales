@@ -146,14 +146,33 @@ export class BaseApiService {
   }
 
   /**
-   * Generic POST request with type safety and optional Zod validation
+   * GET with Zod schema validation - returns the proper output type
+   */
+  protected async post<Schema extends z.ZodType<unknown>, D = unknown>(
+    url: string,
+    data: D | undefined,
+    config: AxiosRequestConfig | undefined,
+    schema: Schema,
+  ): Promise<z.output<Schema>>;
+
+  /**
+   * Generic GET request without schema validation
    */
   protected async post<T = unknown, D = unknown>(
     url: string,
     data?: D,
     config?: AxiosRequestConfig,
-    schema?: z.ZodType<T>,
-  ): Promise<T> {
+  ): Promise<T>;
+
+  /**
+   * Generic POST request with type safety and optional Zod validation
+   */
+  protected async post<T = unknown, D = unknown, Schema extends z.ZodType<unknown> = z.ZodType<T>>(
+    url: string,
+    data?: D,
+    config?: AxiosRequestConfig,
+    schema?: Schema,
+  ): Promise<T | z.output<Schema>> {
     try {
       const response = await this.api.post(url, data, config);
       const responseData = response.data;

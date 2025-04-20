@@ -1,28 +1,42 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 import {
   CharacterState,
-  CharacterStateSchema,
   Message,
-  NewSceneStateSnapshot,
   Scene,
   SceneConfig,
-  SceneStateSnapshotState,
+  SceneStateSnapshot,
+  SceneUtils,
 } from '@pixeltales/contracts';
+import { OptionalSome, toBoolean } from '@pixeltales/utils';
 import { PinoLogger } from 'nestjs-pino';
+import {
+  ANSI_BACKGROUND_RED,
+  ANSI_BOLD,
+  ANSI_DIM,
+  ANSI_RESET,
+  hexToAnsi,
+  LOGGER_CONTEXT_SHORTEN,
+} from '../../common/logger/logger.const';
 import { ScenesDbService } from '../scenes-db/scenes-db.service';
+
+type UnsavedSceneStateSnapshot = OptionalSome<SceneStateSnapshot, 'id' | 'timestamp'>;
 
 @Injectable()
 export class SceneStateService {
-  private currentStateId: number | null = null;
-  private currentState: SceneStateSnapshotState | null = null;
+  private currentStateId: SceneStateSnapshot['id'] | null = null;
+  private currentState: SceneStateSnapshot | null = null;
   private currentScene: Scene | null = null;
   private currentSceneConfig: SceneConfig | null = null;
 
   constructor(
     private readonly scenesDb: ScenesDbService,
+    private readonly configService: ConfigService,
     private readonly logger: PinoLogger,
+    private readonly eventEmitter: EventEmitter2,
   ) {
-    this.logger.setContext(SceneStateService.name);
+    this.logger.setContext(LOGGER_CONTEXT_SHORTEN ? '🎭' : SceneStateService.name);
   }
 
   // --- State Access ---
@@ -37,8 +51,17 @@ export class SceneStateService {
     );
   }
 
-  public getCurrentState(): SceneStateSnapshotState | null {
+  public getCurrentState(): SceneStateSnapshot | null {
     return this.currentState;
+  }
+
+  public resetCurrentState(): void {
+    this.currentStateId = null;
+    this.currentState = null;
+    this.resetCurrentScene();
+
+    // Emit event after setting the state
+    this.broadcastState();
   }
 
   public getCurrentScene(): Scene | null {
@@ -49,66 +72,120 @@ export class SceneStateService {
     return this.currentSceneConfig;
   }
 
-  public setCurrentScene(scene: Scene, config: SceneConfig): void {
+  private setCurrentScene(scene: Scene, config: SceneConfig): void {
     this.currentScene = scene;
     this.currentSceneConfig = config;
   }
 
-  setCurrentState(id: number, state: SceneStateSnapshotState): void {
-    this.currentStateId = id;
-    this.currentState = state;
-  }
-
-  resetCurrentState(): void {
-    this.currentStateId = null;
-    this.currentState = null;
-  }
-
-  resetCurrentScene(): void {
-    this.resetCurrentState();
+  private resetCurrentScene(): void {
     this.currentScene = null;
     this.currentSceneConfig = null;
   }
 
-  getCharacterState(characterId: string): CharacterState | undefined {
+  getCharacterState(characterId: CharacterState['id']): CharacterState | undefined {
     return this.currentState?.characters[characterId];
   }
 
-  updateCharacterState(characterId: string, updates: Partial<CharacterState>): void {
+  public async updateCharacterState(
+    characterId: CharacterState['id'],
+    updates: Partial<CharacterState>,
+  ): Promise<void> {
     if (!this.currentState || !this.currentState.characters[characterId]) {
-      this.logger.warn(`Character ${characterId} not found in active state for update.`);
+      this.logger.warn(`⚠️ Character ${characterId} not found in active state for update.`);
       return;
     }
-    // Ensure immutability if state is shared or used elsewhere extensively
-    this.currentState.characters[characterId] = {
-      ...this.currentState.characters[characterId],
-      ...updates,
-    };
-    // Note: Emitting state updates should likely happen after calling this,
-    // orchestrated by SceneManager or another service.
+
+    await this.updateState({
+      characters: {
+        ...this.currentState.characters,
+        [characterId]: {
+          ...this.currentState.characters[characterId],
+          ...updates,
+        },
+      },
+    });
   }
 
-  updateState(updates: Partial<SceneStateSnapshotState>): void {
+  /**
+   * Updates the current state with the provided partial state.
+   * Emits an event after updating the state.
+   * Saves a snapshot after updating the state.
+   * @param updates - The partial state to update.
+   */
+  public async updateState(
+    updates: Omit<Partial<SceneStateSnapshot>, 'id' | 'timestamp'>,
+  ): Promise<void> {
     if (!this.currentState) {
-      this.logger.warn('Cannot update state: No current state exists.');
+      this.logger.warn('⚠️ Cannot update state: No current state exists.');
       return;
     }
-    this.currentState = { ...this.currentState, ...updates };
-    // Note: Emitting state updates should likely happen after calling this.
+
+    // Create a new state object with the updates
+    const updatedState = { ...this.currentState, ...updates, id: undefined, timestamp: undefined };
+
+    // Check if the state has changed
+    if (
+      JSON.stringify(updatedState) ===
+      JSON.stringify({ ...this.currentState, id: undefined, timestamp: undefined })
+    ) {
+      this.logger.debug('💤 No changes to state, skipping update.');
+      return;
+    }
+
+    // Update the current state
+    this.logger.debug(
+      { updates },
+      `🔄 Updating scene state with ${Object.keys(updates).length} updates`,
+    );
+
+    // Set and persist the state
+    await this.setAndSave(updatedState);
+
+    // Emit event after setting the state
+    this.broadcastState();
+  }
+
+  async createState(
+    state: UnsavedSceneStateSnapshot,
+    broadcast = true,
+  ): Promise<SceneStateSnapshot> {
+    const newState = await this.setAndSave(state);
+    if (broadcast) {
+      this.broadcastState();
+    }
+    return newState;
+  }
+
+  /**
+   * @deprecated Use `createState` instead.
+   */
+  async saveState(state: UnsavedSceneStateSnapshot, broadcast = true): Promise<void> {
+    await this.setAndSave(state);
+    if (broadcast) {
+      this.broadcastState();
+    }
+  }
+
+  public broadcastState(): void {
+    this.eventEmitter.emit('scene.state.updated', { state: this.currentState });
   }
 
   // --- Message Management ---
 
   async addMessageToState(message: Message): Promise<void> {
     if (!this.currentState || !this.currentStateId) {
-      this.logger.warn('Cannot add message: No current state exists.');
+      this.logger.warn('⚠️ Cannot add message: No current state exists.');
       return;
     }
 
-    const updatedState = await this.scenesDb.addMessageToState(this.currentStateId, message);
+    // const updatedState = await this.scenesDb.addMessageToState(this.currentStateId, message);
+    const updatedState = {
+      ...this.currentState,
+      messages: [...this.currentState.messages, message],
+    };
 
     // Update the state with the new messages array
-    this.currentState = updatedState.state;
+    await this.updateState(updatedState);
 
     this.logger.debug(
       { timestamp: message.timestamp, characterId: message.character },
@@ -118,114 +195,81 @@ export class SceneStateService {
 
   // --- Initialization ---
 
-  initializeStateFromConfig(
+  async initializeStateFromConfig(
     scene: Scene,
     sceneConfig: SceneConfig,
-    initialVisitorCount: number,
-  ): SceneStateSnapshotState {
-    this.logger.info(`Initializing scene state from config ${scene.sceneConfigId}`);
+    isActive: boolean = false,
+  ): Promise<SceneStateSnapshot> {
+    this.logger.info(`Initializing scene state from config ${scene.configId}`);
 
-    const characters: Record<string, CharacterState> = {};
+    const initialState = SceneUtils.initializeStateFromConfig(sceneConfig, scene.id, isActive);
 
-    for (const charId in sceneConfig.config.characters_config) {
-      const config = sceneConfig.config.characters_config[charId];
-      if (!config) {
-        this.logger.error(`Character config for ${charId} not found in config`);
-        continue;
-      }
-      const characterStateParseResult = CharacterStateSchema.safeParse({
-        id: charId,
-        name: config.name,
-        color: config.color,
-        role: config.role,
-        visual: config.visual,
-        llm_config: config.llm_config,
-        position: config.initial_position,
-        direction: config.initial_direction,
-        current_mood: config.initial_mood ?? 'neutral',
-        action: config.initial_action ?? 'idle',
-        action_started_at: Date.now(),
-        end_conversation_requested: false,
-      });
-
-      if (characterStateParseResult.success) {
-        characters[charId] = characterStateParseResult.data;
-      } else {
-        this.logger.error(
-          characterStateParseResult.error.flatten(),
-          `Failed to parse initial state for character ${charId}`,
-        );
-        // Potentially throw an error here?
-      }
-    }
-
-    const initialState: SceneStateSnapshotState = {
-      scene_id: scene.id,
-      scene_config_id: scene.sceneConfigId,
-      characters: characters,
-      messages: [],
-      started_at: Date.now(),
-      conversation_active: initialVisitorCount > 0,
-      conversation_ended: false,
-      ended_at: null,
-      visitor_count: initialVisitorCount,
-    };
-
-    this.currentState = initialState; // Set the internal state
-    this.currentStateId = null;
-    this.currentScene = scene;
-    this.currentSceneConfig = sceneConfig;
+    this.setCurrentScene(scene, sceneConfig);
+    const state = await this.createState(initialState);
 
     this.logger.info('Scene state initialized successfully from config.');
-    return initialState;
+    return state;
   }
 
   // --- Snapshot Management ---
 
-  async loadLatestSnapshotForScene(sceneId: number): Promise<SceneStateSnapshotState | null> {
+  async loadLatestSnapshot(sceneId: Scene['id']): Promise<SceneStateSnapshot | null> {
     this.logger.debug(`Loading latest snapshot for scene ${sceneId}...`);
-    const latestSnapshot = await this.scenesDb.findLatestState(sceneId);
 
+    const latestSnapshot = await this.scenesDb.findLatestState(sceneId);
     if (!latestSnapshot) {
       this.logger.warn(`⚠️ No snapshot found for scene ${sceneId}`);
       return null;
     }
 
-    this.currentState = latestSnapshot.state;
+    const scene = await this.scenesDb.findById(sceneId);
+    if (!scene) {
+      this.logger.warn(`⚠️ No scene found for ID ${sceneId}`);
+      return null;
+    }
+
+    const sceneConfig = await this.scenesDb.findConfigById(scene.configId);
+    if (!sceneConfig) {
+      this.logger.warn(`⚠️ No config found for scene ${sceneId}.`);
+      return null;
+    }
+
+    this.setCurrentScene(scene, sceneConfig);
+
+    this.currentState = latestSnapshot;
     this.currentStateId = latestSnapshot.id;
 
     return this.currentState;
   }
 
-  async saveSnapshot(): Promise<void> {
-    if (!this.currentState) {
-      this.logger.warn('Cannot save snapshot: No current state exists.');
-      return;
-    }
+  private async setAndSave(newState: UnsavedSceneStateSnapshot): Promise<SceneStateSnapshot> {
     if (!this.currentScene) {
-      this.logger.warn('Cannot save snapshot: No current scene exists.');
-      return;
+      this.logger.error(`❌ Cannot save snapshot: No current scene exists.`);
+      throw new Error('Cannot save snapshot: No current scene exists.');
     }
 
-    if (this.currentState.scene_id !== this.currentScene.id) {
+    if (newState.sceneId !== this.currentScene.id) {
       this.logger.error(
-        `Cannot save snapshot: Current state scene ID (${this.currentState.scene_id}) does not match provided scene ID (${this.currentScene.id}).`,
+        `❌ Cannot save snapshot: Current state scene ID (${newState.sceneId}) does not match provided scene ID (${this.currentScene.id}).`,
       );
-      return;
+      throw new Error(
+        `Cannot save snapshot: Current state scene ID (${newState.sceneId}) does not match provided scene ID (${this.currentScene.id}).`,
+      );
     }
 
-    this.logger.debug(`Saving snapshot for scene ${this.currentScene.id}...`);
-    const newStateSnapshotData: NewSceneStateSnapshot = {
-      state: this.currentState,
-      sceneId: this.currentScene.id,
-      configId: this.currentState.scene_config_id,
-    };
-    try {
-      const newStateSnapshot = await this.scenesDb.createStateSnapshot(newStateSnapshotData);
+    if (toBoolean(this.configService.get('DEBUG_API_SCENE_STATE'))) {
+      this.logger.debug(`Saving snapshot for scene ${this.currentScene.id}...`);
+    }
 
+    try {
+      const newStateSnapshot = await this.scenesDb.createStateSnapshot(newState);
+
+      this.currentState = newStateSnapshot;
       this.currentStateId = newStateSnapshot.id;
 
       this.logger.info(`💾 Snapshot saved for scene ${this.currentScene.id}.`);
+
+      return newStateSnapshot;
     } catch (error) {
       this.logger.error(
         { error },
@@ -234,5 +278,53 @@ export class SceneStateService {
       // Potentially re-throw or handle differently
       throw error;
     }
+  }
+
+  // --- Logging ---
+
+  /**
+   * Formats the scene state for logging.
+   * @param state - The scene state to format.
+   * @returns A string representation of the scene state.
+   */
+  static formatForLogging(state: SceneStateSnapshot, visitors?: number): string {
+    // console.log(`###`, { state: JSON.stringify(state, null, 2) });
+
+    const characterTags = (charData: CharacterState) => {
+      const tags = [];
+      if (charData.endConversationRequested) {
+        // background dark red
+        tags.push(
+          `${ANSI_BOLD}${ANSI_BACKGROUND_RED}*END CONVERSATION REQUESTED*${ANSI_RESET}${ANSI_DIM}`,
+        );
+      }
+      return tags.join(' ');
+    };
+
+    const lastMessageOfCharacter = (charId: string, state: SceneStateSnapshot) => {
+      const messages = state.messages.filter((message) => message.character === charId);
+      return messages[messages.length - 1];
+    };
+
+    const characterDetails = Object.entries(state.characters).map(([_charId, charData]) => {
+      const lastMessage =
+        lastMessageOfCharacter(_charId, state)?.content?.slice(0, 16) ?? undefined;
+      return (
+        `   - ` +
+        `${hexToAnsi(charData.color)}${ANSI_BOLD}${charData.name}${ANSI_RESET}${ANSI_DIM}` +
+        ` is ${charData.action} ` +
+        `${lastMessage ? `(${lastMessage}...)` : ''} ` +
+        characterTags(charData)
+      );
+    });
+
+    return [
+      `🎭 Scene ID: ${state.sceneId}`,
+      ...(visitors !== undefined ? [`📡 Visitors: ${visitors}`] : []),
+      `👤 Characters (${Object.keys(state.characters).length}):`,
+      ...characterDetails,
+    ]
+      .map((line) => `${ANSI_DIM}${line}${ANSI_RESET}`)
+      .join('\n');
   }
 }

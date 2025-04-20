@@ -1,6 +1,6 @@
 import { Button } from '@/lib/shadcn-ui/button';
 import { SiGithub } from '@icons-pack/react-simple-icons';
-import type { SceneStateSnapshotState } from '@pixeltales/contracts';
+import type { SceneStateSnapshot } from '@pixeltales/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout, Volume2, VolumeX } from 'lucide-react';
 import { Game } from 'phaser';
@@ -10,6 +10,7 @@ import UserAvatar from './components/auth/UserAvatar';
 import ConversationHistory from './components/ConversationHistory';
 import SceneInfo from './components/SceneInfo';
 import { SceneProposalForm } from './components/SceneProposalForm';
+import { DEBUG_AUTH, DEBUG_SPEECH_BUBBLES, DEBUG_WEBSOCKET } from './config';
 import { gameConfig } from './game/config';
 import { useAuth } from './hooks/use-auth';
 import { useSound } from './hooks/use-sound';
@@ -26,10 +27,19 @@ const queryClient = new QueryClient({
   },
 });
 
+// Declare DEBUG_* on the Window interface
+declare global {
+  interface Window {
+    DEBUG_SPEECH_BUBBLES: boolean;
+    DEBUG_AUTH: boolean;
+    DEBUG_WEBSOCKET: boolean;
+  }
+}
+
 export default function App() {
   const gameRef = useRef<Game | null>(null);
   const socketInitializedRef = useRef(false);
-  const [sceneState, setSceneState] = useState<SceneStateSnapshotState | null>(null);
+  const [sceneState, setSceneState] = useState<SceneStateSnapshot | null>(null);
   const { viewMode: _viewMode, toggleViewMode, isSideView } = useViewMode();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { user, loading } = useAuth();
@@ -45,12 +55,25 @@ export default function App() {
       Logger.info('App.tsx:App()', 'Initializing socket connection...');
       socketService.connect();
       socketInitializedRef.current = true;
+
+      // Set debug flags based on environment variables
+      // These allow us to toggle debug features
+      window.DEBUG_SPEECH_BUBBLES = DEBUG_SPEECH_BUBBLES;
+      window.DEBUG_AUTH = DEBUG_AUTH;
+      window.DEBUG_WEBSOCKET = DEBUG_WEBSOCKET;
+
+      Logger.info('App.tsx:App()', 'Debug flags initialized', {
+        DEBUG_SPEECH_BUBBLES,
+        DEBUG_AUTH,
+        DEBUG_WEBSOCKET,
+      });
     }
 
-    const handleSceneState = (state: SceneStateSnapshotState) => {
+    const handleSceneState = (state: SceneStateSnapshot) => {
       setSceneState(state);
     };
 
+    // Purpose: Listen for state updates to update React UI components (e.g., ConversationHistory, SceneInfo).
     socketService.addListener('scene_state', handleSceneState);
 
     return () => {

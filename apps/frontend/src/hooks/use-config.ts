@@ -1,5 +1,5 @@
 import { configApi } from '@/lib/api/config-api';
-import { ConfigOptions, LLMProvider } from '@pixeltales/contracts';
+import { ConfigOptions, LlmProvider } from '@pixeltales/contracts';
 import { useQuery } from '@tanstack/react-query';
 
 export function useConfig() {
@@ -13,17 +13,17 @@ export function useConfig() {
 }
 
 // Helper to get model options for select
-export function getModelOptions(providers: LLMProvider[]) {
+export function getModelOptions(providers: LlmProvider[]) {
   return providers.map((provider) => ({
     label: provider.name,
     options: provider.models.map((model) => ({
       label: model.name,
-      label_details: model.description,
+      labelDetails: model.description,
       value: `${provider.id}:${model.id}`,
       provider: provider.id,
       model: model.id,
-      maxTokens: model.max_tokens,
-      defaultTemperature: model.default_temperature,
+      maxTokens: model.maxTokens,
+      defaultTemperature: model.defaultTemperature,
     })),
   }));
 }

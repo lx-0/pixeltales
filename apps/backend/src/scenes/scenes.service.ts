@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { CreateSceneConfigDTO, SceneConfig } from '@pixeltales/contracts';
-import { NewDbSceneConfig, NewSceneConfig, SceneConfigConfig } from '@pixeltales/database';
+import { NewDbSceneConfig, NewSceneConfig, Scene, SceneConfigSchema } from '@pixeltales/database';
 import { PinoLogger } from 'nestjs-pino';
 import { DEFAULT_SCENE_CONFIG, DEFAULT_SYSTEM_PROMPT } from '../scene/default-scene.const';
 import { ScenesDbService } from '../scene/scenes-db/scenes-db.service';
@@ -30,7 +30,7 @@ export class ScenesService {
     }
   }
 
-  async getById(id: number): Promise<SceneConfig | null> {
+  async getConfigById(id: SceneConfig['id']): Promise<SceneConfig | null> {
     this.logger.debug(`Fetching scene config by id: ${id}`);
     try {
       const result = await this.scenesDb.findConfigById(id);
@@ -50,29 +50,16 @@ export class ScenesService {
   async createProposal(dto: CreateSceneConfigDTO): Promise<SceneConfig> {
     this.logger.debug(`Creating scene config proposal: ${dto.name}`);
 
-    // Prepare the JSON data, matching the structure expected by SceneConfigBase Pydantic model
-    const configDataForJson: SceneConfigConfig = {
-      id: 0, // TODO: Remove this once we have a proper ID
-      name: dto.name,
-      description: dto.description,
-      start_character_id: dto.start_character_id,
-      characters_config: dto.characters_config, // Already validated by controller DTO
+    const newSceneConfig: NewSceneConfig = {
+      ...dto,
       status: 'proposed', // Set initial status explicitly in JSON
-      proposer_name: dto.proposer_name,
-      proposed_at: new Date().toISOString(),
-      votes: 0,
-      comments: [],
-      system_prompt: DEFAULT_SYSTEM_PROMPT,
+      proposedAt: new Date(),
+      systemPrompt: DEFAULT_SYSTEM_PROMPT,
     };
-
-    const newRecord: NewDbSceneConfig = {
-      config: configDataForJson,
-      status: 'proposed', // Also store status directly in DB column for easier querying
-      // votes, systemPrompt, createdAt have DB defaults
-    };
+    const newDbRecord: NewDbSceneConfig = SceneConfigSchema.parse(newSceneConfig);
 
     try {
-      const inserted = await this.scenesDb.createConfig(newRecord);
+      const inserted = await this.scenesDb.createConfig(newDbRecord);
 
       // Manually add the ID back into the config AFTER insert if needed immediately
       // (like the old SQLAlchemy event listener did). This might be better done on read.
@@ -87,9 +74,9 @@ export class ScenesService {
     }
   }
 
-  async vote(id: number, voteValue: number): Promise<SceneConfig> {
+  async vote(id: SceneConfig['id'], voteValue: number): Promise<SceneConfig> {
     this.logger.debug(`Voting on scene config ${id}: ${voteValue}`);
-    const sceneConfig = await this.getById(id);
+    const sceneConfig = await this.getConfigById(id);
     if (!sceneConfig) {
       throw new NotFoundException('Scene config not found for voting');
     }
@@ -107,9 +94,9 @@ export class ScenesService {
     }
   }
 
-  async reject(id: number): Promise<void> {
+  async reject(id: SceneConfig['id']): Promise<void> {
     this.logger.debug(`Rejecting scene config ${id}`);
-    const sceneConfig = await this.getById(id);
+    const sceneConfig = await this.getConfigById(id);
     if (!sceneConfig) {
       throw new NotFoundException('Scene config not found for rejection');
     }
@@ -118,7 +105,7 @@ export class ScenesService {
       throw new BadRequestException('Only proposed scenes can be rejected');
     }
     try {
-      const updated = await this.scenesDb.updateConfigStatus(id, 'rejected');
+      const _updated = await this.scenesDb.updateConfigStatus(id, 'rejected');
       this.logger.info(`Scene config ${id} rejected.`);
     } catch (error) {
       this.logger.error(error, `Error rejecting scene config ${id}`);
@@ -126,9 +113,9 @@ export class ScenesService {
     }
   }
 
-  async addComment(id: number, user: string, commentText: string): Promise<SceneConfig> {
+  async addComment(id: SceneConfig['id'], user: string, commentText: string): Promise<SceneConfig> {
     this.logger.debug(`Adding comment to scene config ${id} by ${user}`);
-    const sceneConfig = await this.getById(id);
+    const sceneConfig = await this.getConfigById(id);
     if (!sceneConfig) {
       throw new NotFoundException('Scene config not found for commenting');
     }
@@ -155,10 +142,25 @@ export class ScenesService {
     }
   }
 
-  async getNextConfig(configId?: number): Promise<SceneConfig | null> {
+  async createSceneFromConfig(config: SceneConfig): Promise<Scene> {
+    this.logger.debug(`Activating proposed scene config ${config.id}`);
+
+    if (config.status === 'proposed') {
+      const _updatedConfig = await this.scenesDb.updateConfigStatus(config.id, 'active');
+    }
+
+    const newScene = await this.scenesDb.create({
+      configId: config.id,
+    });
+    this.logger.info(`Created new scene record: ${newScene.id}`);
+
+    return newScene;
+  }
+
+  async getNextConfig(configId?: SceneConfig['id']): Promise<SceneConfig | null> {
     if (configId) {
       this.logger.debug(`Getting specific scene config by id: ${configId}`);
-      return await this.getById(configId);
+      return await this.getConfigById(configId);
     }
 
     this.logger.debug('Getting next scene config (highest voted or default)...');
@@ -167,11 +169,7 @@ export class ScenesService {
       const highestVotedProposal = await this.scenesDb.findHighestVotedProposal();
       if (highestVotedProposal) {
         this.logger.info(`Found highest-voted proposal: ${highestVotedProposal.id}`);
-        await this.scenesDb.updateConfigStatus(highestVotedProposal.id, 'active');
-
-        this.logger.info(`Activated scene config proposal: ${highestVotedProposal.id}`);
-        // Fetch the fully populated version again after update
-        return this.scenesDb.convertToSceneConfig(highestVotedProposal);
+        return highestVotedProposal;
       }
 
       // 2. No proposed config found, find default (latest active, then latest overall)
@@ -179,7 +177,7 @@ export class ScenesService {
       const latestActiveConfig = await this.scenesDb.findLatestActiveConfig();
       if (latestActiveConfig) {
         this.logger.info(`Found latest active config as default: ${latestActiveConfig.id}`);
-        return this.scenesDb.convertToSceneConfig(latestActiveConfig);
+        return latestActiveConfig;
       }
 
       // If no active found, get the latest overall
@@ -188,7 +186,7 @@ export class ScenesService {
         this.logger.info(`Found latest overall config as default: ${latestOverallConfig.id}`);
         // If this one is proposed, we might consider activating it?
         // For now, just return it as is.
-        return this.scenesDb.convertToSceneConfig(latestOverallConfig);
+        return latestOverallConfig;
       }
 
       // 3. No config found at all - use default config
@@ -204,9 +202,8 @@ export class ScenesService {
 
     // Create a default record in the database with the default config
     const defaultRecord: NewSceneConfig = {
-      config: DEFAULT_SCENE_CONFIG,
+      ...DEFAULT_SCENE_CONFIG,
       status: 'active',
-      systemPrompt: DEFAULT_SCENE_CONFIG.system_prompt,
     };
 
     try {
@@ -216,16 +213,7 @@ export class ScenesService {
       return insertedDefault;
     } catch (err) {
       this.logger.error({ err }, 'Failed to save default config to database');
-
-      // Return a synthetic record not saved to DB as last resort
-      return {
-        id: 0,
-        config: DEFAULT_SCENE_CONFIG,
-        status: 'active',
-        votes: 0,
-        systemPrompt: DEFAULT_SCENE_CONFIG.system_prompt,
-        createdAt: new Date(),
-      };
+      throw new InternalServerErrorException('Failed to save default config to database');
     }
   }
 }

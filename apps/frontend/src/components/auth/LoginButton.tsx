@@ -1,3 +1,4 @@
+import { API_BASE_URL, SUPABASE_ANON_KEY, SUPABASE_URL } from '@/config';
 import { useAuth } from '@/hooks/use-auth';
 import { Button } from '@/lib/shadcn-ui/button';
 import {
@@ -139,9 +140,9 @@ export default function LoginButton() {
             <DialogFooter className="flex flex-col items-start border-t border-gray-700 pt-4">
               <div className="text-xs text-gray-400 space-y-1 w-full">
                 <p>Debug Info:</p>
-                <p>URL: {import.meta.env.VITE_SUPABASE_URL ? '✓' : '✗'}</p>
-                <p>Key: {import.meta.env.VITE_SUPABASE_ANON_KEY ? '✓' : '✗'}</p>
-                <p>Backend: {import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000'}</p>
+                <p>URL: {SUPABASE_URL ? '✓' : '✗'}</p>
+                <p>Key: {SUPABASE_ANON_KEY ? '✓' : '✗'}</p>
+                <p>Backend: {API_BASE_URL}</p>
                 {authError && <p className="text-red-400">Error: {authError.message}</p>}
               </div>
             </DialogFooter>

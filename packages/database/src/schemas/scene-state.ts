@@ -1,26 +1,32 @@
 import z from 'zod';
+import { uuid } from '../db-schema';
 import { CharacterStateSchema } from './character';
 import { MessageSchema } from './conversation';
 
-export const SceneStateSnapshotStateSchema = z.object({
-  scene_id: z.number(),
-  scene_config_id: z.number(), // TODO v2: rename to `config_id`
-  characters: z.record(z.string(), CharacterStateSchema),
-  messages: z.array(MessageSchema),
-  started_at: z.number(),
-  conversation_active: z.boolean(),
-  conversation_ended: z.boolean(),
-  ended_at: z.number().optional().nullable(),
-  visitor_count: z.number().int(),
-});
-export type SceneStateSnapshotState = z.infer<typeof SceneStateSnapshotStateSchema>;
+export const SceneStateSnapshotCustomSchema = z
+  .object({})
+  .describe('Custom fields for the scene state snapshot');
+export type SceneStateSnapshotCustom = z.infer<typeof SceneStateSnapshotCustomSchema>;
 
 export const SceneStateSnapshotSchema = z.object({
-  id: z.number(),
-  timestamp: z.date().describe('ISO format datetime when the snapshot was created'),
-  state: SceneStateSnapshotStateSchema,
-  configId: z.number(),
-  sceneId: z.number(),
+  id: z
+    .string()
+    .default(() => uuid())
+    .describe('Unique identifier for the scene state snapshot'),
+  timestamp: z
+    .date()
+    .default(new Date())
+    .describe('ISO format datetime when the snapshot was created'),
+  sceneId: z.string().describe('Unique identifier for the scene'),
+  configId: z.string().describe('Unique identifier for the scene configuration'),
+  characters: z.record(z.string(), CharacterStateSchema).describe('Characters in the scene'),
+  messages: z.array(MessageSchema).default([]).describe('Messages in the scene'),
+  startedAt: z.date().describe('ISO format datetime when the scene was started'),
+  conversationActive: z.boolean().describe('Whether the conversation is active'),
+  conversationEnded: z.boolean().default(false).describe('Whether the conversation is ended'),
+  endedAt: z.date().optional().nullable().describe('ISO format datetime when the scene was ended'),
+  custom: SceneStateSnapshotCustomSchema.default({}),
 });
 export type SceneStateSnapshot = z.infer<typeof SceneStateSnapshotSchema>;
-export type NewSceneStateSnapshot = Omit<SceneStateSnapshot, 'id' | 'timestamp'>;
+export type NewSceneStateSnapshot = Omit<z.input<typeof SceneStateSnapshotSchema>, 'id'>;
+export type UpdateSceneStateSnapshot = Partial<Omit<SceneStateSnapshot, 'id'>>;

@@ -34,7 +34,7 @@ interface FinalPreviewStepProps {
 
 export function FinalPreviewStep({
   extractedSprites,
-  onRegenerateIndividual,
+  onRegenerateIndividual: _onRegenerateIndividual,
   error,
   isLoading = false,
   characterName = '',
@@ -44,7 +44,7 @@ export function FinalPreviewStep({
   const layoutMap = new Map<string, ExtractedSprite>();
   extractedSprites?.forEach((sprite) => layoutMap.set(sprite.id, sprite));
 
-  const gridRows = Math.ceil(TARGET_LAYOUT.length / GRID_COLS);
+  const _gridRows = Math.ceil(TARGET_LAYOUT.length / GRID_COLS);
 
   return (
     <div className="space-y-4">

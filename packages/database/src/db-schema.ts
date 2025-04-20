@@ -1,6 +1,20 @@
 import { relations, sql } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-import { SceneConfigConfig, SceneStateSnapshotState, UserRoleEnum } from './schemas';
+import { nanoid } from 'nanoid';
+import {
+  CharacterConfig,
+  CharacterState,
+  Comment,
+  Message,
+  SceneConfigCustom,
+  SceneStateSnapshotCustom,
+  UserRoleEnum,
+} from './schemas';
+
+// UUID Generator
+export const uuid = nanoid;
+
+const sqlNow = sql`(cast(strftime('%s', 'now') as integer) * 1000)`;
 
 // --- Tables ---
 
@@ -12,12 +26,8 @@ export const usersTable = sqliteTable(
     email: text('email').notNull().unique(),
     name: text('name'),
     role: text('role', { enum: UserRoleEnum }).default('user').notNull(),
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
-      .notNull(),
-    updatedAt: integer('updated_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
-      .notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(sqlNow).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).default(sqlNow).notNull(),
   },
   (table) => [index('user_email_idx').on(table.email)],
 );
@@ -27,17 +37,24 @@ export type NewDbUser = typeof usersTable.$inferInsert;
 export const sceneConfigsTable = sqliteTable(
   'scene_configs',
   {
-    id: integer('id').primaryKey(), // TODO v2: UUID als Text
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
-      .notNull(),
-    // config: text('config').$type<SceneConfigConfig>().notNull(),
-    config: text('config').notNull(),
-    votes: integer('votes').default(0).notNull(),
+    // id: uuid('id').primaryKey().defaultRandom(), // not supported in sqlite
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    systemPrompt: text('system_prompt').default('').notNull(), // TODO v2: remove as already in `config`
+    charactersConfig: text('characters_config').notNull(),
+    startCharacterId: text('start_character_id').notNull(),
     status: text('status', { enum: ['proposed', 'active', 'rejected'] })
       .default('proposed')
       .notNull(),
-    systemPrompt: text('system_prompt').default('').notNull(), // TODO v2: remove as already in `config`
+    proposerName: text('proposer_name'),
+    proposedAt: integer('proposed_at', { mode: 'timestamp_ms' }),
+    votes: integer('votes').default(0).notNull(),
+    comments: text('comments').default("'[]'").notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(sqlNow).notNull(),
+    custom: text('custom').default("'{}'").notNull(),
   },
   (table) => [
     index('scene_config_created_at_idx').on(table.createdAt),
@@ -45,22 +62,39 @@ export const sceneConfigsTable = sqliteTable(
   ],
 );
 export type DbSceneConfigRaw = typeof sceneConfigsTable.$inferSelect;
-export type DbSceneConfig = Omit<DbSceneConfigRaw, 'config'> & { config: SceneConfigConfig };
+export type DbSceneConfig = Omit<DbSceneConfigRaw, 'charactersConfig' | 'comments' | 'custom'> & {
+  charactersConfig: Record<string, CharacterConfig>;
+  comments: Comment[];
+  custom: SceneConfigCustom;
+};
 export type NewDbSceneConfigRaw = typeof sceneConfigsTable.$inferInsert;
-export type NewDbSceneConfig = Omit<NewDbSceneConfigRaw, 'config'> & { config: SceneConfigConfig };
+export type NewDbSceneConfig = Omit<
+  NewDbSceneConfigRaw,
+  'charactersConfig' | 'comments' | 'custom'
+> & {
+  charactersConfig: Record<string, CharacterConfig>;
+  comments?: Comment[];
+  custom?: SceneConfigCustom;
+};
 export type UpdateDbSceneConfigRaw = Partial<Omit<DbSceneConfigRaw, 'id'>>;
-export type UpdateDbSceneConfig = Omit<UpdateDbSceneConfigRaw, 'config'> & {
-  config?: SceneConfigConfig;
+export type UpdateDbSceneConfig = Omit<
+  UpdateDbSceneConfigRaw,
+  'charactersConfig' | 'comments' | 'custom'
+> & {
+  charactersConfig?: Record<string, CharacterConfig>;
+  comments?: Comment[];
+  custom?: SceneConfigCustom;
 };
 
 export const scenesTable = sqliteTable(
   'scenes',
   {
-    id: integer('id').primaryKey(), // TODO v2: UUID als Text
-    createdAt: integer('created_at', { mode: 'timestamp_ms' })
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
-      .notNull(),
-    sceneConfigId: integer('config_id')
+    // id: uuid('id').primaryKey().defaultRandom(), // not supported in sqlite
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).default(sqlNow).notNull(),
+    configId: text('config_id')
       .notNull()
       .references(() => sceneConfigsTable.id, { onDelete: 'cascade' }),
     // startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
@@ -69,7 +103,7 @@ export const scenesTable = sqliteTable(
   },
   (table) => [
     index('scene_created_at_idx').on(table.createdAt),
-    index('scene_config_id_idx').on(table.sceneConfigId),
+    index('scene_config_id_idx').on(table.configId),
     // index('scene_is_active_idx').on(table.isActive),
   ],
 );
@@ -79,18 +113,24 @@ export type NewDbScene = typeof scenesTable.$inferInsert;
 export const sceneStateSnapshotsTable = sqliteTable(
   'scene_state_snapshots',
   {
-    id: integer('id').primaryKey(), // TODO v2: UUID als Text
-    timestamp: integer('timestamp', { mode: 'timestamp_ms' })
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
-      .notNull(),
-    // state: text('state').$type<SceneState>().notNull(),
-    state: text('state').notNull(),
-    configId: integer('config_id')
+    // id: uuid('id').primaryKey().defaultRandom(), // not supported in sqlite
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    timestamp: integer('timestamp', { mode: 'timestamp_ms' }).default(sqlNow).notNull(),
+    configId: text('config_id')
       .notNull()
       .references(() => sceneConfigsTable.id),
-    sceneId: integer('scene_id')
+    sceneId: text('scene_id')
       .notNull()
       .references(() => scenesTable.id),
+    characters: text('characters').notNull(),
+    messages: text('messages').default("'[]'").notNull(),
+    startedAt: integer('started_at', { mode: 'timestamp_ms' }).notNull(),
+    conversationActive: integer('conversation_active', { mode: 'boolean' }).notNull(),
+    conversationEnded: integer('conversation_ended', { mode: 'boolean' }).default(false).notNull(),
+    endedAt: integer('ended_at', { mode: 'timestamp_ms' }),
+    custom: text('custom').notNull(),
   },
   (table) => [
     index('snapshot_timestamp_idx').on(table.timestamp),
@@ -98,23 +138,41 @@ export const sceneStateSnapshotsTable = sqliteTable(
   ],
 );
 export type DbSceneStateSnapshotRaw = typeof sceneStateSnapshotsTable.$inferSelect;
-export type DbSceneStateSnapshot = Omit<DbSceneStateSnapshotRaw, 'state'> & {
-  state: SceneStateSnapshotState;
+export type DbSceneStateSnapshot = Omit<
+  DbSceneStateSnapshotRaw,
+  'characters' | 'messages' | 'custom'
+> & {
+  characters: Record<string, CharacterState>;
+  messages: Message[];
+  custom: SceneStateSnapshotCustom;
 };
 export type NewDbSceneStateSnapshotRaw = typeof sceneStateSnapshotsTable.$inferInsert;
-export type NewDbSceneStateSnapshot = Omit<NewDbSceneStateSnapshotRaw, 'state'> & {
-  state: SceneStateSnapshotState;
+export type NewDbSceneStateSnapshot = Omit<
+  NewDbSceneStateSnapshotRaw,
+  'characters' | 'messages' | 'custom'
+> & {
+  characters: Record<string, CharacterState>;
+  messages: Message[];
+  custom: SceneStateSnapshotCustom;
 };
 export type UpdateDbSceneStateSnapshotRaw = Partial<Omit<DbSceneStateSnapshotRaw, 'id'>>;
-export type UpdateDbSceneStateSnapshot = Omit<UpdateDbSceneStateSnapshotRaw, 'state'> & {
-  state?: SceneStateSnapshotState;
+export type UpdateDbSceneStateSnapshot = Omit<
+  UpdateDbSceneStateSnapshotRaw,
+  'characters' | 'messages' | 'custom'
+> & {
+  characters?: Record<string, CharacterState>;
+  messages?: Message[];
+  custom?: SceneStateSnapshotCustom;
 };
 
-// NEU: Characters Table (Basisdaten)
+// Characters Table (Basisdaten)
 export const charactersTable = sqliteTable(
   'characters',
   {
-    id: text('id').primaryKey(), // Character ID like "bob", "alice" // TODO v2: UUID als Text
+    // id: text('id').primaryKey(), // Character ID like "bob", "alice" // TODO v2: UUID als Text
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
     name: text('name').notNull(),
     color: text('color'), // Optional? Based on Pydantic model
   },
@@ -123,15 +181,15 @@ export const charactersTable = sqliteTable(
 export type DbCharacter = typeof charactersTable.$inferSelect;
 export type NewDbCharacter = typeof charactersTable.$inferInsert;
 
-// NEU: Messages Table
+// Messages Table
 export const messagesTable = sqliteTable(
   'messages',
   {
-    id: text('id').primaryKey(), // Neu: UUID als Text
-    timestamp: integer('timestamp', { mode: 'timestamp_ms' })
-      .default(sql`(cast(strftime('%s', 'now') as integer) * 1000)`)
-      .notNull(),
-    sceneId: integer('scene_id')
+    id: text('id')
+      .primaryKey()
+      .$defaultFn(() => uuid()),
+    timestamp: integer('timestamp', { mode: 'timestamp_ms' }).default(sqlNow).notNull(),
+    sceneId: text('scene_id')
       .notNull()
       .references(() => scenesTable.id, { onDelete: 'cascade' }),
     characterId: text('character_id')
@@ -143,7 +201,7 @@ export const messagesTable = sqliteTable(
     thoughts: text('thoughts').notNull(), // Agent thoughts
     mood: text('mood').notNull(),
     moodEmoji: text('mood_emoji').notNull(),
-    reactionOnPrevious: text('reaction_on_previous_message'),
+    reactionOnPreviousMessage: text('reaction_on_previous_message'),
     calculatedSpeakingTime: real('calculated_speaking_time').notNull(), // Use real for float
     conversationRating: integer('conversation_rating'),
     endConversation: integer('end_conversation', { mode: 'boolean' }).default(false).notNull(),
@@ -168,7 +226,7 @@ export const sceneConfigsRelations = relations(sceneConfigsTable, ({ many }) => 
 
 export const scenesRelations = relations(scenesTable, ({ one, many }) => ({
   config: one(sceneConfigsTable, {
-    fields: [scenesTable.sceneConfigId],
+    fields: [scenesTable.configId],
     references: [sceneConfigsTable.id],
   }),
   snapshots: many(sceneStateSnapshotsTable),

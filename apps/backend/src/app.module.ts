@@ -1,6 +1,13 @@
-import { MiddlewareConsumer, Module, NestModule, ValidationPipe } from '@nestjs/common';
+import {
+  MiddlewareConsumer,
+  Module,
+  NestModule,
+  RequestMethod,
+  ValidationPipe,
+} from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_PIPE } from '@nestjs/core'; // Import APP_FILTER token
+import { EventEmitterModule } from '@nestjs/event-emitter';
 import { LoggerModule } from 'nestjs-pino';
 import { IncomingMessage, ServerResponse } from 'node:http'; // Import types for customLogLevel
 import { AppConfigModule } from './app-config/app-config.module'; // Import renamed module
@@ -17,6 +24,7 @@ import { SpritesheetModule } from './spritesheet/spritesheet.module';
 import { MeModule } from './users/me.module';
 import { UserModule } from './users/user.module';
 import { UsersModule } from './users/users.module';
+import { ANSI_BOLD, ANSI_NORMAL } from './common/logger/logger.const';
 
 // Type definitions for pino serializers
 interface PinoRequest extends IncomingMessage {
@@ -164,7 +172,7 @@ interface PinoError {
                     // },
                     ignore: 'pid,hostname,context', // Ignore pid and hostname for cleaner logs
                     // Define a custom message format including context
-                    messageFormat: '[{context}] {msg}',
+                    messageFormat: `[${ANSI_BOLD}{context}${ANSI_NORMAL}] {msg}`,
                   },
                 }
               : undefined,
@@ -183,6 +191,7 @@ interface PinoError {
     UserModule,
     MeModule,
     SpritesheetModule,
+    EventEmitterModule.forRoot(),
   ],
   controllers: [AppController],
   providers: [
@@ -207,6 +216,6 @@ interface PinoError {
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(RequestLoggerMiddleware).forRoutes('*');
+    consumer.apply(RequestLoggerMiddleware).forRoutes({ path: '*all', method: RequestMethod.ALL }); // named wildcard
   }
 }

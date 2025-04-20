@@ -111,12 +111,7 @@ export class AuthApiService extends BaseApiService {
   async resetPassword(email: string): Promise<VoidApiResponse> {
     Logger.info('AuthApi', `Requesting password reset for: ${email}`);
 
-    return this.post<VoidApiResponse>(
-      '/auth/reset-password',
-      { email },
-      undefined,
-      VoidApiResponseSchema,
-    );
+    return this.post('/auth/reset-password', { email }, undefined, VoidApiResponseSchema);
   }
 
   /**
@@ -125,12 +120,7 @@ export class AuthApiService extends BaseApiService {
   async resendVerification(email: string): Promise<VoidApiResponse> {
     Logger.info('AuthApi', `Resending verification email for: ${email}`);
 
-    return this.post<VoidApiResponse>(
-      '/auth/resend-verification',
-      { email },
-      undefined,
-      VoidApiResponseSchema,
-    );
+    return this.post('/auth/resend-verification', { email }, undefined, VoidApiResponseSchema);
   }
 }
 

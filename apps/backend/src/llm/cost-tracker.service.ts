@@ -1,6 +1,6 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { LLMProviderId } from '@pixeltales/contracts';
+import { LlmProviderId } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
 
 interface TokenCost {
@@ -128,7 +128,7 @@ export class CostTrackerService implements OnModuleInit {
    * Returns the calculated cost and whether the budget limit has been exceeded
    */
   trackUsage(
-    provider: LLMProviderId,
+    provider: LlmProviderId,
     model: string,
     inputTokens: number,
     outputTokens: number,

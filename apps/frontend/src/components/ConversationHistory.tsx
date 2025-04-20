@@ -1,12 +1,12 @@
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
 import { Button } from '@/lib/shadcn-ui/button';
-import type { SceneStateSnapshotState } from '@pixeltales/contracts';
+import type { SceneStateSnapshot } from '@pixeltales/contracts';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SceneProposalForm } from './SceneProposalForm';
 
 interface ConversationHistoryProps {
-  scene: SceneStateSnapshotState;
+  scene: SceneStateSnapshot;
   isSideView: boolean;
   setIsModalOpen: (isOpen: boolean) => void;
 }
@@ -30,7 +30,7 @@ export default function ConversationHistory({
 }: ConversationHistoryProps) {
   const [isExpanded, setIsExpanded] = useState(isSideView);
   const [countdown, setCountdown] = useState<number>(0);
-  const conversationRef = useAutoScroll<HTMLDivElement>([scene.messages, scene.conversation_ended]);
+  const conversationRef = useAutoScroll<HTMLDivElement>([scene.messages, scene.conversationEnded]);
 
   // Update expansion state when view mode changes
   useEffect(() => {
@@ -39,12 +39,12 @@ export default function ConversationHistory({
 
   // Handle countdown timer
   useEffect(() => {
-    if (!scene.conversation_ended || !scene.ended_at) return;
+    if (!scene.conversationEnded || !scene.endedAt) return;
 
     const cooldownPeriod = 600; // 10 minutes in seconds
     const updateCountdown = () => {
       const now = Math.floor(Date.now() / 1000);
-      const elapsed = now - (scene.ended_at ?? 0);
+      const elapsed = scene.endedAt ? now - scene.endedAt.getTime() / 1000 : 0;
       const remaining = cooldownPeriod - elapsed;
       setCountdown(remaining > 0 ? remaining : 0);
     };
@@ -56,7 +56,7 @@ export default function ConversationHistory({
     const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
-  }, [scene.conversation_ended, scene.ended_at]);
+  }, [scene.conversationEnded, scene.endedAt]);
 
   // Calculate progress percentage
   const getProgressPercentage = (current: number, total: number): number => {
@@ -100,9 +100,9 @@ export default function ConversationHistory({
             if (!character) return null;
             return (
               <div
-                key={`${index}-${scene.conversation_ended}`}
+                key={`${index}-${scene.conversationEnded}`}
                 className={`p-2 sm:p-3 rounded-lg bg-gray-700 relative text-sm sm:text-base ${
-                  isLastMessage && character.action === 'speaking' && !scene.conversation_ended
+                  isLastMessage && character.action === 'speaking' && !scene.conversationEnded
                     ? 'animate-pulse'
                     : ''
                 }`}
@@ -126,23 +126,23 @@ export default function ConversationHistory({
                     {message.mood && (
                       <span className="text-xs sm:text-sm text-gray-400 items-center">
                         <span title={`Current mood of ${character.name}`}>
-                          {message.mood_emoji} {message.mood}
+                          {message.moodEmoji} {message.mood}
                         </span>
 
-                        {message.conversation_rating !== null && (
+                        {message.conversationRating !== null && (
                           <span
                             className="text-[10px] sm:text-xs"
                             title={`${character.name}'s rating of the conversation so far`}
                           >
                             {' '}
-                            ({message.conversation_rating}/10)
+                            ({message.conversationRating}/10)
                           </span>
                         )}
                       </span>
                     )}
                   </div>
                   <span className="text-[10px] sm:text-xs text-gray-400">
-                    {formatTime(Number(message.unix_timestamp))}
+                    {formatTime(Number(message.unixTimestamp))}
                   </span>
                 </div>
 
@@ -160,12 +160,12 @@ export default function ConversationHistory({
 
                 <div className="text-gray-300 text-sm sm:text-base">{message.content}</div>
 
-                {message.end_conversation && (
+                {message.endConversation && (
                   <div
                     className="mt-2 text-xs text-center italic text-gray-400"
                     style={
-                      ((character.end_conversation_requested_at ?? 0) +
-                        (character.end_conversation_requested_validity_duration ?? 0)) *
+                      ((character.endConversationRequestedAt ?? 0) +
+                        (character.endConversationRequestedValidityDuration ?? 0)) *
                         1000 >
                       Date.now()
                         ? { color: character.color }
@@ -176,19 +176,19 @@ export default function ConversationHistory({
                   </div>
                 )}
 
-                {nextMessage?.reaction_on_previous_message !== undefined &&
-                  nextMessage?.reaction_on_previous_message !== null && (
+                {nextMessage?.reactionOnPreviousMessage !== undefined &&
+                  nextMessage?.reactionOnPreviousMessage !== null && (
                     <span
                       title={`Reaction of ${nextMessageCharacter?.name ?? 'unknown'}`}
                       className={`absolute bottom-1 right-8 translate-y-1/2 translate-x-1/2 text-sm bg-gray-700 border border-gray-800 rounded-full px-2 py-0 shadow-lg cursor-default z-10 ${
                         isSecondLastMessage &&
                         nextMessageCharacter?.action === 'speaking' &&
-                        !scene.conversation_ended
+                        !scene.conversationEnded
                           ? 'animate-pulse'
                           : ''
                       }`}
                     >
-                      {nextMessage.reaction_on_previous_message}
+                      {nextMessage.reactionOnPreviousMessage}
                     </span>
                   )}
               </div>
@@ -209,7 +209,7 @@ export default function ConversationHistory({
                 </div>
               </div>
             ))}
-          {scene.conversation_ended && (
+          {scene.conversationEnded && (
             <div className="p-3 rounded-lg bg-red-700/80 animate-pulse font-bold text-center flex flex-col gap-1 relative overflow-hidden">
               <div>Conversation ended</div>
               {countdown > 0 && (

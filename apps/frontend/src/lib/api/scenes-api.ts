@@ -4,39 +4,15 @@ import {
   ApiResponseSchema,
   CommentPayload,
   CreateSceneConfigDTO,
-  SceneConfigConfig,
+  NewSceneConfig,
+  SceneConfig,
+  SceneConfigSchema,
   VoidApiResponse,
   VoidApiResponseSchema,
   VotePayload,
 } from '@pixeltales/contracts';
 import { z } from 'zod';
 import { BaseApiService } from './base-api';
-
-// Define schemas for response validation
-// Note: We're creating a schema that matches the exact structure of SceneConfigConfig
-// to ensure type compatibility
-const sceneConfigSchema = z.object({
-  id: z.number(),
-  name: z.string(),
-  description: z.string(),
-  start_character_id: z.string(),
-  characters_config: z.record(z.string(), z.any()),
-  status: z.enum(['proposed', 'active', 'rejected']),
-  system_prompt: z.string(),
-  votes: z.number(), // Required field, not optional
-  comments: z.array(
-    z.object({
-      user: z.string(),
-      comment: z.string(),
-      timestamp: z.string(),
-    }),
-  ),
-  // Optional fields with proper types
-  proposer_name: z.string().nullable().optional(),
-  proposed_at: z.string().nullable().optional(),
-});
-
-const sceneConfigArraySchema = z.array(sceneConfigSchema);
 
 /**
  * Service for scene-related API requests
@@ -49,51 +25,49 @@ export class ScenesApiService extends BaseApiService {
   /**
    * Get all proposed scenes
    */
-  async getProposedScenes(): Promise<SceneConfigConfig[]> {
+  async getProposedScenes(): Promise<SceneConfig[]> {
     Logger.info('ScenesApi', 'Getting proposed scenes');
     // We can safely cast here since the schema validation guarantees the structure
-    return this.get('/scenes/proposed', undefined, sceneConfigArraySchema);
+    return this.get('/scenes/proposed', undefined, z.array(SceneConfigSchema));
   }
 
   /**
    * Propose a new scene
-   * Handles type conversion from frontend SceneConfigConfig to CreateSceneConfigDTO
+   * Handles type conversion from frontend SceneConfig to CreateSceneConfigDTO
    */
-  async proposeScene(
-    sceneConfig: Omit<SceneConfigConfig, 'id' | 'status' | 'system_prompt' | 'votes' | 'comments'>,
-  ): Promise<SceneConfigConfig> {
+  async proposeScene(sceneConfig: NewSceneConfig): Promise<SceneConfig> {
     Logger.info('ScenesApi', 'Proposing new scene');
 
     // Convert to CreateSceneConfigDTO by extracting only the fields we need
     const createDto: CreateSceneConfigDTO = {
       name: sceneConfig.name,
       description: sceneConfig.description,
-      start_character_id: sceneConfig.start_character_id,
-      characters_config: sceneConfig.characters_config,
+      startCharacterId: sceneConfig.startCharacterId,
+      charactersConfig: sceneConfig.charactersConfig,
       // Only include proposer_name if it's a string (not null)
-      ...(typeof sceneConfig.proposer_name === 'string'
-        ? { proposer_name: sceneConfig.proposer_name }
+      ...(typeof sceneConfig.proposerName === 'string'
+        ? { proposerName: sceneConfig.proposerName }
         : {}),
     };
 
-    return this.post<SceneConfigConfig>('/scenes/propose', createDto, undefined, sceneConfigSchema);
+    return this.post('/scenes/propose', createDto, undefined, SceneConfigSchema);
   }
 
   /**
    * Vote on a scene proposal
    */
-  async voteOnScene(sceneConfigId: number, vote: 1 | -1): Promise<ApiResponse<SceneConfigConfig>> {
+  async voteOnScene(
+    sceneConfigId: SceneConfig['id'],
+    vote: 1 | -1,
+  ): Promise<ApiResponse<SceneConfig>> {
     Logger.info('ScenesApi', `Voting on scene ${sceneConfigId} with ${vote}`);
     const payload: VotePayload = { vote };
 
-    // Type assertion to handle the mismatch
-    const responseSchema = ApiResponseSchema(sceneConfigSchema);
-
-    return this.post<ApiResponse<SceneConfigConfig>, VotePayload>(
+    return this.post(
       `/scenes/${sceneConfigId}/vote`,
       payload,
       undefined,
-      responseSchema,
+      ApiResponseSchema(SceneConfigSchema),
     );
   }
 
@@ -101,19 +75,14 @@ export class ScenesApiService extends BaseApiService {
    * Add a comment to a scene proposal
    */
   async commentOnScene(
-    sceneConfigId: number,
+    sceneConfigId: SceneConfig['id'],
     user: string,
     comment: string,
   ): Promise<VoidApiResponse> {
     Logger.info('ScenesApi', `Adding comment to scene ${sceneConfigId}`);
     const payload: CommentPayload = { user, comment };
 
-    return this.post<VoidApiResponse, CommentPayload>(
-      `/scenes/${sceneConfigId}/comment`,
-      payload,
-      undefined,
-      VoidApiResponseSchema,
-    );
+    return this.post(`/scenes/${sceneConfigId}/comment`, payload, undefined, VoidApiResponseSchema);
   }
 }
 

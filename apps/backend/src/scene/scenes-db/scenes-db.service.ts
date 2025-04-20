@@ -1,5 +1,8 @@
 import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
+  CharacterConfigSchema,
+  CharacterStateSchema,
+  CommentSchema,
   DbScene,
   DbSceneConfig,
   DbSceneConfigRaw,
@@ -7,20 +10,19 @@ import {
   DbSceneStateSnapshotRaw,
   dbSchema,
   Message,
+  MessageSchema,
   NewDbScene,
   NewDbSceneConfig,
   NewDbSceneConfigRaw,
   NewDbSceneStateSnapshot,
   NewDbSceneStateSnapshotRaw,
   NewMessage,
-  SceneConfig,
-  SceneConfigConfigSchema,
+  SceneConfigCustomSchema,
   sceneConfigsTable,
   scenesTable,
   SceneStateSnapshot,
+  SceneStateSnapshotCustomSchema,
   sceneStateSnapshotsTable,
-  SceneStateSnapshotState,
-  SceneStateSnapshotStateSchema,
   UpdateDbSceneConfig,
   UpdateDbSceneConfigRaw,
   UpdateDbSceneStateSnapshot,
@@ -28,6 +30,7 @@ import {
 } from '@pixeltales/database';
 import { desc, eq, sql } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
+import { z } from 'zod';
 import { DatabaseSchema, DRIZZLE_INSTANCE } from '../../db/drizzle.provider';
 
 /**
@@ -97,11 +100,16 @@ export class ScenesDbService {
     return configs.map((c) => this.serializeConfig(c));
   }
 
-  private serializeConfig(configs: NewDbSceneConfig): NewDbSceneConfigRaw;
-  private serializeConfig(configs: UpdateDbSceneConfig): UpdateDbSceneConfigRaw;
-  private serializeConfig(configs: DbSceneConfig): DbSceneConfigRaw;
+  private serializeConfig(config: NewDbSceneConfig): NewDbSceneConfigRaw;
+  private serializeConfig(config: UpdateDbSceneConfig): UpdateDbSceneConfigRaw;
+  private serializeConfig(config: DbSceneConfig): DbSceneConfigRaw;
   private serializeConfig<T extends DbSceneConfig | NewDbSceneConfig>(config: T): T {
-    return { ...config, config: JSON.stringify(config.config) };
+    return {
+      ...config,
+      charactersConfig: JSON.stringify(config.charactersConfig),
+      comments: JSON.stringify(config.comments ?? []),
+      custom: JSON.stringify(config.custom ?? {}),
+    };
   }
 
   private parseConfigs(configs: DbSceneConfigRaw[]): DbSceneConfig[] {
@@ -109,23 +117,43 @@ export class ScenesDbService {
   }
 
   private parseConfig(config: DbSceneConfigRaw): DbSceneConfig {
-    const configParseResult = SceneConfigConfigSchema.safeParse(
-      JSON.parse(config.config as unknown as string),
+    const customParseResult = SceneConfigCustomSchema.safeParse(
+      JSON.parse(config.custom as unknown as string),
     );
-
-    if (!configParseResult.success) {
+    if (!customParseResult.success) {
       this.logger.error(
-        { configParseResult },
+        { customParseResult },
         `Error parsing scene config ${config.id} - invalid config`,
       );
       throw new Error('Failed to parse scene config');
     }
 
-    return { ...config, config: configParseResult.data };
-  }
+    const charactersConfigParseResult = z
+      .record(z.string(), CharacterConfigSchema)
+      .safeParse(JSON.parse(config.charactersConfig));
+    if (!charactersConfigParseResult.success) {
+      this.logger.error(
+        { charactersConfigParseResult },
+        `Error parsing scene config ${config.id} - invalid characters config`,
+      );
+      throw new Error('Failed to parse scene config');
+    }
 
-  public convertToSceneConfig(config: DbSceneConfig): SceneConfig {
-    return config;
+    const commentsParseResult = z.array(CommentSchema).safeParse(JSON.parse(config.comments));
+    if (!commentsParseResult.success) {
+      this.logger.error(
+        { commentsParseResult },
+        `Error parsing scene config ${config.id} - invalid comments`,
+      );
+      throw new Error('Failed to parse scene config');
+    }
+
+    return {
+      ...config,
+      charactersConfig: charactersConfigParseResult.data,
+      comments: commentsParseResult.data,
+      custom: customParseResult.data,
+    };
   }
 
   async createConfig(configData: NewDbSceneConfig): Promise<DbSceneConfig> {
@@ -246,14 +274,9 @@ export class ScenesDbService {
       throw new NotFoundException('Scene config not found for commenting');
     }
 
-    const updatedConfigConfig = {
-      ...sceneConfig.config,
-      status,
-    };
-
     const [updatedConfig] = await this.db
       .update(sceneConfigsTable)
-      .set(this.serializeConfig({ status, config: updatedConfigConfig }))
+      .set({ status })
       .where(eq(sceneConfigsTable.id, id))
       .returning();
 
@@ -267,7 +290,7 @@ export class ScenesDbService {
 
   async addConfigComments(
     id: DbSceneConfig['id'],
-    newComment: DbSceneConfig['config']['comments'][number],
+    newComment: DbSceneConfig['comments'][number],
   ): Promise<DbSceneConfig> {
     const sceneConfig = await this.findConfigById(id);
     if (!sceneConfig) {
@@ -277,14 +300,11 @@ export class ScenesDbService {
       throw new BadRequestException('Comments are only allowed on proposed scenes');
     }
 
-    const updatedConfigConfig = {
-      ...sceneConfig.config,
-      comments: [...sceneConfig.config.comments, newComment],
-    };
+    const updatedComments = [...sceneConfig.comments, newComment];
 
     const [updatedConfig] = await this.db
       .update(sceneConfigsTable)
-      .set(this.serializeConfig({ config: updatedConfigConfig }))
+      .set(this.serializeConfig({ comments: updatedComments }))
       .where(eq(sceneConfigsTable.id, id))
       .returning();
 
@@ -323,7 +343,12 @@ export class ScenesDbService {
   private serializeStateSnapshot<T extends DbSceneStateSnapshot | NewDbSceneStateSnapshot>(
     stateSnapshot: T,
   ): T {
-    return { ...stateSnapshot, state: JSON.stringify(stateSnapshot.state) };
+    return {
+      ...stateSnapshot,
+      characters: JSON.stringify(stateSnapshot.characters),
+      messages: JSON.stringify(stateSnapshot.messages),
+      custom: JSON.stringify(stateSnapshot.custom),
+    };
   }
 
   private parseStateSnapshots(stateSnapshots: DbSceneStateSnapshotRaw[]): DbSceneStateSnapshot[] {
@@ -331,19 +356,45 @@ export class ScenesDbService {
   }
 
   private parseStateSnapshot(stateSnapshot: DbSceneStateSnapshotRaw): DbSceneStateSnapshot {
-    const stateSnapshotParseResult = SceneStateSnapshotStateSchema.safeParse(
-      JSON.parse(stateSnapshot.state as unknown as string),
-    );
-
-    if (!stateSnapshotParseResult.success) {
+    const charactersParseResult = z
+      .record(z.string(), CharacterStateSchema)
+      .safeParse(JSON.parse(stateSnapshot.characters));
+    if (!charactersParseResult.success) {
       this.logger.error(
-        { stateSnapshotParseResult },
+        { charactersParseResult },
+        `Error parsing scene state snapshot ${stateSnapshot.id} - invalid characters`,
+      );
+      throw new Error('Failed to parse scene state snapshot');
+    }
+
+    const messagesParseResult = z
+      .array(MessageSchema)
+      .safeParse(JSON.parse(stateSnapshot.messages));
+    if (!messagesParseResult.success) {
+      this.logger.error(
+        { messagesParseResult },
+        `Error parsing scene state snapshot ${stateSnapshot.id} - invalid messages`,
+      );
+      throw new Error('Failed to parse scene state snapshot');
+    }
+
+    const customParseResult = SceneStateSnapshotCustomSchema.safeParse(
+      JSON.parse(stateSnapshot.custom),
+    );
+    if (!customParseResult.success) {
+      this.logger.error(
+        { customParseResult },
         `Error parsing scene state snapshot ${stateSnapshot.id} - invalid state`,
       );
       throw new Error('Failed to parse scene state snapshot');
     }
 
-    return { ...stateSnapshot, state: stateSnapshotParseResult.data };
+    return {
+      ...stateSnapshot,
+      characters: charactersParseResult.data,
+      messages: messagesParseResult.data,
+      custom: customParseResult.data,
+    };
   }
 
   public convertToSceneStateSnapshot(config: DbSceneStateSnapshot): SceneStateSnapshot {
@@ -406,16 +457,13 @@ export class ScenesDbService {
     const newMessage: Message = {
       ...newMessageData,
       timestamp: now.toISOString(),
-      unix_timestamp: now.getTime(),
+      unixTimestamp: now.getTime(),
     };
-    const updatedState: SceneStateSnapshotState = {
-      ...stateSnapshot.state,
-      messages: [...stateSnapshot.state.messages, newMessage],
-    };
+    const updatedMessages: Message[] = [...stateSnapshot.messages, newMessage];
 
     const [updatedStateSnapshot] = await this.db
       .update(sceneStateSnapshotsTable)
-      .set(this.serializeStateSnapshot({ state: updatedState }))
+      .set(this.serializeStateSnapshot({ messages: updatedMessages }))
       .where(eq(sceneStateSnapshotsTable.id, id))
       .returning();
 

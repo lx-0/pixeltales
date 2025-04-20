@@ -1,32 +1,39 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import {
   CharacterAction,
   Message,
   MessageV2,
   NewMessageV2,
   SceneConfig,
-  SceneStateSnapshotState,
+  SceneStateSnapshot,
 } from '@pixeltales/contracts';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
+import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
 import { ConversationSystemMessageVars, LlmService } from '../../llm/llm.service';
 import { SceneStateService } from '../../scene/scene-state/scene-state.service';
 import { MessagesDbService } from '../conversation-db/messages-db.service';
 
 // Constants
 const END_CONVERSATION_REQUEST_VALIDITY_S = 180; // 3 minutes
-const SPEAKING_TIME_DELAY_FACTOR = 12 * 5; // 5 min delay (base is 5 seconds)
+const SPEAKING_TIME_DELAY_FACTOR = 1; // normal delay (base is 5 seconds)
+const SPEAKING_TIME_FACTOR = 2; // 5 min delay (base is 50ms per character)
 
 @Injectable()
 export class MessageGenerationService {
+  private debugLogging: boolean;
+
   constructor(
     private readonly messagesDb: MessagesDbService,
     private readonly logger: PinoLogger,
     private readonly llmService: LlmService,
     private readonly sceneStateService: SceneStateService,
+    private readonly configService: ConfigService,
   ) {
-    this.logger.setContext(MessageGenerationService.name);
+    this.logger.setContext(LOGGER_CONTEXT_SHORTEN ? '💬' : MessageGenerationService.name);
+    this.debugLogging = this.configService.get('DEBUG_CHARACTER_ACTIONS') === 'true';
   }
 
   /**
@@ -41,7 +48,7 @@ export class MessageGenerationService {
    * - Setting character actions (thinking, speaking)
    */
   async generateMessage(
-    sceneState: SceneStateSnapshotState,
+    sceneState: SceneStateSnapshot,
     sceneConfig: SceneConfig,
     characterId: string,
     recipientId: string | undefined,
@@ -55,7 +62,7 @@ export class MessageGenerationService {
       );
       return null;
     }
-    const characterConfig = sceneConfig.config.characters_config[characterId];
+    const characterConfig = sceneConfig.charactersConfig[characterId];
     if (!characterConfig) {
       this.logger.error(
         `Cannot generate message for character ${characterId} - character config not found`,
@@ -79,7 +86,7 @@ export class MessageGenerationService {
           characterId,
           recipientId,
         );
-        const llmConfig = characterConfig.llm_config;
+        const llmConfig = characterConfig.llmConfig;
 
         // Call the LLM to generate a response
         this.logger.info(
@@ -89,7 +96,7 @@ export class MessageGenerationService {
             characterName: character.name,
             historyLength: conversationHistory.length,
             provider: llmConfig.provider,
-            model: llmConfig.model_name,
+            model: llmConfig.modelName,
           },
           `Generating AI response for character ${character.name}`,
         );
@@ -106,7 +113,7 @@ export class MessageGenerationService {
 
         // Clean and validate the content
         const content = response.content || '';
-        if (!content && !response.end_conversation) {
+        if (!content && !response.endConversation) {
           // We have an empty content but no end conversation request
           this.logger.warn(
             { traceId, characterId },
@@ -124,18 +131,18 @@ export class MessageGenerationService {
 
         // Create message record for database (DB) - using NewDBMessage type for insert
         const newMessageData: NewMessageV2 = {
-          sceneId: sceneState.scene_id,
+          sceneId: sceneState.sceneId,
           characterId: characterId,
           content: content,
           thoughts: response.thoughts,
           mood: response.mood,
-          moodEmoji: response.mood_emoji,
-          modelUsed: llmConfig.model_name,
+          moodEmoji: response.moodEmoji,
+          modelUsed: llmConfig.modelName,
           recipient: response.recipient || recipientId || '',
-          reactionOnPrevious: response.reaction_on_previous_message || null,
+          reactionOnPreviousMessage: response.reactionOnPreviousMessage || null,
           calculatedSpeakingTime: speakingTimeMs / 1000,
-          endConversation: response.end_conversation,
-          conversationRating: response.conversation_rating,
+          endConversation: response.endConversation,
+          conversationRating: response.conversationRating,
           tokenCount: totalTokensUsed,
           cost: null, // TODO: Add cost calculation later
         };
@@ -145,26 +152,26 @@ export class MessageGenerationService {
           character: characterId,
           content: content,
           timestamp: new Date(nowTimestamp).toISOString(),
-          unix_timestamp: nowTimestamp,
+          unixTimestamp: nowTimestamp,
           thoughts: response.thoughts,
           mood: response.mood,
-          mood_emoji: response.mood_emoji,
+          moodEmoji: response.moodEmoji,
           recipient: response.recipient || recipientId || '',
-          reaction_on_previous_message: response.reaction_on_previous_message || null,
-          calculated_speaking_time: speakingTimeMs / 1000,
-          conversation_rating: response.conversation_rating,
-          end_conversation: response.end_conversation,
+          reactionOnPreviousMessage: response.reactionOnPreviousMessage || null,
+          calculatedSpeakingTime: speakingTimeMs / 1000,
+          conversationRating: response.conversationRating,
+          endConversation: response.endConversation,
         };
 
         // Always add the message to the scene state first
         await this.sceneStateService.addMessageToState(stateMessage);
 
         // Update character state
-        this.sceneStateService.updateCharacterState(characterId, {
-          current_mood: response.mood,
-          end_conversation_requested: response.end_conversation,
-          end_conversation_requested_at: response.end_conversation ? nowTimestamp : undefined,
-          end_conversation_requested_validity_duration: response.end_conversation
+        await this.sceneStateService.updateCharacterState(characterId, {
+          currentMood: response.mood,
+          endConversationRequested: response.endConversation,
+          endConversationRequestedAt: response.endConversation ? nowTimestamp : undefined,
+          endConversationRequestedValidityDuration: response.endConversation
             ? END_CONVERSATION_REQUEST_VALIDITY_S
             : undefined,
         });
@@ -244,24 +251,21 @@ export class MessageGenerationService {
     return null;
   }
 
-  private prepareSceneContext(
-    sceneConfig: SceneConfig,
-    sceneState: SceneStateSnapshotState,
-  ): string {
+  private prepareSceneContext(sceneConfig: SceneConfig, sceneState: SceneStateSnapshot): string {
     // Build rich description of all characters in the scene
     const charactersDescription = this.prepareCharactersContext(sceneState);
 
-    return [sceneConfig.config.description, '', 'Characters:', charactersDescription].join('\n');
+    return [sceneConfig.description, '', 'Characters:', charactersDescription].join('\n');
   }
 
-  private prepareCharactersContext(sceneState: SceneStateSnapshotState): string {
+  private prepareCharactersContext(sceneState: SceneStateSnapshot): string {
     return Object.values(sceneState.characters)
       .map((char) => {
         if (!char) return '';
         // For each character, include more details if available
         const details = [];
         if (char.visual) details.push(char.visual);
-        if (char.current_mood) details.push(`Current mood: ${char.current_mood}`);
+        if (char.currentMood) details.push(`Current mood: ${char.currentMood}`);
         return `- ${char.name || 'Unknown'}: ${details.join(', ')}`;
       })
       .filter((desc) => desc !== '')
@@ -274,7 +278,7 @@ export class MessageGenerationService {
    * and other relevant data to guide the response generation
    */
   prepareSystemMessage(
-    sceneState: SceneStateSnapshotState,
+    sceneState: SceneStateSnapshot,
     sceneConfig: SceneConfig,
     characterId: string,
     recipientId?: string,
@@ -304,16 +308,16 @@ export class MessageGenerationService {
 
     // Return comprehensive template variables
     return {
+      input: input,
+      current_time: new Date().toLocaleTimeString(),
+      conversation_length: sceneState.messages.length.toString(),
+      scene_description: sceneDescription,
+      message_recipient: recipientInfo || '',
       character_name: character.name,
       character_visual: character.visual,
       character_role: character.role,
-      message_recipient: recipientInfo || '',
-      scene_description: sceneDescription,
-      input: input,
-      conversation_length: sceneState.messages.length.toString(),
-      current_time: new Date().toLocaleTimeString(),
       // Add character-specific context if available
-      character_mood: character.current_mood,
+      character_mood: character.currentMood,
     };
   }
 
@@ -322,7 +326,7 @@ export class MessageGenerationService {
    */
   calculateSpeakingTime(messageLength: number): number {
     const baseSpeakingTime = 5000 * SPEAKING_TIME_DELAY_FACTOR; // 5 seconds base time
-    const charSpeakingTime = 50; // 50ms per character
+    const charSpeakingTime = 50 * SPEAKING_TIME_FACTOR; // 50ms per character
 
     return baseSpeakingTime + messageLength * charSpeakingTime;
   }
@@ -334,13 +338,53 @@ export class MessageGenerationService {
     characterId: string,
     action: CharacterAction,
     estimatedDurationMs?: number,
-  ): Promise<void> {
-    this.logger.debug(`Setting action for ${characterId}: ${action}`);
-    this.sceneStateService.updateCharacterState(characterId, {
+  ): Promise<SceneStateSnapshot> {
+    const character = this.sceneStateService.getCharacterState(characterId);
+    const previousAction = character?.action;
+    const previousStarted = character?.actionStartedAt;
+
+    if (this.debugLogging) {
+      this.logger.debug(
+        {
+          characterId,
+          action,
+          estimatedDurationMs,
+          previousAction,
+          previousStarted,
+          now: Date.now(),
+          allCharacters: this.getAllCharactersStatus(),
+        },
+        `🔄 CHANGING character ${characterId} action: ${previousAction} → ${action}`,
+      );
+    } else {
+      this.logger.debug(`Setting action for ${characterId}: ${action}`);
+    }
+
+    await this.sceneStateService.updateCharacterState(characterId, {
       action: action,
-      action_started_at: Date.now(),
-      action_estimated_duration: estimatedDurationMs ? estimatedDurationMs / 1000 : undefined,
+      actionStartedAt: Date.now(),
+      actionEstimatedDuration: estimatedDurationMs ? estimatedDurationMs / 1000 : undefined,
     });
+
+    if (this.debugLogging) {
+      const updatedCharacter = this.sceneStateService.getCharacterState(characterId);
+      this.logger.debug(
+        {
+          characterId,
+          updatedAction: updatedCharacter?.action,
+          updatedStarted: updatedCharacter?.actionStartedAt,
+          estimatedDuration: updatedCharacter?.actionEstimatedDuration,
+        },
+        `✅ UPDATED character ${characterId} action to ${action}`,
+      );
+    }
+
+    const currentState = this.sceneStateService.getCurrentState();
+    if (!currentState) {
+      this.logger.error('No scene state found');
+      throw new Error('No scene state found');
+    }
+    return currentState;
   }
 
   /**
@@ -353,13 +397,13 @@ export class MessageGenerationService {
       recipient: messageV2.recipient,
       thoughts: messageV2.thoughts,
       mood: messageV2.mood,
-      mood_emoji: messageV2.moodEmoji,
-      reaction_on_previous_message: messageV2.reactionOnPrevious,
+      moodEmoji: messageV2.moodEmoji,
+      reactionOnPreviousMessage: messageV2.reactionOnPreviousMessage,
       timestamp: messageV2.timestamp.toISOString(),
-      unix_timestamp: messageV2.timestamp.getTime(),
-      calculated_speaking_time: messageV2.calculatedSpeakingTime,
-      conversation_rating: messageV2.conversationRating,
-      end_conversation: messageV2.endConversation ?? false,
+      unixTimestamp: messageV2.timestamp.getTime(),
+      calculatedSpeakingTime: messageV2.calculatedSpeakingTime,
+      conversationRating: messageV2.conversationRating,
+      endConversation: messageV2.endConversation ?? false,
     };
   }
 
@@ -367,37 +411,89 @@ export class MessageGenerationService {
    * Wait until all characters have completed a specific action type
    */
   async waitUntilAllCharactersCompletedAction(
-    sceneState: SceneStateSnapshotState,
+    sceneState: SceneStateSnapshot,
     actionType: CharacterAction = 'speaking',
-  ): Promise<void> {
-    if (!sceneState?.characters) return;
+  ): Promise<SceneStateSnapshot> {
+    if (!sceneState?.characters) {
+      const currentState = this.sceneStateService.getCurrentState();
+      if (!currentState) {
+        this.logger.error('No scene state found');
+        throw new Error('No scene state found');
+      }
+      return currentState;
+    }
+
+    if (this.debugLogging) {
+      this.logger.debug(
+        { actionType, characters: this.getAllCharactersStatus(sceneState) },
+        `⏳ Starting wait for all characters to complete ${actionType} action`,
+      );
+    }
+
     let stillActing = true;
+    let iterations = 0;
+
     while (stillActing) {
+      iterations++;
       stillActing = false;
       const now = Date.now();
       const characters = sceneState.characters;
+
+      if (this.debugLogging && iterations % 10 === 0) {
+        this.logger.debug(
+          { actionType, iterations, characters: this.getAllCharactersStatus(sceneState) },
+          `⌛ Still waiting for characters to complete ${actionType} action (iteration ${iterations})`,
+        );
+      }
+
       for (const charId in characters) {
         const char = characters[charId];
         if (!char) continue;
-        const startedAt =
-          typeof char.action_started_at === 'number' ? char.action_started_at : null;
+        const startedAt = typeof char.actionStartedAt === 'number' ? char.actionStartedAt : null;
         const duration =
-          typeof char.action_estimated_duration === 'number'
-            ? char.action_estimated_duration
-            : null;
+          typeof char.actionEstimatedDuration === 'number' ? char.actionEstimatedDuration : null;
 
         if (char.action === actionType && duration !== null && startedAt !== null) {
           const endTime = startedAt + duration * 1000;
           if (now < endTime) {
             stillActing = true;
             const waitTime = endTime - now;
-            this.logger.trace(
-              `Character ${charId} still ${actionType}, waiting ${waitTime.toFixed(0)}ms`,
-            );
+            if (this.debugLogging) {
+              this.logger.debug(
+                {
+                  characterId: charId,
+                  actionType,
+                  waitTime: waitTime.toFixed(0),
+                  endTime,
+                  now,
+                  startedAt,
+                  duration,
+                },
+                `⏱️ Character ${charId} still ${actionType}, waiting ${waitTime.toFixed(0)}ms until ${new Date(endTime).toISOString()}`,
+              );
+            } else {
+              this.logger.trace(
+                `Character ${charId} still ${actionType}, waiting ${waitTime.toFixed(0)}ms`,
+              );
+            }
             await new Promise((resolve) => setTimeout(resolve, Math.max(50, waitTime)));
             break; // Re-check all characters after waiting
           } else {
-            this.logger.trace(`Character ${charId} finished ${actionType}. Setting idle.`);
+            if (this.debugLogging) {
+              this.logger.debug(
+                {
+                  characterId: charId,
+                  actionType,
+                  elapsedTime: now - startedAt,
+                  expectedDuration: duration * 1000,
+                  now,
+                  startedAt,
+                },
+                `⌛ Character ${charId} finished ${actionType}. Setting idle.`,
+              );
+            } else {
+              this.logger.trace(`Character ${charId} finished ${actionType}. Setting idle.`);
+            }
             await this.setCharacterAction(charId, 'idle', undefined);
           }
         }
@@ -405,6 +501,66 @@ export class MessageGenerationService {
       // Only pause if we didn't break the inner loop to wait
       if (stillActing) await new Promise((resolve) => setTimeout(resolve, 50));
     }
-    this.logger.debug(`All characters finished ${actionType}.`);
+
+    if (this.debugLogging) {
+      this.logger.debug(
+        { actionType, iterations, characters: this.getAllCharactersStatus(sceneState) },
+        `✅ All characters finished ${actionType} after ${iterations} iterations.`,
+      );
+    } else {
+      this.logger.debug(`All characters finished ${actionType}.`);
+    }
+
+    const currentState = this.sceneStateService.getCurrentState();
+    if (!currentState) {
+      this.logger.error('No scene state found');
+      throw new Error('No scene state found');
+    }
+    return currentState;
+  }
+
+  /**
+   * Helper method to get a summary of all characters' statuses
+   */
+  private getAllCharactersStatus(state?: SceneStateSnapshot): Record<
+    string,
+    {
+      name: string;
+      action: CharacterAction;
+      started: number;
+      duration?: number | null;
+      remainingMs: number;
+      isActive: boolean;
+    }
+  > {
+    const sceneState = state || this.sceneStateService.getCurrentState();
+    if (!sceneState?.characters) return {};
+
+    const now = Date.now();
+    const result: Record<
+      string,
+      {
+        name: string;
+        action: CharacterAction;
+        started: number;
+        duration?: number | null;
+        remainingMs: number;
+        isActive: boolean;
+      }
+    > = {};
+
+    for (const [id, char] of Object.entries(sceneState.characters)) {
+      const endTime = char.actionStartedAt + (char.actionEstimatedDuration || 0) * 1000;
+      result[id] = {
+        name: char.name,
+        action: char.action,
+        started: char.actionStartedAt,
+        duration: char.actionEstimatedDuration,
+        remainingMs: endTime > now ? endTime - now : 0,
+        isActive: char.action !== 'idle' && endTime > now,
+      };
+    }
+
+    return result;
   }
 }

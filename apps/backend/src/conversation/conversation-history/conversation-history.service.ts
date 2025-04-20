@@ -1,11 +1,6 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { Injectable } from '@nestjs/common';
-import {
-  LLMProviderId,
-  Message,
-  SceneConfig,
-  SceneStateSnapshotState,
-} from '@pixeltales/contracts';
+import { LlmProviderId, Message, SceneConfig, SceneStateSnapshot } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
 import { TokenCounter } from '../../llm/token-counter';
 
@@ -29,10 +24,10 @@ export class ConversationHistoryService {
    * @param provider Optional provider ID for token calculations
    */
   prepareConversationHistory(
-    sceneState: SceneStateSnapshotState,
+    sceneState: SceneStateSnapshot,
     characterId: string,
     sceneConfig?: SceneConfig,
-    provider?: LLMProviderId,
+    provider?: LlmProviderId,
   ): Array<HumanMessage | AIMessage> {
     const history: Array<HumanMessage | AIMessage> = [];
 
@@ -56,16 +51,16 @@ export class ConversationHistoryService {
     }
 
     // Get character-specific LLM config if available
-    const characterConfig = sceneConfig.config.characters_config[characterId];
-    if (!characterConfig || !characterConfig.llm_config) {
+    const characterConfig = sceneConfig.charactersConfig[characterId];
+    if (!characterConfig || !characterConfig.llmConfig) {
       this.logger.warn(
         `No LLM config found for character ${characterId}, using default context window`,
       );
       return this.prepareFixedWindowConversationHistory(messages, characterId, 20);
     }
 
-    const modelName = characterConfig.llm_config.model_name;
-    const maxOutputTokens = characterConfig.llm_config.max_tokens;
+    const modelName = characterConfig.llmConfig.modelName;
+    const maxOutputTokens = characterConfig.llmConfig.maxTokens;
 
     // Get model's context window size
     const contextWindowSize = this.tokenCounter.getContextWindow(modelName, provider);
@@ -145,7 +140,7 @@ export class ConversationHistoryService {
     allFormattedMessages: Array<HumanMessage | AIMessage>,
     originalMessages: Message[],
     characterId: string,
-    provider: LLMProviderId,
+    provider: LlmProviderId,
     availableTokens: number,
   ): Array<HumanMessage | AIMessage> {
     const recentMessageCount = Math.min(10, Math.floor(originalMessages.length / 2));

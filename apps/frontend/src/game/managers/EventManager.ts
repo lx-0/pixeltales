@@ -1,6 +1,6 @@
 import { socketService } from '@/services/socket';
 import { Logger } from '@/utils/logger';
-import type { SceneStateSnapshotState } from '@pixeltales/contracts';
+import { SceneStateSnapshotSchema, type SceneStateSnapshot } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { StateManager } from './StateManager';
 
@@ -18,7 +18,16 @@ export class EventManager {
     this.scene.game.events.on('historyNavigate', this.handleHistoryNavigate, this);
 
     // Set up socket event listeners
+    // Purpose: Listen for state updates from the server to update the Phaser game world.
     socketService.addListener('scene_state', this.handleSceneStateUpdate.bind(this));
+
+    // Debug: check socket health and replay last scene_state if available
+    const health = socketService.checkSocketHealth();
+    Logger.info(this.constructor.name, 'Socket health at setup', health);
+    if (health.lastData) {
+      Logger.info(this.constructor.name, 'Replaying cached scene_state to initialize scene');
+      this.handleSceneStateUpdate(health.lastData);
+    }
   }
 
   private handleHistoryModeChange(isInHistoryMode: boolean): void {
@@ -34,8 +43,17 @@ export class EventManager {
     this.stateManager.navigateHistory(index);
   }
 
-  private handleSceneStateUpdate(state: SceneStateSnapshotState): void {
-    Logger.info(this.constructor.name, 'Handling scene state update');
+  private handleSceneStateUpdate(state: SceneStateSnapshot): void {
+    const result = SceneStateSnapshotSchema.safeParse(state);
+    if (!result.success) {
+      Logger.error(this.constructor.name, '🔴 SOCKET ERROR:', result.error);
+      return;
+    }
+
+    Logger.info(this.constructor.name, '[FLOW 2/5] Handling scene state update');
+    Logger.info(this.constructor.name, '➡️ Calling StateManager.updateState', {
+      stateValidity: state ? 'Valid' : 'Invalid',
+    });
     this.stateManager.updateState(state);
   }
 

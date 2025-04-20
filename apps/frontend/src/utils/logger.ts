@@ -17,23 +17,19 @@ export class Logger {
   /** Styling configurations for different log levels */
   private static styles = {
     debug: {
-      browser:
-        'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
       server: chalk.gray,
     },
     info: {
-      browser:
-        'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
       server: chalk.white,
     },
     warn: {
-      browser:
-        'background: #f0ad4e; color: black; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #f0ad4e; color: black; padding: 1px 4px; border-radius: 3px',
       server: chalk.yellow,
     },
     error: {
-      browser:
-        'background: #d9534f; color: white; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #d9534f; color: white; padding: 1px 4px; border-radius: 3px',
       server: chalk.red,
     },
   } as const;
@@ -61,9 +57,7 @@ export class Logger {
    */
   private static formatData(data?: LogData): string | undefined {
     if (!data) return undefined;
-    return Logger.isBrowser
-      ? undefined
-      : chalk.gray(JSON.stringify(data, null, 2));
+    return Logger.isBrowser ? undefined : chalk.gray(JSON.stringify(data, null, 2));
   }
 
   /**
@@ -108,11 +102,7 @@ export class Logger {
             error,
           );
         } else {
-          console.info(
-            '%cError',
-            'font-weight: normal; font-size: 10px',
-            error,
-          );
+          console.info('%cError', 'font-weight: normal; font-size: 10px', error);
         }
       }
 
@@ -120,15 +110,9 @@ export class Logger {
         console.info('%cData', 'font-weight: normal; font-size: 10px', data);
       }
 
-      console.groupCollapsed(
-        '%cStack',
-        'color: #888; font-weight: normal; font-size: 10px',
-      );
+      console.groupCollapsed('%cStack', 'color: #888; font-weight: normal; font-size: 10px');
       Logger.getCleanStack().forEach((line) =>
-        console.info(
-          '%c' + line,
-          'color: #888; font-weight: normal; font-size: 10px',
-        ),
+        console.info('%c' + line, 'color: #888; font-weight: normal; font-size: 10px'),
       );
       console.groupEnd();
       console.groupEnd();
@@ -146,10 +130,7 @@ export class Logger {
    */
   static debug(context: string, message: string, data?: LogData) {
     if (!Logger.debugBlacklist.has(context)) {
-      const [formattedContext, ...styles] = Logger.formatContext(
-        context,
-        'debug',
-      );
+      const [formattedContext, ...styles] = Logger.formatContext(context, 'debug');
       Logger.logWithData('log', [formattedContext, ...styles], message, data);
     }
   }
@@ -173,23 +154,9 @@ export class Logger {
   /**
    * Log errors with red styling
    */
-  static error(
-    context: string,
-    message: string,
-    error?: unknown,
-    data?: LogData,
-  ) {
-    const [formattedContext, ...styles] = Logger.formatContext(
-      context,
-      'error',
-    );
-    Logger.logWithData(
-      'error',
-      [formattedContext, ...styles],
-      message,
-      data,
-      error,
-    );
+  static error(context: string, message: string, error?: unknown, data?: LogData) {
+    const [formattedContext, ...styles] = Logger.formatContext(context, 'error');
+    Logger.logWithData('error', [formattedContext, ...styles], message, data, error);
   }
 
   /**

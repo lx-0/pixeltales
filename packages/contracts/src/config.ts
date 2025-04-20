@@ -1,4 +1,4 @@
-import { LLMProviderSchema } from '@pixeltales/database';
+import { LlmProviderSchema } from '@pixeltales/database';
 import z from 'zod';
 
 // --- Config Option Schemas (for /config API) ---
@@ -12,7 +12,7 @@ export const ColorOptionSchema = z.object({
 export type ColorOption = z.infer<typeof ColorOptionSchema>;
 
 export const ConfigOptionsSchema = z.object({
-  llm_providers: z.array(LLMProviderSchema),
+  llmProviders: z.array(LlmProviderSchema),
   colors: z.array(ColorOptionSchema),
 });
 export type ConfigOptions = z.output<typeof ConfigOptionsSchema>;

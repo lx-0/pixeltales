@@ -46,7 +46,7 @@ export class SpritesheetApiService extends BaseApiService {
       spriteReferenceDetails: spriteReference ? JSON.stringify(spriteReference) : 'null',
     });
 
-    return this.post<ApiResponse<ImageResponse>>(
+    return this.post(
       '/spritesheet/generate-base-sprite',
       dto,
       undefined,
@@ -62,7 +62,7 @@ export class SpritesheetApiService extends BaseApiService {
       baseSprite,
     };
 
-    return this.post<ApiResponse<ImageResponse>>(
+    return this.post(
       '/spritesheet/generate-animation-sheet',
       dto,
       undefined,
@@ -76,7 +76,7 @@ export class SpritesheetApiService extends BaseApiService {
   async extractCoordinates(animationSheet: string): Promise<ApiResponse<CoordinatesResponse>> {
     const dto: ExtractCoordinatesDto = { animationSheet };
 
-    return this.post<ApiResponse<CoordinatesResponse>>(
+    return this.post(
       '/spritesheet/extract-coordinates',
       dto,
       undefined,
@@ -94,7 +94,7 @@ export class SpritesheetApiService extends BaseApiService {
   ): Promise<ApiResponse<ImageResponse>> {
     const dto: RegenerateSpriteDto = { baseSprite, spriteId, feedback };
 
-    return this.post<ApiResponse<ImageResponse>>(
+    return this.post(
       '/spritesheet/regenerate-sprite',
       dto,
       undefined,
@@ -125,7 +125,7 @@ export class SpritesheetApiService extends BaseApiService {
       characterName,
     };
 
-    return this.post<ApiResponse<FilenameResponse>>(
+    return this.post(
       '/spritesheet/finalize',
       dto,
       undefined,

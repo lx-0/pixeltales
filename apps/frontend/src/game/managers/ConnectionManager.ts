@@ -30,6 +30,7 @@ export class ConnectionManager {
 
   private setupEventListeners(): void {
     // Listen for connection events
+    // Purpose: Update the UI connection status indicator based on socket lifecycle.
     socketService.addListener('connect', this.onConnect);
     socketService.addListener('disconnect', this.onDisconnect);
     socketService.addListener('connect_error', this.onConnectError);

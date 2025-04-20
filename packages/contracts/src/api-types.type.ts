@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
-export const ApiResponseSchema = <T>(dataSchema: z.ZodType<T>) =>
+export const ApiResponseSchema = <T = unknown, Schema extends z.ZodType<unknown> = z.ZodType<T>>(
+  dataSchema: Schema,
+) =>
   z.object({
     statusCode: z.number().describe('HTTP status code'),
     success: z.boolean().describe('Whether the request was successful'),

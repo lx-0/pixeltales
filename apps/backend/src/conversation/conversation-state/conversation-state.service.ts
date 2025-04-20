@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { SceneConfig, SceneStateSnapshotState } from '@pixeltales/contracts';
+import { SceneConfig, SceneStateSnapshot } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
 import { SceneStateService } from '../../scene/scene-state/scene-state.service';
 
@@ -20,7 +20,7 @@ export class ConversationStateService {
    * @param sceneState The current scene state
    * @returns True if state was changed, false otherwise
    */
-  async handleEndConversationRequests(sceneState: SceneStateSnapshotState): Promise<boolean> {
+  async handleEndConversationRequests(sceneState: SceneStateSnapshot): Promise<boolean> {
     if (!sceneState?.characters) return false;
     const now = Date.now();
     let allAgreed = true;
@@ -31,21 +31,21 @@ export class ConversationStateService {
       const char = characters[charId];
       if (!char) continue;
       const requestedAt =
-        typeof char.end_conversation_requested_at === 'number'
-          ? char.end_conversation_requested_at
+        typeof char.endConversationRequestedAt === 'number'
+          ? char.endConversationRequestedAt
           : null;
       const validityDuration =
-        typeof char.end_conversation_requested_validity_duration === 'number'
-          ? char.end_conversation_requested_validity_duration
+        typeof char.endConversationRequestedValidityDuration === 'number'
+          ? char.endConversationRequestedValidityDuration
           : null;
 
-      if (char.end_conversation_requested && requestedAt !== null && validityDuration !== null) {
+      if (char.endConversationRequested && requestedAt !== null && validityDuration !== null) {
         if (now > requestedAt + validityDuration * 1000) {
           this.logger.info(`End request for ${charId} expired.`);
-          this.sceneStateService.updateCharacterState(charId, {
-            end_conversation_requested: false,
-            end_conversation_requested_at: undefined,
-            end_conversation_requested_validity_duration: undefined,
+          await this.sceneStateService.updateCharacterState(charId, {
+            endConversationRequested: false,
+            endConversationRequestedAt: undefined,
+            endConversationRequestedValidityDuration: undefined,
           });
           changed = true;
           allAgreed = false;
@@ -57,10 +57,10 @@ export class ConversationStateService {
 
     if (allAgreed && Object.keys(characters).length > 0) {
       this.logger.info('All characters agreed to end conversation.');
-      this.sceneStateService.updateState({
-        conversation_active: false,
-        conversation_ended: true,
-        ended_at: Date.now(),
+      await this.sceneStateService.updateState({
+        conversationActive: false,
+        conversationEnded: true,
+        endedAt: new Date(),
       });
       changed = true;
     }
@@ -77,18 +77,14 @@ export class ConversationStateService {
    * @param sceneConfig The scene configuration
    * @returns The ID of the next speaker, or undefined if it cannot be determined
    */
-  getNextSpeaker(
-    sceneState: SceneStateSnapshotState,
-    sceneConfig: SceneConfig,
-  ): string | undefined {
+  getNextSpeaker(sceneState: SceneStateSnapshot, sceneConfig: SceneConfig): string | undefined {
     if (!sceneState || !sceneConfig) return;
 
     if (!sceneState.messages || sceneState.messages.length === 0) {
-      return sceneConfig.config.start_character_id;
+      return sceneConfig.startCharacterId;
     }
     const lastMessage = sceneState.messages?.[sceneState.messages.length - 1];
-    if (!lastMessage)
-      return this.getOtherCharacterId(sceneState, sceneConfig.config.start_character_id);
+    if (!lastMessage) return this.getOtherCharacterId(sceneState, sceneConfig.startCharacterId);
     return this.getOtherCharacterId(sceneState, lastMessage.character);
   }
 
@@ -100,10 +96,7 @@ export class ConversationStateService {
    * @param characterId The character ID to exclude
    * @returns The ID of another character, or undefined if there are no other characters
    */
-  getOtherCharacterId(
-    sceneState: SceneStateSnapshotState,
-    characterId: string,
-  ): string | undefined {
+  getOtherCharacterId(sceneState: SceneStateSnapshot, characterId: string): string | undefined {
     const allIds = Object.keys(sceneState.characters);
     const otherIds = allIds.filter((id) => id !== characterId);
     if (otherIds.length === 0) return;

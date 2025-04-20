@@ -9,7 +9,7 @@ console.log('🚀 Starting database migration...');
 
 // --- Database Connection ---
 // Path relative to CWD (apps/backend/)
-const defaultDbPathRelativeToBackendRoot = '../../../data/sqlite/pixeltales.db';
+const defaultDbPathRelativeToBackendRoot = '../../data/sqlite/pixeltales.db';
 const dbPathSetting = process.env.DATABASE_URL ?? defaultDbPathRelativeToBackendRoot;
 
 let dbPath: string;

@@ -8,11 +8,12 @@ import { ConfigService } from '@nestjs/config';
 import {
   CharacterResponse,
   CharacterResponseSchema,
-  LLMConfig,
-  LLMProviderId,
-  SceneConfigConfig,
+  LlmConfig,
+  LlmProviderId,
+  SceneConfig,
 } from '@pixeltales/contracts';
 import { getMessageFromUnknownError } from '@pixeltales/utils';
+import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { stripUnsupportedZod } from './strip-unsupported-zod.func';
@@ -21,7 +22,7 @@ import { stripUnsupportedZod } from './strip-unsupported-zod.func';
 export type TaskType = 'conversation' | 'image_generation' | 'image_recognition';
 
 // Type aliases similar to the Python version
-type LLMConfigHash = number;
+type LlmConfigHash = number;
 type ConversationRunnable = Runnable<ConversationInput, CharacterResponse>;
 // Generic Runnable type for the chains map
 type GenericRunnable = Runnable<any, any>;
@@ -48,27 +49,27 @@ type LlmChatModel = ChatOpenAI | ChatAnthropic;
 
 @Injectable()
 export class LlmService {
-  private readonly logger = new Logger(LlmService.name);
+  private readonly logger = new Logger(LOGGER_CONTEXT_SHORTEN ? '🧠' : LlmService.name);
 
   // Use nested maps keyed by TaskType
-  private llmConfigs: Record<TaskType, Map<LLMConfigHash, LLMConfig>> = {
-    conversation: new Map<LLMConfigHash, LLMConfig>(),
-    image_generation: new Map<LLMConfigHash, LLMConfig>(),
-    image_recognition: new Map<LLMConfigHash, LLMConfig>(),
+  private llmConfigs: Record<TaskType, Map<LlmConfigHash, LlmConfig>> = {
+    conversation: new Map<LlmConfigHash, LlmConfig>(),
+    image_generation: new Map<LlmConfigHash, LlmConfig>(),
+    image_recognition: new Map<LlmConfigHash, LlmConfig>(),
   };
-  private llms: Record<TaskType, Map<LLMConfigHash, LlmChatModel>> = {
-    conversation: new Map<LLMConfigHash, LlmChatModel>(),
-    image_generation: new Map<LLMConfigHash, LlmChatModel>(),
-    image_recognition: new Map<LLMConfigHash, LlmChatModel>(),
+  private llms: Record<TaskType, Map<LlmConfigHash, LlmChatModel>> = {
+    conversation: new Map<LlmConfigHash, LlmChatModel>(),
+    image_generation: new Map<LlmConfigHash, LlmChatModel>(),
+    image_recognition: new Map<LlmConfigHash, LlmChatModel>(),
   };
   private chains: {
-    conversation: Map<LLMConfigHash, ConversationRunnable>;
-    image_generation: Map<LLMConfigHash, GenericRunnable>;
-    image_recognition: Map<LLMConfigHash, GenericRunnable>;
+    conversation: Map<LlmConfigHash, ConversationRunnable>;
+    image_generation: Map<LlmConfigHash, GenericRunnable>;
+    image_recognition: Map<LlmConfigHash, GenericRunnable>;
   } = {
-    conversation: new Map<LLMConfigHash, ConversationRunnable>(),
-    image_generation: new Map<LLMConfigHash, GenericRunnable>(),
-    image_recognition: new Map<LLMConfigHash, GenericRunnable>(),
+    conversation: new Map<LlmConfigHash, ConversationRunnable>(),
+    image_generation: new Map<LlmConfigHash, GenericRunnable>(),
+    image_recognition: new Map<LlmConfigHash, GenericRunnable>(),
   };
 
   constructor(private readonly configService: ConfigService) {}
@@ -76,13 +77,13 @@ export class LlmService {
   /**
    * Initialize the LLMs for a scene, similar to Python's init_scene
    */
-  initScene(sceneConfig: SceneConfigConfig): void {
+  initScene(sceneConfig: SceneConfig): void {
     this.logger.log(`✨ Initializing LLMs 🧠 for scene 🎭`);
 
     const llmConfigsByExternalId = Object.fromEntries(
-      Object.entries(sceneConfig.characters_config).map(([charId, charConfig]) => [
+      Object.entries(sceneConfig.charactersConfig).map(([charId, charConfig]) => [
         charId,
-        charConfig.llm_config,
+        charConfig.llmConfig,
       ]),
     );
 
@@ -95,7 +96,7 @@ export class LlmService {
     );
 
     this.initLlms();
-    this.initConversationChain(sceneConfig.system_prompt);
+    this.initConversationChain(sceneConfig.systemPrompt);
 
     this.logger.log(
       `✨ Initialized LLMs 🧠 for ${Object.keys(llmConfigsByExternalId).length} characters 🤖`,
@@ -105,7 +106,7 @@ export class LlmService {
   /**
    * Get API key for the specified provider
    */
-  private getApiKey(provider: LLMProviderId): string {
+  private getApiKey(provider: LlmProviderId): string {
     let apiKey: string | undefined;
     if (provider === 'openai') {
       apiKey = this.configService.get<string>('OPENAI_API_KEY');
@@ -123,11 +124,11 @@ export class LlmService {
    * Reduce LLM configurations to unique configs based on hash
    */
   private reduceLlmConfig(
-    llmConfigsById: Record<string, LLMConfig>,
-  ): [Record<LLMConfigHash, LLMConfig>, Record<string, LLMConfigHash>] {
+    llmConfigsById: Record<string, LlmConfig>,
+  ): [Record<LlmConfigHash, LlmConfig>, Record<string, LlmConfigHash>] {
     // Create hash for each unique config
-    const uniqueConfigs: Record<LLMConfigHash, LLMConfig> = {};
-    const idToHashMap: Record<string, LLMConfigHash> = {};
+    const uniqueConfigs: Record<LlmConfigHash, LlmConfig> = {};
+    const idToHashMap: Record<string, LlmConfigHash> = {};
 
     for (const [charId, llmConfig] of Object.entries(llmConfigsById)) {
       // Simple hash function - could be improved with a more robust hashing method
@@ -142,9 +143,9 @@ export class LlmService {
   /**
    * Create a hash for an LLM config
    */
-  private hashLlmConfig(config: LLMConfig): number {
+  private hashLlmConfig(config: LlmConfig): number {
     // Simple hash function - in production you should use a more robust hashing method
-    const str = `${config.provider}:${config.model_name}:${config.temperature}:${config.max_tokens}`;
+    const str = `${config.provider}:${config.modelName}:${config.temperature}:${config.maxTokens}`;
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
@@ -154,7 +155,7 @@ export class LlmService {
     return hash;
   }
 
-  private initLlm(config: LLMConfig): void {
+  private initLlm(config: LlmConfig): void {
     const hash = this.hashLlmConfig(config);
     try {
       // Get the chat model
@@ -243,22 +244,22 @@ export class LlmService {
   /**
    * Create a chat model instance based on the provider
    */
-  private getChatModel(llmConfig: LLMConfig): ChatOpenAI | ChatAnthropic {
+  private getChatModel(llmConfig: LlmConfig): ChatOpenAI | ChatAnthropic {
     this.logger.debug(`Creating chat model for config: ${JSON.stringify(llmConfig)}`);
     const apiKey = this.getApiKey(llmConfig.provider);
 
     if (llmConfig.provider === 'openai') {
       return new ChatOpenAI({
         apiKey,
-        modelName: llmConfig.model_name,
-        maxTokens: llmConfig.max_tokens,
+        modelName: llmConfig.modelName,
+        maxTokens: llmConfig.maxTokens,
         temperature: llmConfig.temperature,
       });
     } else if (llmConfig.provider === 'anthropic') {
       return new ChatAnthropic({
         apiKey,
-        modelName: llmConfig.model_name,
-        maxTokens: llmConfig.max_tokens,
+        modelName: llmConfig.modelName,
+        maxTokens: llmConfig.maxTokens,
         temperature: llmConfig.temperature,
       });
     }
@@ -324,7 +325,7 @@ export class LlmService {
    * Generate a character response based on conversation history and character info
    */
   async generateResponse(
-    llmConfig: LLMConfig,
+    llmConfig: LlmConfig,
     input: ConversationInput,
   ): Promise<z.infer<typeof CharacterResponseSchema>> {
     try {

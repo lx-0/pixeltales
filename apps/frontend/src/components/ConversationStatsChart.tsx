@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader } from '@/lib/shadcn-ui/card';
 import { formatTime } from '@/utils/format';
-import { SceneStateSnapshotState } from '@pixeltales/contracts';
+import { SceneStateSnapshot } from '@pixeltales/contracts';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';
 import {
@@ -16,7 +16,7 @@ import {
 } from 'recharts';
 
 interface ConversationStatsChartProps {
-  scene: SceneStateSnapshotState;
+  scene: SceneStateSnapshot;
 }
 
 interface DotProps {
@@ -53,18 +53,18 @@ export default function ConversationStatsChart({ scene }: ConversationStatsChart
   const characterDatasets: DataPoint[] = useMemo(
     () =>
       scene.messages
-        .sort((a, b) => a.unix_timestamp - b.unix_timestamp)
+        .sort((a, b) => a.unixTimestamp - b.unixTimestamp)
         .map((message) => ({
-          timestamp: message.unix_timestamp,
+          timestamp: message.unixTimestamp,
           chars: {
             [message.character]: {
               charId: message.character,
               name: message.character,
               color: message.character,
-              rating: message.conversation_rating || 0,
+              rating: message.conversationRating || 0,
               mood: message.mood,
-              moodEmoji: message.mood_emoji,
-              hasRequestedEndConversation: message.end_conversation,
+              moodEmoji: message.moodEmoji,
+              hasRequestedEndConversation: message.endConversation,
             },
           },
         })),

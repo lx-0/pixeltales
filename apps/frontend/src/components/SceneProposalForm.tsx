@@ -41,7 +41,7 @@ import { Textarea } from '@/lib/shadcn-ui/textarea';
 import { kebabCase } from '@/utils/format';
 import { Logger } from '@/utils/logger';
 import { zodResolver } from '@hookform/resolvers/zod';
-import type { CharacterConfig, LLMConfig, SceneConfigConfig } from '@pixeltales/contracts';
+import type { CharacterConfig, LlmConfig, NewSceneConfig } from '@pixeltales/contracts';
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
@@ -76,11 +76,11 @@ const proposalFormSchema = z.object({
           .max(500, 'Visual description must not exceed 500 characters'),
         spritesheetKey: z.string().min(1, 'Spritesheet selection is required'),
         color: z.string().min(1, 'Color is required'),
-        llm_config: z.object({
+        llmConfig: z.object({
           provider: z.string().min(1, 'Provider is required'),
-          model_name: z.string().min(1, 'Model is required'),
+          modelName: z.string().min(1, 'Model is required'),
           temperature: z.number().min(0).max(2).default(0.7),
-          max_tokens: z.number().min(1).max(4000).default(1000),
+          maxTokens: z.number().min(1).max(4000).default(1000),
         }),
       }),
     )
@@ -113,11 +113,11 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           visual: '',
           spritesheetKey: '',
           color: 'blue',
-          llm_config: {
+          llmConfig: {
             provider: 'openai',
-            model_name: 'gpt-4o-mini',
+            modelName: 'gpt-4o-mini',
             temperature: 0.7,
-            max_tokens: 4000,
+            maxTokens: 4000,
           },
         },
         {
@@ -126,11 +126,11 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           visual: '',
           spritesheetKey: '',
           color: 'pink',
-          llm_config: {
+          llmConfig: {
             provider: 'openai',
-            model_name: 'gpt-4o-mini',
+            modelName: 'gpt-4o-mini',
             temperature: 0.7,
-            max_tokens: 4000,
+            maxTokens: 4000,
           },
         },
       ],
@@ -155,15 +155,12 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
       setIsSubmitting(true);
 
       // Convert form values to scene config
-      const sceneConfig: Omit<
-        SceneConfigConfig,
-        'id' | 'status' | 'system_prompt' | 'votes' | 'comments'
-      > = {
+      const sceneConfig: NewSceneConfig = {
         name: values.sceneName,
         description: values.sceneDescription,
-        proposer_name: values.proposerName,
-        start_character_id: kebabCase(values.characters[0]?.name || ''),
-        characters_config: values.characters.reduce(
+        proposerName: values.proposerName,
+        startCharacterId: kebabCase(values.characters[0]?.name || ''),
+        charactersConfig: values.characters.reduce(
           (acc, char, index) => {
             // Find the color option to get the hex code
             const colorOption = config?.colors.find((c) => c.id === char.color);
@@ -178,19 +175,19 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
               name: char.name,
               role: char.role,
               visual: char.visual,
-              spritesheet_key: char.spritesheetKey,
+              spritesheetKey: char.spritesheetKey,
               color: colorOption.hex,
-              llm_config: {
-                ...char.llm_config,
-                provider: char.llm_config.provider as LLMConfig['provider'],
+              llmConfig: {
+                ...char.llmConfig,
+                provider: char.llmConfig.provider as LlmConfig['provider'],
               },
-              initial_position: {
+              initialPosition: {
                 x: TILE_SIZE * (7.5 + index), // Start at x=7.5 tiles, increment by 1 tile
                 y: TILE_SIZE * 7.5, // Center vertically
               },
-              initial_direction: 'right' as const,
-              initial_action: 'idle' as const,
-              initial_mood: 'neutral',
+              initialDirection: 'right' as const,
+              initialAction: 'idle' as const,
+              initialMood: 'neutral',
             } as CharacterConfig;
             return acc;
           },
@@ -376,14 +373,14 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                             <div className="grid grid-cols-2 gap-4">
                               <FormField
                                 control={form.control}
-                                name={`characters.${index}.llm_config`}
+                                name={`characters.${index}.llmConfig`}
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-gray-200">Model</FormLabel>
                                     <Select
                                       onValueChange={(value: string) => {
                                         const [provider, model] = value.split(':');
-                                        const modelOption = config?.llm_providers
+                                        const modelOption = config?.llmProviders
                                           .find((p) => p.id === provider)
                                           ?.models.find((m) => m.id === model);
 
@@ -391,13 +388,13 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                                           field.onChange({
                                             ...field.value,
                                             provider,
-                                            model_name: model,
-                                            max_tokens: modelOption.max_tokens,
-                                            temperature: modelOption.default_temperature,
+                                            modelName: model,
+                                            maxTokens: modelOption.maxTokens,
+                                            temperature: modelOption.defaultTemperature,
                                           });
                                         }
                                       }}
-                                      value={`${field.value.provider}:${field.value.model_name}`}
+                                      value={`${field.value.provider}:${field.value.modelName}`}
                                     >
                                       <FormControl>
                                         <SelectTrigger className="text-left px-4 h-auto py-2 bg-gray-800 border-gray-700 text-gray-200">
@@ -406,19 +403,19 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                                               <div className="flex flex-col gap-1 py-1">
                                                 <span className="font-medium">
                                                   {
-                                                    config?.llm_providers
+                                                    config?.llmProviders
                                                       .find((p) => p.id === field.value.provider)
                                                       ?.models.find(
-                                                        (m) => m.id === field.value.model_name,
+                                                        (m) => m.id === field.value.modelName,
                                                       )?.name
                                                   }
                                                 </span>
                                                 <span className="text-xs text-gray-400">
                                                   {
-                                                    config?.llm_providers
+                                                    config?.llmProviders
                                                       .find((p) => p.id === field.value.provider)
                                                       ?.models.find(
-                                                        (m) => m.id === field.value.model_name,
+                                                        (m) => m.id === field.value.modelName,
                                                       )?.description
                                                   }
                                                 </span>
@@ -432,7 +429,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                                         className="w-[--radix-select-trigger-width] p-4 bg-gray-800 border-gray-700"
                                       >
                                         {config &&
-                                          getModelOptions(config.llm_providers).map((group) => (
+                                          getModelOptions(config.llmProviders).map((group) => (
                                             <SelectGroup key={group.label} className="space-y-1">
                                               <SelectLabel className="px-1 text-gray-400">
                                                 {group.label}
@@ -447,9 +444,9 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                                                     <span className="font-medium">
                                                       {option.label}
                                                     </span>
-                                                    {option.label_details && (
+                                                    {option.labelDetails && (
                                                       <span className="text-xs text-gray-400">
-                                                        {option.label_details}
+                                                        {option.labelDetails}
                                                       </span>
                                                     )}
                                                   </div>
@@ -468,7 +465,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                               />
                               <FormField
                                 control={form.control}
-                                name={`characters.${index}.llm_config.temperature`}
+                                name={`characters.${index}.llmConfig.temperature`}
                                 render={({ field }) => (
                                   <FormItem>
                                     <FormLabel className="text-gray-200">Temperature</FormLabel>

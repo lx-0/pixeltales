@@ -13,8 +13,8 @@ import {
 import {
   CommentPayload,
   CreateSceneConfigDTO,
-  SceneConfigResponse,
-  SceneConfigResponseSchema,
+  SceneConfig,
+  SceneConfigSchema,
   VotePayload,
 } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
@@ -34,10 +34,10 @@ export class ScenesController {
   }
 
   @Get('/proposed')
-  async getProposedScenes(): Promise<SceneConfigResponse[]> {
+  async getProposedScenes(): Promise<SceneConfig[]> {
     this.logger.info(`[${ScenesController.name}] Getting proposed scenes`);
     const proposals = await this.scenesService.getProposals();
-    const parsed = z.array(SceneConfigResponseSchema).safeParse(proposals);
+    const parsed = z.array(SceneConfigSchema).safeParse(proposals);
     if (!parsed.success) {
       this.logger.error('Failed to parse proposed scenes response', parsed.error);
       throw new Error('Internal server error parsing response');
@@ -47,10 +47,10 @@ export class ScenesController {
 
   @Get('/:sceneConfigId')
   async getSceneConfig(
-    @Param('sceneConfigId') sceneConfigId: number,
-  ): Promise<SceneConfigResponse> {
+    @Param('sceneConfigId') sceneConfigId: SceneConfig['id'],
+  ): Promise<SceneConfig> {
     this.logger.info(`[${ScenesController.name}] Getting scene config: ${sceneConfigId}`);
-    const scene = await this.scenesService.getById(sceneConfigId);
+    const scene = await this.scenesService.getConfigById(sceneConfigId);
     if (!scene) {
       throw new NotFoundException('Scene config not found');
     }
@@ -58,7 +58,7 @@ export class ScenesController {
   }
 
   @Post('/propose')
-  async proposeScene(@Body() sceneConfigDto: CreateSceneConfigDTO): Promise<SceneConfigResponse> {
+  async proposeScene(@Body() sceneConfigDto: CreateSceneConfigDTO): Promise<SceneConfig> {
     this.logger.info(`[${ScenesController.name}] Proposing new scene: ${sceneConfigDto.name}`);
     return this.scenesService.createProposal(sceneConfigDto);
   }
@@ -66,9 +66,9 @@ export class ScenesController {
   @Post('/:sceneConfigId/vote')
   @HttpCode(HttpStatus.OK)
   async voteScene(
-    @Param('sceneConfigId') sceneConfigId: number,
+    @Param('sceneConfigId') sceneConfigId: SceneConfig['id'],
     @Body() payload: VotePayload,
-  ): Promise<SceneConfigResponse> {
+  ): Promise<SceneConfig> {
     this.logger.info(
       `[${ScenesController.name}] Voting on scene ${sceneConfigId}: ${payload.vote}`,
     );
@@ -77,7 +77,7 @@ export class ScenesController {
 
   @Post('/:sceneConfigId/reject')
   @HttpCode(HttpStatus.NO_CONTENT)
-  async rejectScene(@Param('sceneConfigId') sceneConfigId: number): Promise<void> {
+  async rejectScene(@Param('sceneConfigId') sceneConfigId: SceneConfig['id']): Promise<void> {
     this.logger.info(`[${ScenesController.name}] Rejecting scene ${sceneConfigId}`);
     await this.scenesService.reject(sceneConfigId);
   }
@@ -85,7 +85,7 @@ export class ScenesController {
   @Post('/:sceneConfigId/comment')
   @HttpCode(HttpStatus.NO_CONTENT)
   async addComment(
-    @Param('sceneConfigId') sceneConfigId: number,
+    @Param('sceneConfigId') sceneConfigId: SceneConfig['id'],
     @Body() payload: CommentPayload,
   ): Promise<void> {
     this.logger.info(

@@ -1,4 +1,4 @@
-import { CharacterConfig, SceneConfigConfig } from '@pixeltales/contracts';
+import { CharacterConfig, NewSceneConfig } from '@pixeltales/contracts';
 
 export const DEFAULT_SYSTEM_PROMPT = `You are {character_name}.
 {character_visual}
@@ -24,7 +24,7 @@ IMPORTANT RULES:
 5. Respond to the context of the conversation and your current situation`;
 
 // Tile size constant for positioning
-export const TILE_SIZE = 32; // Assuming same as Python
+export const TILE_SIZE = 48;
 
 // Default characters configuration
 export const DEFAULT_CHARACTERS: Record<string, CharacterConfig> = {
@@ -40,19 +40,19 @@ Key traits:
 - Works as a florist
 - Enjoys discussing flowers and gardening`,
     visual: 'A man in his 30s with a beard and glasses.',
-    llm_config: {
+    llmConfig: {
       provider: 'openai',
-      model_name: process.env.DEFAULT_MODEL || 'gpt-4o-mini',
+      modelName: process.env.DEFAULT_MODEL || 'gpt-4o-mini',
       temperature: 0.7,
-      max_tokens: 4096,
+      maxTokens: 4096,
     },
-    initial_position: {
+    initialPosition: {
       x: TILE_SIZE * 7.5,
       y: TILE_SIZE * 7.5,
     },
-    initial_direction: 'right',
-    initial_action: 'idle',
-    initial_mood: 'neutral',
+    initialDirection: 'right',
+    initialAction: 'idle',
+    initialMood: 'neutral',
   },
   alice: {
     id: 'alice',
@@ -68,34 +68,29 @@ Key traits:
 - Has an important online meeting in five minutes and just wants to quickly grab an ice coffee
 - Not interested in romantic relationships and not interested in love`,
     visual: 'A woman in her 20s with long hair and blue eyes.',
-    llm_config: {
+    llmConfig: {
       provider: 'openai',
-      model_name: process.env.DEFAULT_MODEL || 'gpt-4o-mini',
+      modelName: process.env.DEFAULT_MODEL || 'gpt-4o-mini',
       temperature: 0.7,
-      max_tokens: 4096,
+      maxTokens: 4096,
     },
-    initial_position: {
+    initialPosition: {
       x: TILE_SIZE * 9.5,
       y: TILE_SIZE * 7.5,
     },
-    initial_direction: 'front',
-    initial_action: 'idle',
-    initial_mood: 'neutral',
+    initialDirection: 'front',
+    initialAction: 'idle',
+    initialMood: 'neutral',
   },
 };
 
 // Default scene configuration
-export const DEFAULT_SCENE_CONFIG: SceneConfigConfig = {
-  id: 1, // TODO: Remove this once we have a proper ID
+export const DEFAULT_SCENE_CONFIG: NewSceneConfig = {
   name: 'Default Scene: Ice Cream Shop with Alice and Bob',
   description:
     'You are in an ice cream shop. You are having a conversation with another character.',
-  start_character_id: 'bob',
-  characters_config: DEFAULT_CHARACTERS,
+  startCharacterId: 'bob',
+  charactersConfig: DEFAULT_CHARACTERS,
   status: 'active',
-  system_prompt: DEFAULT_SYSTEM_PROMPT,
-  proposer_name: null,
-  proposed_at: null,
-  votes: 0,
-  comments: [],
+  systemPrompt: DEFAULT_SYSTEM_PROMPT,
 };

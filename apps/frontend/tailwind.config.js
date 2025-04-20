@@ -92,11 +92,38 @@ export default {
             opacity: '1',
           },
         },
+        'pixel-pulse': {
+          '0%': {
+            transform: 'scale(1)',
+            boxShadow: '0 0 0 rgba(255,255,255,0)',
+          },
+          '50%': {
+            transform: 'scale(1.02)',
+            boxShadow: '0 0 2px rgba(255,255,255,0.5)',
+          },
+          '100%': {
+            transform: 'scale(1)',
+            boxShadow: '0 0 0 rgba(255,255,255,0)',
+          },
+        },
+        'pixel-border-flash': {
+          '0%': {
+            opacity: '1',
+          },
+          '50%': {
+            opacity: '0.7',
+          },
+          '100%': {
+            opacity: '1',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'pulse-flow': 'pulse-flow 2s ease-in-out infinite',
+        'pixel-pulse': 'pixel-pulse 1.5s ease-in-out infinite',
+        'pixel-border-flash': 'pixel-border-flash 2s steps(5) infinite',
       },
     },
   },

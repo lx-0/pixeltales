@@ -25,7 +25,6 @@ export class AppService {
   }
 
   getHealth() {
-    this.logger.debug('Health check requested');
     const dbConnected = !!this.db;
 
     return {

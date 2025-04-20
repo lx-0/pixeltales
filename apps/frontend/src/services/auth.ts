@@ -8,7 +8,7 @@ import {
   User,
   VoidApiResponse,
 } from '@pixeltales/contracts';
-import { API_BASE_URL } from '../config';
+import { API_BASE_URL, SUPABASE_ANON_KEY, SUPABASE_URL } from '../config';
 import { supabase } from './supabase';
 
 /**
@@ -40,8 +40,8 @@ export class AuthService {
    * Check if Supabase is properly configured with valid URL and key
    */
   public isSupabaseConfigured(): boolean {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-    const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+    const supabaseUrl = SUPABASE_URL;
+    const supabaseAnonKey = SUPABASE_ANON_KEY;
 
     const isConfigured = !!supabaseUrl && !!supabaseAnonKey;
 

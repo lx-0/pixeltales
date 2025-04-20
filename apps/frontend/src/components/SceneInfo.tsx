@@ -1,13 +1,13 @@
 import { Button } from '@/lib/shadcn-ui/button';
 import { formatDuration, formatTime } from '@/utils/format';
-import type { SceneStateSnapshotState } from '@pixeltales/contracts';
+import type { SceneStateSnapshot } from '@pixeltales/contracts';
 import { Brain, Clock, MessageSquare, Users2 } from 'lucide-react';
 import ConversationStatsChart from './ConversationStatsChart';
 import { SceneProposalForm } from './SceneProposalForm';
 import { SceneProposalList } from './SceneProposalList';
 
 interface SceneInfoProps {
-  scene: SceneStateSnapshotState;
+  scene: SceneStateSnapshot;
   setIsModalOpen: (isOpen: boolean) => void;
 }
 
@@ -22,27 +22,27 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
     scene.messages.length > 1
       ? scene.messages.reduce((acc, msg, idx) => {
           if (idx === 0) return 0;
-          return acc + (msg.unix_timestamp - (scene.messages[idx - 1]?.unix_timestamp || 0));
+          return acc + (msg.unixTimestamp - (scene.messages[idx - 1]?.unixTimestamp || 0));
         }, 0) /
         (scene.messages.length - 1)
       : 0;
 
   // Calculate conversation metrics
   const totalResponseTime = scene.messages.reduce(
-    (acc, msg) => acc + (msg.calculated_speaking_time || 0),
+    (acc, msg) => acc + msg.calculatedSpeakingTime,
     0,
   );
 
   // Find characters who want to end the conversation
   const endRequesters = Object.values(scene.characters).filter(
-    (char) => char.end_conversation_requested,
+    (char) => char.endConversationRequested,
   );
 
   // Calculate average conversation rating
-  const ratingsCount = scene.messages.filter((m) => m.conversation_rating !== null).length;
+  const ratingsCount = scene.messages.filter((m) => m.conversationRating !== null).length;
   const averageRating =
     ratingsCount > 0
-      ? scene.messages.reduce((acc, msg) => acc + (msg.conversation_rating || 0), 0) / ratingsCount
+      ? scene.messages.reduce((acc, msg) => acc + (msg.conversationRating || 0), 0) / ratingsCount
       : null;
 
   // Calculate total tokens used per model
@@ -50,7 +50,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
     (acc, msg) => {
       const char = scene.characters[msg.character];
       if (!char) return acc;
-      const modelKey = `${char.llm_config.provider}:${char.llm_config.model_name}`;
+      const modelKey = `${char.llmConfig.provider}:${char.llmConfig.modelName}`;
       acc[modelKey] = (acc[modelKey] || 0) + 1;
       return acc;
     },
@@ -58,7 +58,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
   );
 
   // Calculate elapsed time
-  const elapsedSeconds = Math.floor(Date.now() / 1000 - scene.started_at);
+  const elapsedSeconds = Math.floor(Date.now() / 1000 - scene.startedAt.getTime());
 
   return (
     <div className="space-y-4">
@@ -69,10 +69,10 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
             <h2 className="text-lg sm:text-xl font-bold text-gray-100">Scene Information</h2>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                #{scene.scene_id}
+                #{scene.sceneId}
               </span>
               <span className="text-xs text-gray-400 bg-gray-700 px-2 py-1 rounded">
-                Config #{scene.scene_config_id}
+                Config #{scene.configId}
               </span>
             </div>
           </div>
@@ -114,7 +114,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
               <div className="grid gap-1 text-sm">
                 <div className="flex justify-between">
                   <span className="text-gray-400">Started:</span>
-                  <span className="text-gray-100">{formatTime(scene.started_at)}</span>
+                  <span className="text-gray-100">{formatTime(scene.startedAt.getTime())}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-400">Duration:</span>
@@ -130,7 +130,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                     {formatDuration(elapsedSeconds - totalResponseTime)}
                   </span>
                 </div>
-                {scene.conversation_ended && (
+                {scene.conversationEnded && (
                   <div className="flex justify-between">
                     <span className="text-gray-400">Status:</span>
                     <span className="text-red-400">Conversation ended</span>
@@ -189,18 +189,16 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                 </span>
                 <span className="text-gray-400 text-xs">characters active</span>
               </div>
-              {scene.visitor_count > 0 && (
+              {
                 <div className="flex items-center gap-1">
-                  <span className="text-gray-100 text-sm sm:text-base">{scene.visitor_count}</span>
-                  <span className="text-gray-400 text-xs">
-                    viewer{scene.visitor_count !== 1 ? 's' : ''} online
-                  </span>
+                  <span className="text-gray-100 text-sm sm:text-base">x</span>
+                  <span className="text-gray-400 text-xs">viewers online</span>
                   <span className="relative flex h-2 w-2">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                   </span>
                 </div>
-              )}
+              }
               {endRequesters.length > 0 && (
                 <div className="flex items-center gap-1">
                   <span className="text-red-400 text-sm sm:text-base">{endRequesters.length}</span>
@@ -249,7 +247,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
               characterMessages.length > 1
                 ? characterMessages.reduce((acc, msg, idx) => {
                     if (idx === 0) return 0;
-                    return acc + (msg.calculated_speaking_time || 0);
+                    return acc + msg.calculatedSpeakingTime;
                   }, 0) /
                   (characterMessages.length - 1)
                 : 0;
@@ -259,11 +257,11 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
 
             // Calculate character average rating
             const characterRatings = characterMessages.filter(
-              (msg) => msg.conversation_rating !== null,
+              (msg) => msg.conversationRating !== null,
             );
             const avgRating =
               characterRatings.length > 0
-                ? characterRatings.reduce((acc, msg) => acc + (msg.conversation_rating || 0), 0) /
+                ? characterRatings.reduce((acc, msg) => acc + (msg.conversationRating || 0), 0) /
                   characterRatings.length
                 : null;
 
@@ -279,7 +277,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                     {char.name}
                   </h3>
                   <div className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
-                    {char.llm_config.model_name}
+                    {char.llmConfig.modelName}
                   </div>
                 </div>
 
@@ -306,7 +304,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                   {avgRating !== null && (
                     <div
                       className={`bg-gray-800 p-2 rounded ${
-                        !lastMessage?.conversation_rating ? 'col-span-2' : ''
+                        !lastMessage?.conversationRating ? 'col-span-2' : ''
                       }`}
                     >
                       <div className="text-gray-400 mb-1">Average Rating</div>
@@ -318,26 +316,26 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                 {/* Status Badges */}
                 <div className="flex flex-wrap gap-2 text-xs">
                   <div className="bg-gray-800 px-2 py-1 rounded text-gray-300">
-                    {char.current_mood || 'Neutral'}
+                    {char.currentMood || 'Neutral'}
                   </div>
                   <div className="bg-gray-800 px-2 py-1 rounded text-gray-300">
                     {char.action.replace(':', ' - ')}
                   </div>
-                  {lastMessage?.conversation_rating && (
+                  {lastMessage?.conversationRating && (
                     <div className="bg-gray-800 px-2 py-1 rounded text-gray-300">
-                      Last Rating: {lastMessage.conversation_rating}/10
+                      Last Rating: {lastMessage.conversationRating}/10
                     </div>
                   )}
-                  {char.end_conversation_requested && (
+                  {char.endConversationRequested && (
                     <div className="bg-red-900/50 px-2 py-1 rounded text-red-300 flex items-center gap-1">
                       Wants to end
-                      {char.end_conversation_requested_validity_duration && (
+                      {char.endConversationRequestedValidityDuration && (
                         <span className="text-gray-400">
                           (
                           {formatDuration(
                             Math.round(
-                              char.end_conversation_requested_validity_duration -
-                                (Date.now() / 1000 - (char.end_conversation_requested_at || 0)),
+                              char.endConversationRequestedValidityDuration -
+                                (Date.now() / 1000 - (char.endConversationRequestedAt || 0)),
                             ),
                           )}
                           )

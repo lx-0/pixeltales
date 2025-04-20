@@ -7,7 +7,7 @@ import { LLM_PROVIDERS } from '../llm/llm.const';
 export class AppConfigService {
   getConfigOptions(): ConfigOptions {
     return {
-      llm_providers: LLM_PROVIDERS,
+      llmProviders: LLM_PROVIDERS,
       colors: CHARACTER_COLORS,
     };
   }

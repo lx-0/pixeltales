@@ -86,8 +86,8 @@ export function SceneProposalList({ trigger, setIsModalOpen }: SceneProposalList
                       <div>
                         <h3 className="text-lg font-semibold">{proposal.name}</h3>
                         <p className="text-sm text-gray-400">
-                          Proposed by {proposal.proposer_name} on{' '}
-                          {new Date(proposal.proposed_at!).toLocaleDateString()}
+                          Proposed by {proposal.proposerName} on{' '}
+                          {proposal.proposedAt ? proposal.proposedAt.toLocaleDateString() : ''}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -128,7 +128,7 @@ export function SceneProposalList({ trigger, setIsModalOpen }: SceneProposalList
                     <Separator className="my-4" />
 
                     <div className="grid grid-cols-2 gap-4">
-                      {Object.entries(proposal.characters_config).map(([id, char]) => (
+                      {Object.entries(proposal.charactersConfig).map(([id, char]) => (
                         <div
                           key={id}
                           className="p-3 bg-gray-700 rounded border-2"

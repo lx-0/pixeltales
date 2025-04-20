@@ -1,13 +1,13 @@
 import { scenesApi } from '@/lib/api';
 import { Logger } from '@/utils/logger';
-import { SceneConfigConfig } from '@pixeltales/contracts';
+import { NewSceneConfig, SceneConfig } from '@pixeltales/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
 
 const VOTED_PROPOSALS_KEY = 'pixeltales:voted_proposals';
 
 // Helper functions for vote persistence
-function getVotedProposals(): Set<number> {
+function getVotedProposals(): Set<SceneConfig['id']> {
   try {
     const stored = localStorage.getItem(VOTED_PROPOSALS_KEY);
     return stored ? new Set(JSON.parse(stored)) : new Set();
@@ -17,7 +17,7 @@ function getVotedProposals(): Set<number> {
   }
 }
 
-function addVotedProposal(proposalId: number): void {
+function addVotedProposal(proposalId: SceneConfig['id']): void {
   try {
     const voted = getVotedProposals();
     voted.add(proposalId);
@@ -28,8 +28,13 @@ function addVotedProposal(proposalId: number): void {
 }
 
 // Hook to get all voted proposals
-export function useVotedProposals(): [Set<number>, (proposalId: number) => void] {
-  const [votedProposals, setVotedProposals] = useState<Set<number>>(() => getVotedProposals());
+export function useVotedProposals(): [
+  Set<SceneConfig['id']>,
+  (proposalId: SceneConfig['id']) => void,
+] {
+  const [votedProposals, setVotedProposals] = useState<Set<SceneConfig['id']>>(() =>
+    getVotedProposals(),
+  );
 
   // Update voted proposals when localStorage changes
   useEffect(() => {
@@ -41,7 +46,7 @@ export function useVotedProposals(): [Set<number>, (proposalId: number) => void]
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
 
-  const addVote = useCallback((proposalId: number) => {
+  const addVote = useCallback((proposalId: SceneConfig['id']) => {
     addVotedProposal(proposalId);
     setVotedProposals((prev) => {
       const next = new Set(prev);
@@ -54,7 +59,7 @@ export function useVotedProposals(): [Set<number>, (proposalId: number) => void]
 }
 
 export function useProposedScenes() {
-  return useQuery<SceneConfigConfig[]>({
+  return useQuery<SceneConfig[]>({
     queryKey: ['scenes', 'proposed'],
     queryFn: async () => {
       return scenesApi.getProposedScenes();
@@ -66,12 +71,7 @@ export function useSceneProposal() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      sceneConfig: Omit<
-        SceneConfigConfig,
-        'id' | 'status' | 'system_prompt' | 'votes' | 'comments'
-      >,
-    ) => {
+    mutationFn: async (sceneConfig: NewSceneConfig) => {
       return scenesApi.proposeScene(sceneConfig);
     },
     onSuccess: () => {
@@ -84,7 +84,13 @@ export function useSceneVote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ sceneConfigId, vote }: { sceneConfigId: number; vote: number }) => {
+    mutationFn: async ({
+      sceneConfigId,
+      vote,
+    }: {
+      sceneConfigId: SceneConfig['id'];
+      vote: number;
+    }) => {
       // Check if already voted
       const votedProposals = getVotedProposals();
       if (votedProposals.has(sceneConfigId)) {
@@ -104,14 +110,11 @@ export function useSceneVote() {
       await queryClient.cancelQueries({ queryKey: ['scenes', 'proposed'] });
 
       // Snapshot the previous value
-      const previousProposals = queryClient.getQueryData<SceneConfigConfig[]>([
-        'scenes',
-        'proposed',
-      ]);
+      const previousProposals = queryClient.getQueryData<SceneConfig[]>(['scenes', 'proposed']);
 
       // Optimistically update the proposals
       if (previousProposals) {
-        queryClient.setQueryData<SceneConfigConfig[]>(['scenes', 'proposed'], (old) => {
+        queryClient.setQueryData<SceneConfig[]>(['scenes', 'proposed'], (old) => {
           if (!old) return [];
           return old.map((proposal) =>
             proposal.id === sceneConfigId
@@ -138,7 +141,7 @@ export function useSceneVote() {
 }
 
 // Hook to check if user has voted on a proposal
-export function useHasVoted(proposalId: number): boolean {
+export function useHasVoted(proposalId: SceneConfig['id']): boolean {
   return getVotedProposals().has(proposalId);
 }
 
@@ -151,7 +154,7 @@ export function useSceneComment() {
       user,
       comment,
     }: {
-      sceneConfigId: number;
+      sceneConfigId: SceneConfig['id'];
       user: string;
       comment: string;
     }) => {
