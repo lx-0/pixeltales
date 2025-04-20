@@ -90,12 +90,12 @@ export default function ConversationHistory({
           style={{ height: '400px', maxHeight: '100%' }} // Respect parent height
         >
           {scene.messages.map((message, index) => {
-            const character = scene.characters[message.character];
+            const character = scene.characters[message.characterId];
             const isLastMessage = index === scene.messages.length - 1;
             const isSecondLastMessage = index === scene.messages.length - 2;
             const nextMessage = isLastMessage ? null : scene.messages[index + 1];
             const nextMessageCharacter = nextMessage
-              ? scene.characters[nextMessage.character]
+              ? scene.characters[nextMessage.characterId]
               : null;
             if (!character) return null;
             return (
@@ -142,7 +142,7 @@ export default function ConversationHistory({
                     )}
                   </div>
                   <span className="text-[10px] sm:text-xs text-gray-400">
-                    {formatTime(Number(message.unixTimestamp))}
+                    {formatTime(message.timestamp.getTime())}
                   </span>
                 </div>
 
@@ -164,7 +164,7 @@ export default function ConversationHistory({
                   <div
                     className="mt-2 text-xs text-center italic text-gray-400"
                     style={
-                      ((character.endConversationRequestedAt ?? 0) +
+                      ((character.endConversationRequestedAt?.getTime() ?? 0) +
                         (character.endConversationRequestedValidityDuration ?? 0)) *
                         1000 >
                       Date.now()

@@ -188,8 +188,8 @@ export class SceneStateService {
     await this.updateState(updatedState);
 
     this.logger.debug(
-      { timestamp: message.timestamp, characterId: message.character },
-      `Added message from ${message.character} to scene state`,
+      { timestamp: message.timestamp, characterId: message.characterId },
+      `Added message from ${message.characterId} to scene state`,
     );
   }
 
@@ -302,7 +302,7 @@ export class SceneStateService {
     };
 
     const lastMessageOfCharacter = (charId: string, state: SceneStateSnapshot) => {
-      const messages = state.messages.filter((message) => message.character === charId);
+      const messages = state.messages.filter((message) => message.characterId === charId);
       return messages[messages.length - 1];
     };
 

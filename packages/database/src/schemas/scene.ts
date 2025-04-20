@@ -6,7 +6,7 @@ export const SceneSchema = z.object({
     .string()
     .default(() => uuid())
     .describe('Unique identifier for the scene'),
-  createdAt: z.date().describe('ISO format datetime when the scene was created'),
+  createdAt: z.coerce.date().describe('Datetime when the scene was created'),
   configId: z.string().describe('Unique identifier for the scene configuration'),
 });
 

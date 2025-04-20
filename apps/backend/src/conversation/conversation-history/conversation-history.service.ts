@@ -120,9 +120,9 @@ export class ConversationHistoryService {
     characterId: string,
   ): Array<HumanMessage | AIMessage> {
     return messages.map((msg) => {
-      if (msg.character !== characterId) {
+      if (msg.characterId !== characterId) {
         // Message from other characters -> Human message from this character's perspective
-        const sender = msg.character;
+        const sender = msg.characterId;
         const content = !msg.content ? '' : `${sender}: ${msg.content}`;
         return new HumanMessage(content);
       } else {
@@ -209,9 +209,9 @@ export class ConversationHistoryService {
     for (const msg of recentMessages) {
       if (!msg.content) continue; // Skip empty messages
 
-      if (msg.character !== characterId) {
+      if (msg.characterId !== characterId) {
         // Message from other characters -> Human message from this character's perspective
-        const sender = msg.character;
+        const sender = msg.characterId;
         const formattedContent = `${sender}: ${msg.content}`;
         history.push(new HumanMessage(formattedContent));
       } else {

@@ -24,8 +24,11 @@ export class ConnectionManager {
     // Set up event listeners
     this.setupEventListeners();
 
-    // Initial status update
-    this.updateConnectionStatus();
+    // Check initial connection status immediately after listeners are set up
+    const health = socketService.checkSocketHealth();
+    this.isConnected = health.connected;
+    this.reconnectAttempt = 0; // Reset attempts on initial check
+    this.updateConnectionStatus(); // Update UI based on current health
   }
 
   private setupEventListeners(): void {

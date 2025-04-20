@@ -30,17 +30,11 @@ export class ConversationStateService {
     for (const charId in characters) {
       const char = characters[charId];
       if (!char) continue;
-      const requestedAt =
-        typeof char.endConversationRequestedAt === 'number'
-          ? char.endConversationRequestedAt
-          : null;
-      const validityDuration =
-        typeof char.endConversationRequestedValidityDuration === 'number'
-          ? char.endConversationRequestedValidityDuration
-          : null;
+      const requestedAt = char.endConversationRequestedAt ?? null;
+      const validityDuration = char.endConversationRequestedValidityDuration ?? null;
 
       if (char.endConversationRequested && requestedAt !== null && validityDuration !== null) {
-        if (now > requestedAt + validityDuration * 1000) {
+        if (now > requestedAt.getTime() + validityDuration * 1000) {
           this.logger.info(`End request for ${charId} expired.`);
           await this.sceneStateService.updateCharacterState(charId, {
             endConversationRequested: false,
@@ -85,7 +79,7 @@ export class ConversationStateService {
     }
     const lastMessage = sceneState.messages?.[sceneState.messages.length - 1];
     if (!lastMessage) return this.getOtherCharacterId(sceneState, sceneConfig.startCharacterId);
-    return this.getOtherCharacterId(sceneState, lastMessage.character);
+    return this.getOtherCharacterId(sceneState, lastMessage.characterId);
   }
 
   /**

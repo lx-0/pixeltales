@@ -296,7 +296,7 @@ export class UIControlsManager {
 
       const separator = '·';
       this.controls.metadataDisplay.setText(
-        `${currentMessage.character} ${separator} ` +
+        `${currentMessage.characterId} ${separator} ` +
           `${formattedTime} ${formattedDate}\n` +
           `Message ${currentIndex + 1} of ${totalMessages}`,
       );

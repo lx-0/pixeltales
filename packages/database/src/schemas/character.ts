@@ -56,10 +56,10 @@ export const CharacterStateSchema = CharacterBaseSchema.extend({
   direction: z.enum(DirectionEnum).default('front'),
   currentMood: z.string().default('neutral'),
   action: z.enum(CharacterActionEnum).default('idle'),
-  actionStartedAt: z.number().default(Date.now()),
+  actionStartedAt: z.coerce.date().default(new Date()),
   actionEstimatedDuration: z.number().optional().nullable(),
   endConversationRequested: z.boolean().default(false),
-  endConversationRequestedAt: z.number().optional().nullable(),
+  endConversationRequestedAt: z.coerce.date().optional().nullable(),
   endConversationRequestedValidityDuration: z.number().optional().nullable(),
 });
 export type CharacterState = z.infer<typeof CharacterStateSchema>;

@@ -453,11 +453,9 @@ export class ScenesDbService {
       throw new Error('Cannot add message: No current state exists.');
     }
 
-    const now = new Date();
     const newMessage: Message = {
       ...newMessageData,
-      timestamp: now.toISOString(),
-      unixTimestamp: now.getTime(),
+      timestamp: new Date(),
     };
     const updatedMessages: Message[] = [...stateSnapshot.messages, newMessage];
 

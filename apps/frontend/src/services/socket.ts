@@ -140,12 +140,13 @@ class SocketService {
       this.isConnecting = false;
     });
 
-    this.socket.on('scene_state', (state: SceneStateSnapshot) => {
-      const result = SceneStateSnapshotSchema.safeParse(state);
+    this.socket.on('scene_state', (stateUnparsed: SceneStateSnapshot) => {
+      const result = SceneStateSnapshotSchema.safeParse(stateUnparsed);
       if (!result.success) {
         Logger.error(this.loggerContext, '🔴 SOCKET ERROR:', result.error);
         return;
       }
+      const state = result.data;
 
       // Internal listener: Handles raw 'scene_state' event from Socket.IO server.
       // Caches the data and notifies application listeners.
@@ -180,6 +181,10 @@ class SocketService {
   private setupDebugListeners(): void {
     if (!this.socket) return;
 
+    // These are standard Socket.IO client-side events.
+    // They reflect the state of *this client's* connection to the server.
+    // The backend gateway does NOT need explicit handlers for these; they are handled by the underlying Socket.IO library on both sides.
+    // We listen to them here purely for client-side debugging/logging.
     const events = [
       'connect',
       'connect_error',

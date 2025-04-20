@@ -13,18 +13,15 @@ export const SceneStateSnapshotSchema = z.object({
     .string()
     .default(() => uuid())
     .describe('Unique identifier for the scene state snapshot'),
-  timestamp: z
-    .date()
-    .default(new Date())
-    .describe('ISO format datetime when the snapshot was created'),
+  timestamp: z.coerce.date().default(new Date()).describe('Datetime when the snapshot was created'),
   sceneId: z.string().describe('Unique identifier for the scene'),
   configId: z.string().describe('Unique identifier for the scene configuration'),
   characters: z.record(z.string(), CharacterStateSchema).describe('Characters in the scene'),
   messages: z.array(MessageSchema).default([]).describe('Messages in the scene'),
-  startedAt: z.date().describe('ISO format datetime when the scene was started'),
+  startedAt: z.coerce.date().describe('Datetime when the scene was started'),
   conversationActive: z.boolean().describe('Whether the conversation is active'),
   conversationEnded: z.boolean().default(false).describe('Whether the conversation is ended'),
-  endedAt: z.date().optional().nullable().describe('ISO format datetime when the scene was ended'),
+  endedAt: z.coerce.date().optional().nullable().describe('Datetime when the scene was ended'),
   custom: SceneStateSnapshotCustomSchema.default({}),
 });
 export type SceneStateSnapshot = z.infer<typeof SceneStateSnapshotSchema>;

@@ -3,8 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 import { SceneConfig, SceneStateSnapshot } from '@pixeltales/contracts';
 import { PinoLogger } from 'nestjs-pino';
-import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
-import { millisecondsToReadableDuration } from 'src/common/utils';
+import { LOGGER_CONTEXT_SHORTEN } from '../../common/logger/logger.const';
+import { millisecondsToReadableDuration } from '../../common/utils';
 import { LlmService } from '../../llm/llm.service';
 import { ConversationHistoryService } from '../conversation-history/conversation-history.service';
 import { ConversationStateService } from '../conversation-state/conversation-state.service';
@@ -227,12 +227,12 @@ export class ConversationOrchestratorService {
     const now = Date.now();
 
     for (const [id, char] of Object.entries(state.characters)) {
-      const endTime = char.actionStartedAt + (char.actionEstimatedDuration || 0) * 1000;
+      const endTime = char.actionStartedAt.getTime() + (char.actionEstimatedDuration || 0) * 1000;
       result[id] = {
         name: char.name,
         action: char.action,
         started: char.actionStartedAt,
-        startedAt: new Date(char.actionStartedAt).toISOString(),
+        startedAt: char.actionStartedAt,
         duration: char.actionEstimatedDuration,
         endTime: endTime > 0 ? new Date(endTime).toISOString() : null,
         remainingMs: endTime > now ? endTime - now : 0,

@@ -13,9 +13,9 @@ import {
   SceneConfig,
 } from '@pixeltales/contracts';
 import { getMessageFromUnknownError } from '@pixeltales/utils';
-import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { LOGGER_CONTEXT_SHORTEN } from '../common/logger/logger.const';
 import { stripUnsupportedZod } from './strip-unsupported-zod.func';
 
 // Define supported task types

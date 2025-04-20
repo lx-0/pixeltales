@@ -35,21 +35,18 @@ export const SceneConfigSchema = z.object({
     .optional()
     .nullable()
     .describe('Name of the person proposing the scene (2-50 characters)'),
-  proposedAt: z
+  proposedAt: z.coerce
     .date()
     .optional()
     .nullable()
-    .describe('ISO format datetime when the scene was proposed'),
+    .describe('Datetime when the scene was proposed'),
   votes: z.number().default(0).describe('Number of votes the scene proposal has received'),
   comments: z
     .array(CommentSchema)
     .optional()
     .default([])
     .describe('Comments on the scene proposal'),
-  createdAt: z
-    .date()
-    .default(new Date())
-    .describe('ISO format datetime when the scene was created'),
+  createdAt: z.coerce.date().default(new Date()).describe('Datetime when the scene was created'),
   custom: SceneConfigCustomSchema.default({}),
 });
 export type SceneConfig = z.output<typeof SceneConfigSchema>;

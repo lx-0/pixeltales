@@ -8,7 +8,7 @@ import {
 export class CharacterUtils {
   static initializeStateFromConfig(
     config: CharacterConfig,
-    createdAt: number = Date.now(),
+    createdAt: Date = new Date(),
   ): CharacterState {
     const newCharState: NewCharacterState = {
       ...config,

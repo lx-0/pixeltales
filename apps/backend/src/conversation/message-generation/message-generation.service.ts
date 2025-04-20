@@ -11,7 +11,7 @@ import {
 } from '@pixeltales/contracts';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
-import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
+import { LOGGER_CONTEXT_SHORTEN } from '../../common/logger/logger.const';
 import { ConversationSystemMessageVars, LlmService } from '../../llm/llm.service';
 import { SceneStateService } from '../../scene/scene-state/scene-state.service';
 import { MessagesDbService } from '../conversation-db/messages-db.service';
@@ -149,10 +149,9 @@ export class MessageGenerationService {
 
         // Create a state message (for legacy support) from the data needed for a Message
         const stateMessage: Message = {
-          character: characterId,
+          characterId: characterId,
           content: content,
-          timestamp: new Date(nowTimestamp).toISOString(),
-          unixTimestamp: nowTimestamp,
+          timestamp: new Date(nowTimestamp),
           thoughts: response.thoughts,
           mood: response.mood,
           moodEmoji: response.moodEmoji,
@@ -170,7 +169,7 @@ export class MessageGenerationService {
         await this.sceneStateService.updateCharacterState(characterId, {
           currentMood: response.mood,
           endConversationRequested: response.endConversation,
-          endConversationRequestedAt: response.endConversation ? nowTimestamp : undefined,
+          endConversationRequestedAt: response.endConversation ? new Date(nowTimestamp) : undefined,
           endConversationRequestedValidityDuration: response.endConversation
             ? END_CONVERSATION_REQUEST_VALIDITY_S
             : undefined,
@@ -362,7 +361,7 @@ export class MessageGenerationService {
 
     await this.sceneStateService.updateCharacterState(characterId, {
       action: action,
-      actionStartedAt: Date.now(),
+      actionStartedAt: new Date(),
       actionEstimatedDuration: estimatedDurationMs ? estimatedDurationMs / 1000 : undefined,
     });
 
@@ -392,15 +391,14 @@ export class MessageGenerationService {
    */
   mapMessageV2ToStateMessage(messageV2: MessageV2): Message {
     return {
-      character: messageV2.characterId,
+      characterId: messageV2.characterId,
       content: messageV2.content,
       recipient: messageV2.recipient,
       thoughts: messageV2.thoughts,
       mood: messageV2.mood,
       moodEmoji: messageV2.moodEmoji,
       reactionOnPreviousMessage: messageV2.reactionOnPreviousMessage,
-      timestamp: messageV2.timestamp.toISOString(),
-      unixTimestamp: messageV2.timestamp.getTime(),
+      timestamp: messageV2.timestamp,
       calculatedSpeakingTime: messageV2.calculatedSpeakingTime,
       conversationRating: messageV2.conversationRating,
       endConversation: messageV2.endConversation ?? false,
@@ -449,12 +447,11 @@ export class MessageGenerationService {
       for (const charId in characters) {
         const char = characters[charId];
         if (!char) continue;
-        const startedAt = typeof char.actionStartedAt === 'number' ? char.actionStartedAt : null;
         const duration =
           typeof char.actionEstimatedDuration === 'number' ? char.actionEstimatedDuration : null;
 
-        if (char.action === actionType && duration !== null && startedAt !== null) {
-          const endTime = startedAt + duration * 1000;
+        if (char.action === actionType && duration !== null) {
+          const endTime = char.actionStartedAt.getTime() + duration * 1000;
           if (now < endTime) {
             stillActing = true;
             const waitTime = endTime - now;
@@ -466,7 +463,7 @@ export class MessageGenerationService {
                   waitTime: waitTime.toFixed(0),
                   endTime,
                   now,
-                  startedAt,
+                  startedAt: char.actionStartedAt,
                   duration,
                 },
                 `⏱️ Character ${charId} still ${actionType}, waiting ${waitTime.toFixed(0)}ms until ${new Date(endTime).toISOString()}`,
@@ -484,10 +481,10 @@ export class MessageGenerationService {
                 {
                   characterId: charId,
                   actionType,
-                  elapsedTime: now - startedAt,
+                  elapsedTime: now - char.actionStartedAt.getTime(),
                   expectedDuration: duration * 1000,
                   now,
-                  startedAt,
+                  startedAt: char.actionStartedAt,
                 },
                 `⌛ Character ${charId} finished ${actionType}. Setting idle.`,
               );
@@ -520,14 +517,14 @@ export class MessageGenerationService {
   }
 
   /**
-   * Helper method to get a summary of all characters' statuses
+   * Debug: Helper method to get a summary of all characters' statuses
    */
   private getAllCharactersStatus(state?: SceneStateSnapshot): Record<
     string,
     {
       name: string;
       action: CharacterAction;
-      started: number;
+      started: Date;
       duration?: number | null;
       remainingMs: number;
       isActive: boolean;
@@ -542,7 +539,7 @@ export class MessageGenerationService {
       {
         name: string;
         action: CharacterAction;
-        started: number;
+        started: Date;
         duration?: number | null;
         remainingMs: number;
         isActive: boolean;
@@ -550,7 +547,7 @@ export class MessageGenerationService {
     > = {};
 
     for (const [id, char] of Object.entries(sceneState.characters)) {
-      const endTime = char.actionStartedAt + (char.actionEstimatedDuration || 0) * 1000;
+      const endTime = char.actionStartedAt.getTime() + (char.actionEstimatedDuration || 0) * 1000;
       result[id] = {
         name: char.name,
         action: char.action,

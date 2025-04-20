@@ -81,7 +81,7 @@ export class SpeechBubbleManager {
     for (const [key, value] of Object.entries(state.characters)) {
       if (value.action === 'speaking') {
         const character = this.characterManager.getCharacter(key);
-        const message = state.messages.filter((m) => m.character === key).slice(-1)[0];
+        const message = state.messages.filter((m) => m.characterId === key).slice(-1)[0];
 
         if (this.debugLogging) {
           Logger.info(
@@ -361,12 +361,12 @@ export class SpeechBubbleManager {
     this.clearBubbles();
 
     // Show bubble for the historical message
-    const character = this.characterManager.getCharacter(message.character);
+    const character = this.characterManager.getCharacter(message.characterId);
     if (character) {
       this.createSpeechBubble(
         character.sprite,
         message.content ?? '',
-        message.character,
+        message.characterId,
         character.state.name,
         undefined,
         message.mood,

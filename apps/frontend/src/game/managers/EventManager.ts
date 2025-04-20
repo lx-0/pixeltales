@@ -1,6 +1,6 @@
 import { socketService } from '@/services/socket';
 import { Logger } from '@/utils/logger';
-import { SceneStateSnapshotSchema, type SceneStateSnapshot } from '@pixeltales/contracts';
+import { type SceneStateSnapshot } from '@pixeltales/contracts';
 import { Scene } from 'phaser';
 import { StateManager } from './StateManager';
 
@@ -44,12 +44,6 @@ export class EventManager {
   }
 
   private handleSceneStateUpdate(state: SceneStateSnapshot): void {
-    const result = SceneStateSnapshotSchema.safeParse(state);
-    if (!result.success) {
-      Logger.error(this.constructor.name, '🔴 SOCKET ERROR:', result.error);
-      return;
-    }
-
     Logger.info(this.constructor.name, '[FLOW 2/5] Handling scene state update');
     Logger.info(this.constructor.name, '➡️ Calling StateManager.updateState', {
       stateValidity: state ? 'Valid' : 'Invalid',

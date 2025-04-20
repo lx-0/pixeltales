@@ -11,8 +11,8 @@ export const UserSchema = z.object({
   role: UserRoleSchema.default('user').describe('Role of the user'),
   email: z.string().email().describe('Email address of the user (from Supabase)'),
   name: z.string().nullable().default(null).describe('Name of the user'),
-  createdAt: z.date().describe('Timestamp when the user was created'),
-  updatedAt: z.date().describe('Timestamp when the user was last updated'),
+  createdAt: z.coerce.date().describe('Datetime when the user was created'),
+  updatedAt: z.coerce.date().describe('Datetime when the user was last updated'),
 });
 export type User = z.output<typeof UserSchema>; // z.output = z.infer
 export type NewUser = Omit<z.input<typeof UserSchema>, 'createdAt' | 'updatedAt'>; // z.input -> defaults are optional

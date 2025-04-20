@@ -6,7 +6,7 @@ export const MessageV2Schema = z.object({
     .string()
     .default(() => uuid())
     .describe('Unique identifier for the message'),
-  timestamp: z.date().default(new Date()),
+  timestamp: z.coerce.date().default(new Date()),
   sceneId: z.string(),
   characterId: z.string(),
   recipient: z.string().describe('The recipient of the message - from the eyes of the character'),
@@ -27,11 +27,8 @@ export type NewMessageV2 = Omit<MessageV2, 'id' | 'timestamp'>;
 
 // Inline message in scene state snapshot
 export const MessageSchema = z.object({
-  timestamp: z.string(),
-  unixTimestamp: z.number(),
-  // scene_id: z.number(),
-  // character_id: z.string(),
-  character: z.string(),
+  timestamp: z.coerce.date().default(new Date()),
+  characterId: z.string().describe('The character that sent the message'),
   recipient: z.string().describe('The recipient of the message - from the eyes of the character'),
   content: z.string().optional().nullable(),
   thoughts: z.string(),

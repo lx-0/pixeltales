@@ -5,8 +5,8 @@ import { SceneConfig, SceneStateSnapshot, SceneStateSnapshotSchema } from '@pixe
 import { toBoolean } from '@pixeltales/utils';
 import { PinoLogger } from 'nestjs-pino';
 import assert from 'node:assert';
-import { LOGGER_CONTEXT_SHORTEN } from 'src/common/logger/logger.const';
 import { CharactersService } from '../../characters/characters.service';
+import { LOGGER_CONTEXT_SHORTEN } from '../../common/logger/logger.const';
 import { ConversationOrchestratorService } from '../../conversation/conversation-orchestrator/conversation-orchestrator.service';
 import { EventsGateway } from '../../events/events.gateway'; // To emit updates
 import { ScenesService } from '../../scenes/scenes.service'; // Assuming DB access logic is here
@@ -423,9 +423,7 @@ export class SceneManagerService implements OnModuleInit {
       .filter(
         (char) =>
           (char.action === 'speaking' || char.action === 'thinking') &&
-          typeof char.actionStartedAt === 'number' &&
-          typeof char.actionEstimatedDuration === 'number' &&
-          Date.now() < char.actionStartedAt + char.actionEstimatedDuration * 1000,
+          Date.now() < char.actionStartedAt.getTime() + (char.actionEstimatedDuration ?? 0) * 1000,
       )
       .map((char) => ({
         name: char.name,

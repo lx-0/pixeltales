@@ -14,7 +14,7 @@ interface SceneInfoProps {
 export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
   // Calculate active characters (those who have spoken)
   const activeCharacters = Object.values(scene.characters).filter((char) =>
-    scene.messages.some((msg) => msg.character === char.id),
+    scene.messages.some((msg) => msg.characterId === char.id),
   );
 
   // Calculate average response time
@@ -22,7 +22,10 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
     scene.messages.length > 1
       ? scene.messages.reduce((acc, msg, idx) => {
           if (idx === 0) return 0;
-          return acc + (msg.unixTimestamp - (scene.messages[idx - 1]?.unixTimestamp || 0));
+
+          return (
+            acc + (msg.timestamp.getTime() - (scene.messages[idx - 1]?.timestamp.getTime() || 0))
+          );
         }, 0) /
         (scene.messages.length - 1)
       : 0;
@@ -48,7 +51,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
   // Calculate total tokens used per model
   const modelUsage = scene.messages.reduce(
     (acc, msg) => {
-      const char = scene.characters[msg.character];
+      const char = scene.characters[msg.characterId];
       if (!char) return acc;
       const modelKey = `${char.llmConfig.provider}:${char.llmConfig.modelName}`;
       acc[modelKey] = (acc[modelKey] || 0) + 1;
@@ -238,11 +241,11 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
           {Object.entries(scene.characters).map(([id, char]) => {
-            const messageCount = scene.messages.filter((msg) => msg.character === id).length;
-            const lastMessage = [...scene.messages].reverse().find((msg) => msg.character === id);
+            const messageCount = scene.messages.filter((msg) => msg.characterId === id).length;
+            const lastMessage = [...scene.messages].reverse().find((msg) => msg.characterId === id);
 
             // Calculate character-specific metrics
-            const characterMessages = scene.messages.filter((msg) => msg.character === id);
+            const characterMessages = scene.messages.filter((msg) => msg.characterId === id);
             const avgResponseTime =
               characterMessages.length > 1
                 ? characterMessages.reduce((acc, msg, idx) => {
@@ -335,7 +338,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
                           {formatDuration(
                             Math.round(
                               char.endConversationRequestedValidityDuration -
-                                (Date.now() / 1000 - (char.endConversationRequestedAt || 0)),
+                                (Date.now() - (char.endConversationRequestedAt?.getTime() || 0)),
                             ),
                           )}
                           )

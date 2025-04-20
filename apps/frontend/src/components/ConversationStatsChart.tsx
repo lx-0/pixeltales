@@ -53,14 +53,14 @@ export default function ConversationStatsChart({ scene }: ConversationStatsChart
   const characterDatasets: DataPoint[] = useMemo(
     () =>
       scene.messages
-        .sort((a, b) => a.unixTimestamp - b.unixTimestamp)
+        .sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime())
         .map((message) => ({
-          timestamp: message.unixTimestamp,
+          timestamp: message.timestamp.getTime(),
           chars: {
-            [message.character]: {
-              charId: message.character,
-              name: message.character,
-              color: message.character,
+            [message.characterId]: {
+              charId: message.characterId,
+              name: message.characterId,
+              color: message.characterId,
               rating: message.conversationRating || 0,
               mood: message.mood,
               moodEmoji: message.moodEmoji,
