@@ -1,4 +1,17 @@
 /* eslint-disable no-console */
+import {
+  DEBUG,
+  DEBUG_API,
+  DEBUG_APP,
+  DEBUG_AUTH,
+  DEBUG_CHARACTER_MANAGER,
+  DEBUG_CHAT_MESSAGES_UI,
+  DEBUG_SCENE,
+  DEBUG_SCENE_STATE,
+  DEBUG_SPEECH_BUBBLES,
+  DEBUG_UI_CONTROLS,
+  DEBUG_WEBSOCKET,
+} from '@/config';
 import chalk from 'chalk';
 
 export type LogData = Record<string, unknown> | { [key: string]: unknown };
@@ -9,7 +22,32 @@ export type LogData = Record<string, unknown> | { [key: string]: unknown };
  */
 export class Logger {
   /** Contexts that should be excluded from debug logging */
-  private static debugBlacklist: Set<string> = new Set(['ChatMessages:ui']);
+  private static debugBlacklist: Set<string> = new Set([
+    ...(DEBUG && DEBUG_APP ? [] : ['App']),
+    ...(DEBUG && DEBUG_API ? [] : ['AuthApi', 'ScenesApi', 'ConfigApi', 'SpritesheetApi']),
+    ...(DEBUG && DEBUG_AUTH ? [] : ['useAuth', 'AuthService', 'AuthApi']),
+    ...(DEBUG && DEBUG_WEBSOCKET ? [] : ['EventManager', '📡']),
+    ...(DEBUG && DEBUG_SCENE ? [] : ['MainScene']),
+    ...(DEBUG && DEBUG_SCENE_STATE ? [] : ['SceneManager', 'StateManager']),
+    ...(DEBUG && DEBUG_UI_CONTROLS ? [] : ['UIControlsManager']),
+    ...(DEBUG && DEBUG_SPEECH_BUBBLES ? [] : ['SpeechBubbleManager']),
+    ...(DEBUG && DEBUG_CHARACTER_MANAGER ? [] : ['CharacterManager']),
+    ...(DEBUG && DEBUG_CHAT_MESSAGES_UI ? [] : ['ChatMessages:ui']),
+  ]);
+
+  /** Contexts that should be excluded from info logging */
+  private static infoBlacklist: Set<string> = new Set([
+    ...(DEBUG && DEBUG_APP ? [] : ['App']),
+    ...(DEBUG && DEBUG_API ? [] : ['AuthApi', 'ScenesApi', 'ConfigApi', 'SpritesheetApi']),
+    ...(DEBUG && DEBUG_AUTH ? [] : ['useAuth', 'AuthService', 'AuthApi']),
+    ...(DEBUG && DEBUG_WEBSOCKET ? [] : ['EventManager', '📡']),
+    ...(DEBUG && DEBUG_SCENE ? [] : ['MainScene']),
+    ...(DEBUG && DEBUG_SCENE_STATE ? [] : ['SceneManager', 'StateManager']),
+    ...(DEBUG && DEBUG_UI_CONTROLS ? [] : ['UIControlsManager']),
+    ...(DEBUG && DEBUG_SPEECH_BUBBLES ? [] : ['SpeechBubbleManager']),
+    ...(DEBUG && DEBUG_CHARACTER_MANAGER ? [] : ['CharacterManager']),
+    ...(DEBUG && DEBUG_CHAT_MESSAGES_UI ? [] : ['ChatMessages:ui']),
+  ]);
 
   /** Check if we're running in a browser environment */
   private static isBrowser = typeof window !== 'undefined';
@@ -129,16 +167,20 @@ export class Logger {
    * Log debug messages with magenta/purple styling
    */
   static debug(context: string, message: string, data?: LogData) {
-    if (!Logger.debugBlacklist.has(context)) {
-      const [formattedContext, ...styles] = Logger.formatContext(context, 'debug');
-      Logger.logWithData('log', [formattedContext, ...styles], message, data);
+    if (Logger.debugBlacklist.has(context)) {
+      return;
     }
+    const [formattedContext, ...styles] = Logger.formatContext(context, 'debug');
+    Logger.logWithData('log', [formattedContext, ...styles], message, data);
   }
 
   /**
    * Log general information with blue styling
    */
   static info(context: string, message: string, data?: LogData) {
+    if (Logger.infoBlacklist.has(context)) {
+      return;
+    }
     const [formattedContext, ...styles] = Logger.formatContext(context, 'info');
     Logger.logWithData('log', [formattedContext, ...styles], message, data);
   }

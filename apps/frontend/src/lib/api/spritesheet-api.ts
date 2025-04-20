@@ -24,7 +24,7 @@ import { BaseApiService } from './base-api';
  */
 export class SpritesheetApiService extends BaseApiService {
   constructor() {
-    super('SpritesheetAPI');
+    super('SpritesheetApi');
   }
 
   /**

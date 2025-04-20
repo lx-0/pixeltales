@@ -52,7 +52,7 @@ export default function App() {
     }
 
     if (!socketInitializedRef.current) {
-      Logger.info('App.tsx:App()', 'Initializing socket connection...');
+      Logger.debug('App', 'Initializing socket connection...');
       socketService.connect();
       socketInitializedRef.current = true;
 
@@ -62,7 +62,7 @@ export default function App() {
       window.DEBUG_AUTH = DEBUG_AUTH;
       window.DEBUG_WEBSOCKET = DEBUG_WEBSOCKET;
 
-      Logger.info('App.tsx:App()', 'Debug flags initialized', {
+      Logger.debug('App', 'Debug flags initialized', {
         DEBUG_SPEECH_BUBBLES,
         DEBUG_AUTH,
         DEBUG_WEBSOCKET,
