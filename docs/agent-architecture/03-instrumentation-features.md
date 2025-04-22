@@ -379,11 +379,11 @@ This ensures all stats events and metrics are strictly typed, validated at runti
 | PixelTales Dashboard                                                            |
 |---------------------------------------------------------------------------------|
 | [Scene View]               | [Stats Panel]                                      |
-|  ┌───────────────┐         |  ┌─────────────┐  ┌─────────────┐  ┌───────┐       |
-|  |   Phaser 3    |         |  | Agent: Alice|  | Agent: Bob  |  |Summary|       |
-|  |  Scene Render |         |  | msgs: 87    |  | msgs: 91    |  |msgs:178|      |
-|  └───────────────┘         |  | avg RT:45s  |  | avg RT:46s  |  | cost: $X|     |
-|                            |  └─────────────┘  └─────────────┘  └───────┘       |
+|  ┌───────────────┐         |  ┌─────────────┐  ┌─────────────┐  ┌──────────┐    |
+|  |   Phaser 3    |         |  | Agent: Alice|  | Agent: Bob  |  | Summary  |    |
+|  |  Scene Render |         |  | msgs: 87    |  | msgs: 91    |  | msgs:178 |    |
+|  └───────────────┘         |  | avg RT:45s  |  | avg RT:46s  |  | cost: $X |    |
+|                            |  └─────────────┘  └─────────────┘  └──────────┘    |
 |                            |  [Line Chart: Response Time over time]             |
 |                            |  [Bar Chart: Memory Reads vs Writes]               |
 |                            |  [Heatmap: Mood Trajectory]                        |

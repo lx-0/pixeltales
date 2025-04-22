@@ -8,41 +8,42 @@ The following diagram illustrates the flow of information and decision-making wi
 
 ```diagram/text
 +------------------------------------------------------------------------------------------------------------------------------------------+
-|                              AGENT'S MIND (ENTIRE COGNITIVE ARCHITECTURE)                                                                |
+|                                         🧠 AGENT'S MIND (ENTIRE COGNITIVE ARCHITECTURE)                                                  |
 +------------------------------------------------------------------------------------------------------------------------------------------+
 |                                                                                                                                          |
 |       Environmental Events (Perceived via Vision/Audio/Other Sensors)                                                                    │
 |                          +---------------------------------------------------------------------------------------------------------------┼---+
 |                          v                                                                                                               |   |    Agent Actions
 | +--------------------------+         +-----------------------------+         +--------------------------+  +---------------------------+ |   |    (Executed via
-| | Perception System (2.2)  |--------►|   Cognitive Cycle (2.3)     |--------►| Action System (2.5)      |--| Capability Extensions     |─┼-------+  Speech/Motion...)
-| | (Filtering Senses)       |         | (Thinking & Deciding)       |         | (Formatting Decisions)   |  | (2.6)                     | |   |   v
-| |                          |         |                             |         |                          |  |                           | |  +------------------------+
-| | • Vision Processing      |         | ┌─────────────────────────┐ |         | • Format Action Intent   |  | • Speech Output           | |  | Environment Simulation |
-| | • Audio Processing       |         | │ System-1 (Fast, 2.1.3)  │ |         | • Select Capability Ext. |  | • Motion Control          | |  | Layer (2.12)           |
-| | • Event Filtering        |         | │ • Immediate Reactions   │ |         | • Track Action Results   |  | • Object Interaction      | |  +------------------------+
+| | 👁️ Perception System (2.2)|--------►| 🔄 Cognitive Cycle (2.3)    |--------►| 🎯 Action System (2.5)   |--| 🛠️ Capability Extensions  |─┼-------+  Speech/Motion...)
+| |   (Filtering Senses)     |         |    (Thinking & Deciding)    |         |   (Formatting Decisions) |  |   (2.6)                   | |   |   v
+| |                          |         |                             |         |                          |  |                           | |  +--------------------------+
+| | • Vision Processing      |         | ┌─────────────────────────┐ |         | • Format Action Intent   |  | • Speech Output           | |  | 🌍 Environment Simulation|
+| | • Audio Processing       |         | │ ⚡ System-1 (Fast, 2.1.3)│ |         | • Select Capability Ext. |  | • Motion Control          | |  |    Layer (2.12)          |
+| | • Event Filtering        |         | │ • Immediate Reactions   │ |         | • Track Action Results   |  | • Object Interaction      | |  +--------------------------+
 | | • Context Building       |         | └─────────────────────────┘ |         | • Emit Internal Events   |  | • Environment Query       | |
 | +-----------+--------------+         |                             |         +------------+-------------+  | • ...                     | |
 |             │                        | ┌─────────────────────────┐ |                      ▲                +---------------------------+ |
-|             │                        | │ System-2 (Slow, 2.1.3)  │ |                      │                                              |
+|             │                        | │ 🔍 System-2 (Slow, 2.1.3)│ |                     │                                              |
 |             ▼                        | │ • Deliberative Reasoning│ |◄───────┬─────────────┘                                              |
 | +--------------------------+         | └─────────────────────────┘ |        │ ┌─────────────────────────────────┐                        |
-| | Curiosity System (2.9)   |◄───────►|                             |        │ │ Internal Interface Tools (2.7): │                        |
-| | (Intrinsic Motivation)   |         | ┌─────────────────────────┐ |        └─┤ • Memory Access                 │                        |
-| |                          |         | │ Planner/Executor (2.1.4)│ |          │ • DateTime                      │                        |
-| | • Information Seeking    |         | │ • HTN Planning & Exec.  │ |          │ • Ontology Query                │                        |
-| | • Uncertainty Tracking   |         | └─────────────────────────┘ |          │ • Self-Model Query              │                        |
-| | • Hypothesis Generation  |         |                             |          │ • Conversation Control          │                        |
-| | • Experimentation Goals  |         | 1. Observe (Gather Context) |          │ • ...                           │                        |
-| +-----------+--------------+         | 2. Orient (Contextualize)   |          └─────────────────────────────────┘                        |
-|             │                        | 3. Decide/Plan (Select Goal)|                                                                     |
+| | 💡 Curiosity System (2.9)|◄───────►|                             |        │ │ 🧰 Internal Interface Tools:     |                        |
+| |   (Intrinsic Motivation) |         | ┌─────────────────────────┐ |        └─┤   (2.7)                         │                        |
+| |                          |         | │ 📝 Planner/Executor     │ |          │                                 │                        |
+| | • Information Seeking    |         | │   (2.1.4)               │ |          │ • Memory Access                 │                        |
+| | • Uncertainty Tracking   |         | │ • HTN Planning & Exec.  │ |          │ • DateTime                      │                        |
+| | • Hypothesis Generation  |         | └─────────────────────────┘ |          │ • Ontology Query                │                        |
+| | • Experimentation Goals  |         |                             |          │ • Self-Model Query              │                        |
+| +-----------+--------------+         | 1. Observe (Gather Context) |          │ • Conversation Control          │                        |
+|             │                        | 2. Orient (Contextualize)   |          │ • ...                           │                        |
+|             │                        | 3. Decide/Plan (Select Goal)|          └─────────────────────────────────┘                        |
 |             │                        | 4. Act (Initiate Execution) |                                                                     |
 |             │                        +-------------+------▲--------+                                                                     |
 |             │                                      │      │                                                                              |
 |             │                                      ▼      │                                                                              |
 |             ▼                             +------------------------------------------------------------------+                           |
-| +--------------------------+              |    Internal State & Memory System (2.4)                          |                           |
-| | Ontology System (2.10)   |◄─────────────►    (Mind's Storage)                                              |                           |
+| +--------------------------+              | 🧬 Internal State & Memory System (2.4)                          |                           |
+| | 📚 Ontology System (2.10)|◄─────────────►    (Mind's Storage)                                              |                           |
 | | (Structured World Model) |              |                                                                  |                           |
 | |                          |              | • Dynamic State (Mood, Interest, Goals, Curiosity, Uncertainty)  |                           |
 | | • Categories & Instances |              | • Working Memory (Short-term Buffer for Cycle)                   |                           |
@@ -54,46 +55,46 @@ The following diagram illustrates the flow of information and decision-making wi
 |             │                                               │                         │                                                  |
 |             │                                               │                         │                                                  |
 |             │                                               ▼                         ▼                                                  |
-|             │                             +-----------------------------+       +-------------------------+                              |
-|             └─────────────────────────────► Self-Modeling System (2.11) |◄─────►| Learning System (2.8)   |                              |
-|                                           | (Understanding Self)        |       | (Experience Adaptation) |                              |
-|                                           |                             |       |                         |                              |
-|                                           | • Capability Assessment     |       | • Policy Updates        |                              |
-|                                           | • Agency & Boundaries       |       | • Meta-Learning         |                              |
-|                                           | • Role vs. System           |       | • Reward Signal Proc.   |                              |
-|                                           | • Mental State Awareness    |       | • Behavioral Adaptation |                              |
-|                                           +-----------------------------+       +-------------------------+                              |
+|             │                             +------------------------------+        +-------------------------+                            |
+|             └─────────────────────────────► 👤 Self-Modeling System (2.11)|◄─────►| 📈 Learning System (2.8) |                            |
+|                                           |   (Understanding Self)       |        | (Experience Adaptation) |                            |
+|                                           |                              |        |                         |                            |
+|                                           | • Capability Assessment      |        | • Policy Updates        |                            |
+|                                           | • Agency & Boundaries        |        | • Meta-Learning         |                            |
+|                                           | • Role vs. System            |        | • Reward Signal Proc.   |                            |
+|                                           | • Mental State Awareness     |        | • Behavioral Adaptation |                            |
+|                                           +------------------------------+        +-------------------------+                            |
 |                                                      ▲                                 ▲                                                 |
 |                                                      │                                 │                                                 |
 |                                                      └───────────┐       ┌─────────────┘                                                 |
 |                                                                  │       │                                                               |
 |                                                                  ▼       ▼                                                               |
-|                                                         +-------------------+                                                            |
-|                                                         | Integration Layer |                                                            |
-|                                                         |      (4.1)        |                                                            |
-|                                                         +--------+----------+                                                            |
+|                                                         +--------------------+                                                           |
+|                                                         | ⚡ Integration Layer|                                                           |
+|                                                         |   (4.1)            |                                                           |
+|                                                         +--------+-----------+                                                           |
 |                                                                  │                                                                       |
 |                                                                  │                                                                       |
 |                                                                  ▼                                                                       |
-|                                                         +-------------------+                                                            |
-|                                                         | Event Bus (3.1)   |                                                            |
-|                                                         | (Communication)   |                                                            |
-|                                                         +--------+----------+                                                            |
+|                                                         +--------------------+                                                           |
+|                                                         | 📡 Event Bus (3.1) |                                                           |
+|                                                         |   (Communication)  |                                                           |
+|                                                         +--------+-----------+                                                           |
 +------------------------------------------------------------------------------------------------------------------------------------------+
-                                                                   │
-                                                     +-------------+-------------+
-                                                     |                           |
-                                                     ▼                           ▼
-                                           +-------------------+      +----------------------+
-                                           | Analytics Systems |      | Notification System  |
-                                           |     (Ch. 3)       |      |       (3.6)          |
-                                           +-------------------+      +----------------------+
-                                             |               |
-                                             ▼               ▼
-                             +----------------------+  +----------------------+
-                             | Psychological Eval   |  | Communication        |
-                             |       (3.3)          |  | Analysis (3.4)       |
-                             +----------------------+  +----------------------+
+                                                                     │
+                                                       +-------------+-------------+
+                                                       |                           |
+                                                       ▼                           ▼
+                                             +---------------------+      +----------------------+
+                                             | 📊 Analytics Systems|      | 🍿 Notification System|
+                                             |     (Ch. 3)         |      |       (3.6)          |
+                                             +---------------------+      +----------------------+
+                                               |               |
+                                               ▼               ▼
+                                    +----------------------+  +----------------------+
+                                    | 🕵️ Psychological Eval|  | 💬 Communication      |
+                                    |       (3.3)          |  |   Analysis (3.4)     |
+                                    +----------------------+  +----------------------+
 ```
 
 ### 2.1.1 Agent's Mind – A Unifying View
