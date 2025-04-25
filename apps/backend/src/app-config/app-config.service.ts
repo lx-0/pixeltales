@@ -1,7 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigOptions } from '@pixeltales/contracts';
-import { CHARACTER_COLORS } from '../characters/character.const';
 import { LLM_PROVIDERS } from '../llm/llm.const';
+
+import { CHARACTER_COLORS } from '../v1/characters/character.const';
 
 @Injectable()
 export class AppConfigService {

@@ -1,6 +1,6 @@
 import { FactoryProvider, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { dbSchema } from '@pixeltales/database';
+import { schema } from '@pixeltales/database';
 import { toBoolean } from '@pixeltales/utils';
 import BetterSqlite3 from 'better-sqlite3';
 import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
@@ -10,7 +10,7 @@ import * as path from 'node:path';
 
 export const DRIZZLE_INSTANCE = 'DRIZZLE_INSTANCE';
 
-export type DatabaseSchema = BetterSQLite3Database<typeof dbSchema>;
+export type DatabaseSchema = BetterSQLite3Database<typeof schema>;
 
 export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
   provide: DRIZZLE_INSTANCE,
@@ -63,7 +63,7 @@ export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
       };
 
       const db = drizzle(sqlite, {
-        schema: dbSchema,
+        schema: schema,
         logger: toBoolean(configService.get<boolean>('DB_DEBUG_LOGGING', false))
           ? customLogger
           : false,

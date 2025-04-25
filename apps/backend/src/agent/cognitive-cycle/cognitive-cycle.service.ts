@@ -1,0 +1,524 @@
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import {
+  AddObservationParams,
+  AgentAction,
+  AgentDynamicState,
+  AgentPerceptionEvent,
+  AgentState,
+  Fact,
+  Observation,
+  OrientationContext,
+  PerceptionState,
+  RewardFunctionInput,
+  SelfModel,
+} from '@pixeltales/contracts';
+import { EVENT_BUS, IEventBus } from '../../core/event-bus.interface';
+import { EventBusService } from '../../core/event-bus.service';
+import { ACTION_SERVICE, IActionService } from '../action/action.interface';
+import { AgentRuntimeState } from '../agent.state';
+import {
+  IInternalToolsInterface,
+  INTERNAL_TOOLS_INTERFACE,
+} from '../internal-tools/internal-tools.interface';
+import { ILearningInterface, LEARNING_INTERFACE } from '../learning/learning.interface';
+import { IRewardFunction, REWARD_FUNCTION } from '../learning/reward.function.interface';
+import { AGENT_LLM_SERVICE, IAgentLlmService } from '../llm/agent-llm.interface';
+import { IMemoryInterface, MEMORY_INTERFACE } from '../memory/memory.interface';
+import { IPlannerService, PLANNER_SERVICE } from '../planner/planner.interface';
+
+// Define return type for cognitive cycle step
+type CycleResult = {
+  action: AgentAction;
+  stateUpdates?: Partial<AgentDynamicState>;
+};
+
+/**
+ * Coordinates the agent's Cognitive Cycle (Observe, Orient, Decide, Act).
+ * Manages the flow between different cognitive subsystems.
+ */
+@Injectable()
+export class CognitiveCycleService {
+  private readonly logger = new Logger(CognitiveCycleService.name);
+
+  constructor(
+    @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
+    @Inject(MEMORY_INTERFACE) private readonly memoryInterface: IMemoryInterface,
+    @Inject(PLANNER_SERVICE) private readonly plannerService: IPlannerService,
+    @Inject(ACTION_SERVICE) private readonly actionService: IActionService,
+    @Inject(INTERNAL_TOOLS_INTERFACE) private readonly internalTools: IInternalToolsInterface,
+    @Inject(AGENT_LLM_SERVICE) private readonly agentLlmService: IAgentLlmService,
+    @Inject(LEARNING_INTERFACE) private readonly learningInterface: ILearningInterface,
+    @Inject(REWARD_FUNCTION) private readonly rewardFunction: IRewardFunction,
+  ) {}
+
+  /**
+   * Starts the cognitive loop for a given agent.
+   */
+  async startAgentLoop(agent: AgentState): Promise<void> {
+    const agentId = agent.agentId;
+    this.logger.log(`Starting loop for agent ${agentId}`);
+    // TODO: Implement loop logic
+  }
+
+  /**
+   * Stops the cognitive loop for an agent.
+   */
+  async stopAgentLoop(agent: AgentRuntimeState): Promise<void> {
+    const agentId = agent.agentId;
+    this.logger.log(`Stopping loop for agent ${agentId}`);
+    // TODO: Implement logic to stop loops
+  }
+
+  /**
+   * Processes a single perception event through the full cognitive cycle.
+   * Returns the decided action and any resulting state updates.
+   */
+  async processPerceptionEvent(
+    agent: AgentRuntimeState,
+    perception: AgentPerceptionEvent,
+  ): Promise<CycleResult> {
+    const agentId = agent.agentId;
+    this.logger.debug(`Agent ${agentId} processing perception type: ${perception?.type}`);
+    const startTime = Date.now();
+
+    try {
+      // === 1. Observe ===
+      this.logger.verbose(`[${agentId}] Observe Phase Start`);
+      const observationTimestamp = perception.timestamp ? perception.timestamp : Date.now();
+
+      // Type guard for perception content
+      let contentString = 'No content';
+      if ('content' in perception && perception.content) {
+        contentString =
+          typeof perception.content === 'string'
+            ? perception.content
+            : JSON.stringify(perception.content);
+      }
+
+      // Fix properties to match AddObservationParamsSchema
+      const addObsParams: AddObservationParams = {
+        timestamp: observationTimestamp, // Schema expects number
+        eventType: perception.type,
+        content: contentString,
+        associatedVisualIds: perception.payload.sourceVisualId
+          ? [perception.payload.sourceVisualId]
+          : undefined, // Use visualIds
+        metadata: perception.payload.metadata,
+      };
+      await this.memoryInterface.addObservation(agentId, addObsParams);
+      this.logger.verbose(`[${agentId}] Logged perception to episodic memory.`);
+      const observeTime = Date.now();
+      this.eventBus.publish(
+        EventBusService.createEvent(
+          'CognitiveCycleService',
+          'agent.cognitive.cycle.phase_completed',
+          { agentId: agentId, phase: 'observe', durationMs: observeTime - startTime },
+        ),
+      );
+      this.logger.verbose(`[${agentId}] Observe Phase End (${observeTime - startTime}ms)`);
+
+      // === 2. Orient ===
+      this.logger.verbose(`[${agentId}] Orient Phase Start`);
+      const orientationContext = await this.gatherOrientationContext(agent, perception);
+      const orientTime = Date.now();
+      this.eventBus.publish(
+        EventBusService.createEvent(
+          'CognitiveCycleService',
+          'agent.cognitive.cycle.phase_completed',
+          { agentId: agentId, phase: 'orient', durationMs: orientTime - observeTime },
+        ),
+      );
+      this.logger.verbose(`[${agentId}] Orient Phase End (${orientTime - observeTime}ms)`);
+
+      // === 3. Decide & Plan ===
+      this.logger.verbose(`[${agentId}] Decide/Plan Phase Start`);
+      const stateBeforeDecision = { ...agent.dynamicState };
+      const { action, stateUpdates } = await this.decideAndPlan(agent, orientationContext);
+      const decideTime = Date.now();
+      this.eventBus.publish(
+        EventBusService.createEvent(
+          'CognitiveCycleService',
+          'agent.cognitive.cycle.phase_completed',
+          {
+            agentId: agentId,
+            phase: 'decide',
+            durationMs: decideTime - orientTime,
+            actionType: action?.type ?? 'unknown',
+          },
+        ),
+      );
+      this.logger.verbose(`[${agentId}] Decide/Plan Phase End (${decideTime - orientTime}ms)`);
+
+      // === 4. Act (Dispatch) ===
+      this.logger.verbose(`[${agentId}] Act Phase Start`);
+      if (action && action.type !== 'no_action') {
+        await this.actionService.dispatchAction(agentId, action);
+      } else {
+        this.logger.log(`[${agentId}] No action dispatched.`);
+      }
+      const actTime = Date.now();
+      this.eventBus.publish(
+        EventBusService.createEvent(
+          'CognitiveCycleService',
+          'agent.cognitive.cycle.phase_completed',
+          { agentId: agentId, phase: 'act', durationMs: actTime - decideTime },
+        ),
+      );
+      this.logger.verbose(`[${agentId}] Act Phase End (${actTime - decideTime}ms)`);
+
+      // --- State Update & Reward Calculation --- //
+      this.logger.verbose(`[${agentId}] Updating state and calculating reward...`);
+      const currentDynamicState = { ...stateBeforeDecision, ...stateUpdates };
+      agent.dynamicState = currentDynamicState;
+      this.logger.debug(`[${agentId}] New dynamic state:`, currentDynamicState);
+
+      // Construct input for reward function
+      const rewardInput: RewardFunctionInput = {
+        previousState: stateBeforeDecision,
+        actionTaken: action,
+        currentState: currentDynamicState,
+        // Add specific TODOs for placeholder fields
+        goalProgress: undefined, // TODO: Implement goal tracking and progress calculation (Task 4 / Task 7)
+        conversationRating: undefined, // TODO: Implement conversation analysis (Task 18) or simpler sentiment check
+        informationGain: undefined, // TODO: Get value from CuriosityService (Task 9)
+      };
+
+      // Compute reward
+      const rewardScore = this.rewardFunction.compute(rewardInput);
+      // Record reward using LearningInterface
+      await this.learningInterface.recordReward(agent, action, rewardScore);
+      this.logger.log(`[${agentId}] Recorded reward ${rewardScore} for action ${action.type}`);
+      // --- End State Update & Reward --- //
+
+      // Publish completion of the full cycle
+      this.eventBus.publish(
+        EventBusService.createEvent(
+          'CognitiveCycleService',
+          'agent.cognitive.cycle.phase_completed',
+          { agentId: agentId, phase: 'cycle', durationMs: actTime - startTime },
+        ),
+      );
+      this.logger.debug(`[${agentId}] Full Cognitive Cycle took ${actTime - startTime}ms`);
+
+      return { action, stateUpdates };
+    } catch (error) {
+      this.logger.error(
+        `[${agentId}] Error during cognitive cycle processing perception ${perception?.type}`,
+        error instanceof Error ? error.stack : error,
+      );
+      this.eventBus.publish(
+        EventBusService.createEvent('CognitiveCycleService', 'agent.cognitive.cycle.error', {
+          agentId: agentId,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          perceptionType: perception?.type,
+        }),
+      );
+      // Return no_action and no state updates on error
+      return { action: { type: 'no_action', payload: { reason: 'Cognitive cycle error' } } };
+    }
+  }
+
+  // --- Helper methods for cycle phases (to be implemented) ---
+
+  private async gatherOrientationContext(
+    agent: AgentRuntimeState,
+    currentPerception: AgentPerceptionEvent,
+  ): Promise<OrientationContext> {
+    const agentId = agent.agentId;
+    this.logger.debug(
+      `[${agentId}] Gathering orientation context for perception type: ${currentPerception.type}`,
+    );
+
+    // --- Retrieve Memories using MemoryInterface --- //
+    let recentObservations: Observation[] = [];
+    let relatedFacts: Fact[] = [];
+    try {
+      // Retrieve recent observations
+      recentObservations = await this.memoryInterface.retrieveObservations(agentId, {
+        limit: 10, // Example limit
+        // Consider adding time filter based on last cycle?
+      });
+      this.logger.verbose(
+        `[${agentId}] Retrieved ${recentObservations.length} recent observations.`,
+      );
+
+      // Retrieve facts related to the source of the perception, if available
+      if (currentPerception.payload.sourceVisualId) {
+        relatedFacts = await this.memoryInterface.retrieveFacts(agentId, {
+          subjectVisualId: currentPerception.payload.sourceVisualId,
+          limit: 5, // Example limit
+        });
+        this.logger.verbose(
+          `[${agentId}] Retrieved ${relatedFacts.length} facts related to source ${currentPerception.payload.sourceVisualId}.`,
+        );
+      }
+      // TODO: Potentially retrieve other relevant facts based on perception content/type?
+    } catch (error) {
+      this.logger.error(`[${agentId}] Error retrieving memories during orientation`, error);
+      // Continue with potentially empty memories
+    }
+
+    // --- Get Agent Dynamic State --- //
+    const currentDynamicState: AgentDynamicState = agent.dynamicState;
+    this.logger.verbose(`[${agentId}] Current dynamic state: mood=${currentDynamicState.mood}`);
+
+    // --- Consult Self-Model (via MemoryInterface) --- //
+    let agentSelfConcept: SelfModel | undefined;
+    try {
+      // Use the getSelfConcept method which now reads from persistence
+      agentSelfConcept = await this.memoryInterface.getSelfConcept(agentId);
+      this.logger.verbose(`[${agentId}] Retrieved self-concept.`);
+    } catch (error) {
+      this.logger.error(`[${agentId}] Error retrieving self-concept`, error);
+      // Continue without self-concept if retrieval fails
+    }
+
+    // --- Consult Ontology & Hypotheses (Placeholders) --- //
+    // TODO: Integrate calls to OntologyService and CuriosityService when implemented
+    const worldModelContextPlaceholder: any = {};
+    const activeHypothesesPlaceholder: string[] = [];
+
+    // Create perception states from current perception and agent's buffer
+    const perceptionStates: PerceptionState[] = [];
+
+    // First, convert the current perception being processed
+    const currentPerceptionState = this.convertToPerceptionState(currentPerception);
+    perceptionStates.push(currentPerceptionState);
+
+    // Then add any pending perceptions from the agent's buffer
+    const pendingPerceptions = agent.getAllPendingPerceptions();
+    if (pendingPerceptions.length > 0) {
+      for (const pendingPerception of pendingPerceptions) {
+        perceptionStates.push(this.convertToPerceptionState(pendingPerception));
+      }
+
+      this.logger.verbose(
+        `[${agentId}] Added ${perceptionStates.length} perceptions to context (1 current + ${pendingPerceptions.length} pending)`,
+      );
+    }
+
+    // --- Construct Final Rich Context --- //
+    const context: OrientationContext = {
+      currentPerception: perceptionStates,
+      recentObservations: recentObservations,
+      relatedFacts: relatedFacts,
+      dynamicState: currentDynamicState,
+      // Use the retrieved self-concept, provide default if missing
+      agentSelfConcept: agentSelfConcept ?? {
+        capabilities: {},
+        agencyBoundaries: {},
+        role: { primaryRole: 'default' },
+        selfAwareness: { nature: 'unknown', systemUnderstanding: 0.1 },
+        lastUpdated: Date.now(),
+      },
+      worldModel: worldModelContextPlaceholder, // Placeholder
+      currentTime: Date.now(),
+      activeHypotheses: activeHypothesesPlaceholder, // Placeholder
+    };
+
+    this.logger.debug(`[${agentId}] Orientation context gathered successfully.`);
+    return context;
+  }
+
+  /**
+   * Helper method to convert an AgentPerceptionEvent to a PerceptionState
+   */
+  private convertToPerceptionState(perception: AgentPerceptionEvent): PerceptionState {
+    // Extract content from payload based on event type
+    let perceptionContent: string | Record<string, any> = 'No content';
+
+    if (perception.type === 'perception.message' && perception.payload.content) {
+      perceptionContent = perception.payload.content;
+    } else if (perception.type === 'perception.scene_update' && perception.payload.description) {
+      perceptionContent = perception.payload.description;
+    } else {
+      // For other event types, use the payload directly as content
+      perceptionContent = perception.payload;
+    }
+
+    return {
+      type: perception.type,
+      content: perceptionContent,
+      sourceVisualId: perception.payload.sourceVisualId,
+      visualIds: perception.payload.sourceVisualId ? [perception.payload.sourceVisualId] : [],
+      timestamp: perception.timestamp || Date.now(),
+    };
+  }
+
+  private async decideAndPlan(
+    agent: AgentRuntimeState,
+    context: OrientationContext,
+  ): Promise<CycleResult> {
+    const agentId = agent.agentId;
+    this.logger.debug(`[${agentId}] Deciding action/plan`);
+
+    // --- Cognitive Effort Allocator --- //
+    let useSystem2 = false;
+    let system2Reason = '';
+
+    // 1. Check perception content length
+    const perceptionContent = context.currentPerception
+      .map((p) => (typeof p.content === 'string' ? p.content : JSON.stringify(p.content)))
+      .join('; ');
+    if (context.currentPerception && context.currentPerception.length > 0) {
+      if (perceptionContent.length > 50) {
+        useSystem2 = true;
+        system2Reason = 'Perception content is long (> 50 chars)';
+      }
+
+      // Additional trigger: Multiple perceptions at once
+      if (context.currentPerception.length > 1) {
+        useSystem2 = true;
+        system2Reason = 'Multiple simultaneous perceptions';
+      }
+    }
+
+    // 2. Check if agent has active goals
+    if (!useSystem2 && context.dynamicState?.shortTermGoals?.length > 0) {
+      useSystem2 = true;
+      system2Reason = 'Agent has active short-term goals';
+    }
+
+    // 3. Check if perception is highly relevant to agent's role or self-concept
+    // (Requires more sophisticated analysis in a real system)
+    // Example: Simple keyword check against role description
+    // Use type assertion for agentSelfConcept before accessing properties
+    const agentSelf = context.agentSelfConcept;
+    const roleDescription = agentSelf?.role.primaryRole;
+    if (!useSystem2 && perceptionContent && typeof roleDescription === 'string') {
+      const keywords: string[] = roleDescription.toLowerCase().split(' ');
+      const perceptionLower = perceptionContent.toLowerCase();
+      if (
+        keywords.some((keyword: string) => keyword.length > 3 && perceptionLower.includes(keyword))
+      ) {
+        useSystem2 = true;
+        system2Reason = 'Perception seems relevant to agent role';
+      }
+    }
+
+    // 4. Check curiosity/uncertainty levels (placeholder)
+    // if (!useSystem2 && context.dynamicState.curiosityLevel > 0.7) { ... }
+
+    if (useSystem2) {
+      this.logger.verbose(`[${agentId}] Triggering System-2: ${system2Reason}`);
+    }
+    // --- End Allocator --- //
+
+    // --- Decision Logic --- //
+    let resultingAction: AgentAction;
+    let stateUpdates: Partial<AgentDynamicState> | undefined;
+
+    if (useSystem2) {
+      // === System-2: Deliberative Processing ===
+      this.logger.verbose(`[${agentId}] Engaging System-2`);
+      const currentGoals = context.dynamicState?.shortTermGoals ?? [];
+      this.logger.debug(`[${agentId}] System-2 considering goals: ${JSON.stringify(currentGoals)}`);
+      let plannedAction: AgentAction | null = null;
+      if (currentGoals.length > 0) {
+        const selectedGoal = currentGoals[0];
+        this.logger.verbose(`[${agentId}] Selected goal for planning: ${selectedGoal}`);
+        if (selectedGoal) {
+          try {
+            plannedAction = await this.plannerService.generatePlan(agentId, selectedGoal, context);
+            if (plannedAction && plannedAction.type !== 'no_action') {
+              resultingAction = plannedAction;
+              stateUpdates = {
+                shortTermGoals: currentGoals.slice(1),
+                mood: resultingAction.type === 'speak' ? 'engaging' : context.dynamicState.mood,
+              };
+              this.logger.verbose(`[${agentId}] Planner action chosen. State update: remove goal.`);
+              return { action: resultingAction, stateUpdates };
+            }
+            plannedAction = null;
+          } catch (error) {
+            this.logger.error(
+              `[${agentId}] Error during planning for goal: ${selectedGoal}`,
+              error instanceof Error ? error.stack : error,
+            );
+          }
+        }
+      }
+
+      if (!plannedAction) {
+        this.logger.debug(
+          `[${agentId}] No goal or planner action, falling back to direct LLM generation...`,
+        );
+        try {
+          this.logger.debug(`[${agentId}] Calling Agent LLM Service for action generation...`);
+          const llmAction = await this.agentLlmService.generateAction(
+            agentId,
+            context,
+            agent.config,
+          );
+          this.logger.verbose(
+            `[${agentId}] System-2 LLM fallback action: ${llmAction?.type ?? 'null'}`,
+          );
+          resultingAction = llmAction ?? {
+            type: 'no_action',
+            payload: { reason: 'LLM returned null' },
+          };
+          stateUpdates = { mood: 'thinking' };
+          this.logger.verbose(
+            `[${agentId}] LLM fallback action chosen. State update: mood -> thinking.`,
+          );
+        } catch (error) {
+          this.logger.error(
+            `[${agentId}] Error during System-2 LLM fallback action generation`,
+            error instanceof Error ? error.stack : error,
+          );
+          resultingAction = {
+            type: 'no_action',
+            payload: { reason: 'System-2 LLM Fallback Error' },
+          };
+        }
+      } else {
+        resultingAction = plannedAction;
+        if (resultingAction.type !== 'no_action') {
+          stateUpdates = { shortTermGoals: currentGoals.slice(1) };
+        }
+      }
+    } else {
+      // === System-1: Fast/Intuitive Processing ===
+      this.logger.verbose(`[${agentId}] Engaging System-1`);
+
+      // Example: Simple acknowledgment or default action
+      // More sophisticated System-1 could involve basic sentiment check,
+      // predefined social responses, or simple state updates.
+      if (perceptionContent?.toLowerCase().includes('hello')) {
+        resultingAction = {
+          type: 'speak', // Respond with a simple greeting
+          payload: { content: 'Hi there!' },
+        };
+        stateUpdates = { mood: 'friendly' }; // Update state based on simple trigger
+      } else {
+        // Default System-1 action
+        resultingAction = {
+          type: 'no_action',
+          payload: { reason: 'System-1 Default / No specific trigger' },
+        };
+        stateUpdates = {
+          participationInterest: Math.max(
+            0,
+            (context.dynamicState.participationInterest ?? 0.5) - 0.01,
+          ),
+        };
+      }
+      this.logger.verbose(`[${agentId}] System-1 chose action: ${resultingAction.type}`);
+    }
+
+    // ... action validation and return ...
+    if (!resultingAction) {
+      this.logger.warn(`[${agentId}] decideAndPlan resulted in undefined action.`);
+      resultingAction = { type: 'no_action', payload: { reason: 'Undefined decision outcome' } };
+    }
+
+    this.logger.verbose(`[${agentId}] Decided Action: ${resultingAction.type}`);
+    if (stateUpdates) {
+      this.logger.verbose(`[${agentId}] Proposed State Updates: ${JSON.stringify(stateUpdates)}`);
+    }
+
+    return { action: resultingAction, stateUpdates };
+  }
+
+  // TODO: Add methods for handling asynchronous operations and callbacks as per section 2.3.3
+}

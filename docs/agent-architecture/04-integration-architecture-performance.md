@@ -485,9 +485,9 @@ The following diagram illustrates how the various subsystems integrate and commu
                       | Simulation Layer    |
                       | (2.12)              |
                       +----------+----------+
-                               |
-                               | Events/Actions
-                               v
+                                 |
+                                 | Events/Actions
+                                 v
 +---------------+      +-------------------+      +---------------+
 | Perception    +----->+  Cognitive Cycle  +----->+  Action       |
 | System (2.2)  |      |     (2.3)         |      |  System (2.5) |
@@ -552,7 +552,7 @@ The following diagram illustrates how the various subsystems integrate and commu
 | (3.3, 3.4)           |     |  (3.6)                  |
 | • Psychological Eval |     |                         |
 | • Communication Eval |     +-------------------------+
-+----------------------+
+    +----------------------+
                                    +---------------+
                                    | Statistics &  |
                                    | Monitoring    |
@@ -634,9 +634,9 @@ apps/backend/src/
       conversation.tool.ts        # Wraps conversation control intent
       curiosity.tool.ts           # Wraps curiosity calls
       # ... other internal tools ...
-    orchestrator/            # Coordinates the Cognitive Cycle & Action dispatch
-      orchestrator.module.ts
-      orchestrator.service.ts
+    cognitive-cycle/           # Coordinates the Cognitive Cycle & Action dispatch
+      cognitive-cycle.module.ts
+      cognitive-cycle.service.ts
       # ... potentially action formatting logic if not in service
 packages/contracts/
   agent/
@@ -936,7 +936,7 @@ By implementing these temporal decoupling patterns, the agent architecture can m
 ### 4.6.1 Adaptable Components
 
 - **SceneManagerService**: serves as the core environment manager and scheduler, mapping to the new `ConversationManager` (perception bus + loop controller).
-- **ConversationOrchestratorService**: foundation for the enhanced Cognitive Cycle orchestrator (Observe→Orient→Decide→Act→Learn).
+- **ConversationOrchestratorService**: foundation for the enhanced **CognitiveCycleService** (Observe→Orient→Decide→Act→Learn).
 - **MessageGenerationService**: existing LLM wrapper for Think & Speak phases, ready to evolve into `ToolCall`–driven action routines.
 - **ConversationStateService**: goal selection and turn‑taking logic, fitting the new Decision & Plan phase.
 - **SceneStateService & ScenesDbService**: low‑level state snapshot and persistence layers, adaptable to the MemorySystem's episodic store.

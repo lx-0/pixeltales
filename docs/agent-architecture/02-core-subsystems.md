@@ -444,7 +444,7 @@ Reflection output conforms to `ReflectionReportSchema`, logged for UI inspection
 
 ### 2.3.3 Orchestration of Asynchronous Subsystems
 
-Given the significant timing differences between data processing and LLM-dependent subsystems, the `OrchestratorService` (managing the Cognitive Cycle) employs specific strategies to handle asynchronous operations without blocking the agent's responsiveness:
+Given the significant timing differences between data processing and LLM-dependent subsystems, the `CognitiveCycleService` (managing the Cognitive Cycle) employs specific strategies to handle asynchronous operations without blocking the agent's responsiveness:
 
 1. **Asynchronous Task Initiation with Context:**
     - When a slow subsystem is needed (e.g., System-2 LLM call, complex memory query, planning), the orchestrator dispatches the request asynchronously (e.g., returning a Promise, using a message queue).
@@ -504,7 +504,7 @@ Effectively interacting with LLMs requires careful selection and formatting of t
     - **System-2 Prompts:** Assemble a richer context including relevant memories, plan steps, self-model aspects, and a more extensive conversation history or summary.
 6. **Structured Formatting:** Presenting the selected context to the LLM in a clear, structured format (e.g., using dedicated sections for memories, goals, persona) to improve comprehension and response quality.
 
-The `OrchestratorService`, in conjunction with the `MemoryService` and potentially specialized context management utilities, is responsible for applying these strategies dynamically based on the required cognitive task (e.g., quick reaction vs. deep reflection vs. planning).
+The `CognitiveCycleService`, in conjunction with the `MemoryService` and potentially specialized context management utilities, is responsible for applying these strategies dynamically based on the required cognitive task (e.g., quick reaction vs. deep reflection vs. planning).
 
 ## 2.4 Internal State & Memory System
 

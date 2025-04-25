@@ -10,8 +10,10 @@ import {
 import { SceneStateSnapshot, SceneStateSnapshotSchema } from '@pixeltales/contracts';
 import { Server, Socket } from 'socket.io';
 import { LOGGER_CONTEXT_SHORTEN } from '../common/logger/logger.const';
-import { SceneManagerService } from '../scene/scene-manager/scene-manager.service';
-import { SceneStateService } from '../scene/scene-state/scene-state.service';
+
+// TODO: Decouple from V1
+import { SceneManagerService } from '../v1/scene/scene-manager/scene-manager.service';
+import { SceneStateService } from '../v1/scene/scene-state/scene-state.service';
 
 // Configure gateway options (e.g., CORS)
 @WebSocketGateway({

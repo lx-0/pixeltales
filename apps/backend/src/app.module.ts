@@ -14,17 +14,18 @@ import { AppConfigModule } from './app-config/app-config.module'; // Import rena
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { CharactersModule } from './characters/characters.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'; // Import the filter
+import { ANSI_BOLD, ANSI_NORMAL } from './common/logger/logger.const';
 import { DbModule } from './db/db.module';
 import { EventsModule } from './events/events.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
-import { ScenesModule } from './scenes/scenes.module';
 import { SpritesheetModule } from './spritesheet/spritesheet.module';
 import { MeModule } from './users/me.module';
 import { UserModule } from './users/user.module';
 import { UsersModule } from './users/users.module';
-import { ANSI_BOLD, ANSI_NORMAL } from './common/logger/logger.const';
+
+import { CharactersModule } from './v1/characters/characters.module';
+import { ScenesModule } from './v1/scenes/scenes.module';
 
 // Type definitions for pino serializers
 interface PinoRequest extends IncomingMessage {
@@ -182,16 +183,16 @@ interface PinoError {
     }),
     DbModule,
     AppConfigModule,
-    ScenesModule,
-    EventsModule,
+    EventsModule, // TODO: Decouple from V1
     // ScheduleModule.forRoot(), // not used at the moment
-    CharactersModule,
     AuthModule,
     UsersModule,
     UserModule,
     MeModule,
     SpritesheetModule,
     EventEmitterModule.forRoot(),
+    ScenesModule, // PixelTales V1
+    CharactersModule, // PixelTales V1
   ],
   controllers: [AppController],
   providers: [
