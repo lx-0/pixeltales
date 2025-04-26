@@ -285,13 +285,13 @@ export class SemanticMemoryService
 
   // --- Plan Persistence Implementation ---
 
-  async createPlan(agentId: string, goal: string): Promise<string> {
-    this.logger.debug(`[${agentId}] Creating plan for goal: ${goal}`);
+  async createPlan(agentId: string, goal: string, planId?: string): Promise<string> {
+    this.logger.debug(`[${agentId}] Creating plan record ${planId} for goal: ${goal}`);
 
     try {
-      const planId = uuid();
+      const newPlanId = planId ?? uuid();
       await this.db.insert(schema.plans).values({
-        id: planId,
+        id: newPlanId,
         agentId,
         rootGoal: goal,
         status: 'in_progress',
@@ -299,7 +299,7 @@ export class SemanticMemoryService
         updatedAt: new Date(),
       });
 
-      return planId;
+      return newPlanId;
     } catch (error) {
       this.logger.error(`[${agentId}] Error creating plan`, error);
       throw new Error(
@@ -308,26 +308,27 @@ export class SemanticMemoryService
     }
   }
 
-  async addPlanNodes(
-    planId: string,
-    agentId: string,
-    nodes: { description: string; parentId?: string }[],
-  ): Promise<void> {
+  async addPlanNodes(planId: string, agentId: string, nodes: PlanNode[]): Promise<void> {
     this.logger.debug(`[${agentId}] Adding ${nodes.length} nodes to plan ${planId}`);
 
     try {
-      for (let i = 0; i < nodes.length; i++) {
-        const nodeId = uuid();
-        await this.db.insert(schema.planNodes).values({
-          id: nodeId,
-          planId,
-          agentId,
-          parentId: nodes[i]?.parentId || null,
-          description: nodes[i]?.description || '',
-          status: i === 0 ? 'in_progress' : 'pending',
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        });
+      const valuesToInsert = nodes.map((node) => ({
+        id: node.id,
+        planId,
+        agentId,
+        parentId: node.parentId || null,
+        description: node.description,
+        status: node.status,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }));
+
+      if (valuesToInsert.length > 0) {
+        await this.db.insert(schema.planNodes).values(valuesToInsert);
+      } else {
+        this.logger.warn(
+          `[${agentId}] addPlanNodes called with empty nodes array for plan ${planId}`,
+        );
       }
     } catch (error) {
       this.logger.error(`[${agentId}] Error adding plan nodes`, error);
@@ -524,33 +525,6 @@ export class SemanticMemoryService
       this.logger.error(`Error creating replan for ${originalPlanId}`, error);
       throw new Error(
         `Failed to create replan: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
-  // Combined operation to create a plan and its nodes in one method
-  async createPlanWithNodes(agentId: string, goal: string, steps: string[]): Promise<string> {
-    this.logger.debug(`[${agentId}] Creating plan with nodes for goal: "${goal}"`);
-
-    try {
-      // First create the plan using existing method
-      const planId = await this.createPlan(agentId, goal);
-
-      // Then create the nodes if there are any steps using existing method
-      if (steps && steps.length > 0) {
-        const nodes = steps.map((step) => ({
-          description: step,
-        }));
-
-        await this.addPlanNodes(planId, agentId, nodes);
-      }
-
-      this.logger.verbose(`[${agentId}] Created plan ${planId} with ${steps.length} steps`);
-      return planId;
-    } catch (error) {
-      this.logger.error(`[${agentId}] Error creating plan with nodes`, error);
-      throw new Error(
-        `Failed to create plan with nodes: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
   }

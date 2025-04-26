@@ -1,5 +1,6 @@
 import {
   AgentAction,
+  AgentPlan,
   AgentState,
   Observation,
   OrientationContext,
@@ -25,13 +26,13 @@ export interface IAgentLlmService {
   ): Promise<AgentAction>;
 
   /**
-   * Decomposes a high-level goal into a sequence of steps using the LLM.
+   * Decomposes a high-level goal into a hierarchical plan (HTN) structure using the LLM.
    * @param agentId The ID of the agent.
    * @param goal The high-level goal description.
    * @param context The current orientation context.
-   * @returns A promise resolving to an ordered array of step descriptions.
+   * @returns A promise resolving to the full AgentPlan structure.
    */
-  generatePlanSteps(agentId: string, goal: string, context: OrientationContext): Promise<string[]>;
+  generatePlanSteps(agentId: string, goal: string, context: OrientationContext): Promise<AgentPlan>;
 
   /**
    * Analyzes recent experiences to generate higher-level insights for reflection.

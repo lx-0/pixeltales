@@ -18,69 +18,35 @@ export class HtnPlannerService implements IPlannerService {
   ) {}
 
   /**
-   * Decompose a high-level goal into a full HTN plan object.
+   * Generates a hierarchical plan (AgentPlan) for a given goal using the LLM service.
+   * This service acts as a thin wrapper or potential future location for
+   * adding non-LLM based planning logic or plan caching.
    */
   async generatePlan(
     agentId: string,
     goal: string,
     context: OrientationContext,
   ): Promise<AgentPlan> {
-    this.logger.debug(
-      `[${agentId}] Planner received goal: "${goal}" with context (keys: ${Object.keys(
-        context,
-      ).join(', ')})`,
-    );
+    this.logger.debug(`[${agentId}] HtnPlannerService: generatePlan called for goal: "${goal}"`);
 
-    // --- Step 1: Decompose goal using LLM --- //
-    let steps: string[] = [];
+    // Delegate the core plan generation (decomposition) to the LLM service
     try {
-      steps = await this.agentLlmService.generatePlanSteps(agentId, goal, context);
+      const agentPlan = await this.agentLlmService.generatePlanSteps(agentId, goal, context);
+      this.logger.verbose(`[${agentId}] LLM Service returned plan ${agentPlan.planId}`);
+      return agentPlan;
     } catch (error) {
-      this.logger.error(`[${agentId}] Error calling LLM for plan decomposition`, error);
-      throw error;
-    }
-
-    if (!steps || steps.length === 0 || !steps[0]) {
-      this.logger.warn(`[${agentId}] LLM decomposition returned no steps for goal: "${goal}"`);
-      // Return an empty plan structure
+      this.logger.error(`[${agentId}] Error generating plan via LLM Service`, error);
+      // Propagate the error or return a failed plan structure?
+      // Returning a minimal failed plan for now.
       return {
-        planId: uuid(),
+        planId: uuid(), // Generate a new UUID even for failed plan
         goal,
         rootNodeId: '',
         nodes: {},
         creationTimestamp: Date.now(),
-        status: 'active',
+        status: 'failed', // Mark as failed
       };
     }
-
-    // --- Step 2: Build full plan object --- //
-    const planId = uuid();
-    const nodes: Record<string, PlanNode> = {};
-    steps.forEach((description, index) => {
-      const nodeId = uuid();
-      nodes[nodeId] = {
-        id: nodeId,
-        parentId: undefined,
-        description,
-        status: index === 0 ? 'in_progress' : 'pending',
-        taskType: 'primitive',
-      };
-    });
-    const rootNodeId = Object.keys(nodes)[0]!;
-    const agentPlan: AgentPlan = {
-      planId,
-      goal,
-      rootNodeId,
-      nodes,
-      creationTimestamp: Date.now(),
-      status: 'active',
-    };
-    this.logger.verbose(
-      `[${agentId}] Planner created AgentPlan ${planId} with ${steps.length} nodes`,
-    );
-
-    // --- Step 3: Return full plan --- //
-    return agentPlan;
   }
 
   /**

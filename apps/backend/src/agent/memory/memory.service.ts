@@ -92,23 +92,14 @@ export class MemoryService implements IMemoryInterface {
 
   // --- Plan Persistence Methods --- //
 
-  createPlan(agentId: string, goal: string): Promise<string> {
+  createPlan(agentId: string, goal: string, planId?: string): Promise<string> {
     this.logger.debug(`[${agentId}] Facade: Delegating createPlan`);
-    return this.semantic.createPlan(agentId, goal);
+    return this.semantic.createPlan(agentId, goal, planId);
   }
 
-  addPlanNodes(
-    planId: string,
-    agentId: string,
-    nodes: { description: string; parentId?: string }[],
-  ): Promise<void> {
+  addPlanNodes(planId: string, agentId: string, nodes: PlanNode[]): Promise<void> {
     this.logger.debug(`[${agentId}] Facade: Delegating addPlanNodes`);
     return this.semantic.addPlanNodes(planId, agentId, nodes);
-  }
-
-  createPlanWithNodes(agentId: string, goal: string, steps: string[]): Promise<string> {
-    this.logger.debug(`[${agentId}] Facade: Delegating createPlanWithNodes`);
-    return this.semantic.createPlanWithNodes(agentId, goal, steps);
   }
 
   getPlan(planId: string): Promise<{ id: string; agentId: string; goal: string; status: string }> {

@@ -6,11 +6,14 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AgentAction,
+  AgentPlan,
   AgentState,
   Observation,
   OrientationContext,
+  PlanNodeSchema,
   ReflectionReport,
   ReflectionReportSchema,
+  uuid,
 } from '@pixeltales/contracts';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -143,48 +146,74 @@ export class AgentLlmService implements IAgentLlmService {
   }
 
   /**
-   * Decomposes a high-level goal into steps.
+   * Decomposes a high-level goal into a hierarchical plan (HTN).
    */
   async generatePlanSteps(
     agentId: string,
     goal: string,
     context: OrientationContext,
-  ): Promise<string[]> {
+  ): Promise<AgentPlan> {
     this.logger.debug(`[${agentId}] LLM generatePlanSteps called for goal: "${goal}"`);
 
+    if (!this.llm) {
+      this.logger.error(`[${agentId}] LLM not initialized for plan generation.`);
+      // Return a minimal empty plan on error
+      return {
+        planId: uuid(),
+        goal,
+        rootNodeId: '',
+        nodes: {},
+        creationTimestamp: Date.now(),
+        status: 'failed',
+      };
+    }
+
     const operationKey = `llm_generatePlanSteps_${agentId}`.substring(0, 50);
-    const fallbackSteps = [`address the goal: ${goal}`];
+    const fallbackSteps = [
+      {
+        id: uuid(),
+        description: `address the goal: ${goal}`,
+        taskType: 'primitive',
+        status: 'pending',
+      },
+    ];
 
     return this.circuitBreaker.execute(
       operationKey,
       async () => {
-        if (!this.llm) {
-          this.logger.error(`[${agentId}] LLM not initialized for plan generation.`);
-          return [`address the goal: ${goal}`]; // Fallback
-        }
-
-        // Define the steps schema using Zod
-        const PlanStepsSchema = z.object({
-          steps: z
-            .array(z.string())
-            .describe('List of 3-5 clear, actionable steps to achieve the goal'),
+        // Define a schema for the LLM to output a structured plan
+        const LlmPlanOutputSchema = z.object({
+          rootGoal: z.string(),
+          steps: z.array(
+            z.object({
+              id: z.string().describe('A unique temporary ID for this step, e.g., step_1'),
+              description: z.string(),
+              taskType: z
+                .enum(['primitive', 'compound'])
+                .describe(
+                  'Is this step directly actionable (primitive) or needs more breakdown (compound)?',
+                ),
+              parentId: z
+                .string()
+                .optional()
+                .describe('The temporary ID of the parent step, if any.'),
+            }),
+          ),
         });
 
-        // Create a structured output parser
-        const outputParser = new JsonOutputParser<z.infer<typeof PlanStepsSchema>>();
+        const outputParser = new JsonOutputParser<z.infer<typeof LlmPlanOutputSchema>>();
 
         // Get JSON schema for output formatting
-        const formatInstructions = this.getFormatInstructions(PlanStepsSchema);
+        const formatInstructions = this.getFormatInstructions(LlmPlanOutputSchema);
 
         // Create a specific prompt for goal decomposition with structured output
         const planningPrompt = ChatPromptTemplate.fromMessages([
           [
             'system',
-            `You are a planning assistant for an agent in an interactive scene.
-
-When given a goal, decompose it into 3-5 clear, concrete, actionable steps that the agent should take to achieve it.
-Each step should be a simple instruction like "move to the door", "speak a greeting", etc.
-Focus on physical actions, speech, and basic interactions.
+            `You are a hierarchical planner. Decompose the given goal into a sequence of steps.
+Assign a unique temporary id (e.g., step_1, step_2a) to each step.
+Indicate the parentId for sub-steps.
+Mark each step as 'primitive' (directly actionable) or 'compound' (requires further decomposition).
 
 Current agent mood: {mood}
 Agent identity: {persona}
@@ -196,7 +225,7 @@ ${formatInstructions}`,
         ]);
 
         // Create the planning chain with structured output
-        const planningChain = planningPrompt.pipe(this.llm).pipe(outputParser);
+        const planningChain = planningPrompt.pipe(this.llm!).pipe(outputParser);
 
         // Prepare context summary for prompt
         const contextSummary = this.summarizeContext(context);
@@ -204,7 +233,7 @@ ${formatInstructions}`,
         // Prepare inputs for the planning chain
         const planningInput = {
           goal: goal,
-          persona: context.agentSelfConcept || 'a character in an interactive scene',
+          persona: context.agentSelfConcept?.role.primaryRole || 'a character', // Use role
           mood: context.dynamicState?.mood || 'neutral',
           context_summary: contextSummary,
         };
@@ -213,17 +242,82 @@ ${formatInstructions}`,
 
         // Execute the planning chain
         const result = await planningChain.invoke(planningInput);
-        const steps = result.steps;
+        const llmSteps = result.steps;
+
+        const planId = uuid();
+        const nodes: AgentPlan['nodes'] = {};
+        let rootNodeId = '';
+
+        // Map LLM temporary IDs to final UUIDs and create PlanNode objects
+        const tempIdToUuidMap = new Map<string, string>();
+        llmSteps.forEach((stepData) => {
+          const nodeId = uuid();
+          tempIdToUuidMap.set(stepData.id, nodeId);
+
+          const node: z.infer<typeof PlanNodeSchema> = {
+            id: nodeId,
+            description: stepData.description,
+            status: 'pending',
+            taskType: stepData.taskType,
+            parentId: undefined, // Set in the next loop
+          };
+          nodes[nodeId] = node;
+        });
+
+        // Second pass: Link parent IDs using the UUID map and find root
+        llmSteps.forEach((stepData) => {
+          const childUuid = tempIdToUuidMap.get(stepData.id);
+          if (!childUuid) {
+            this.logger.error(`[${agentId}] Failed to find UUID for temp step ID: ${stepData.id}`);
+            return; // Skip this step if UUID mapping failed
+          }
+          if (stepData.parentId) {
+            const parentUuid = tempIdToUuidMap.get(stepData.parentId);
+            if (parentUuid && nodes[childUuid]) {
+              nodes[childUuid].parentId = parentUuid;
+            } else {
+              this.logger.warn(
+                `[${agentId}] Could not map parentId ${stepData.parentId} for step ${stepData.id}`,
+              );
+              // If parent doesn't exist, treat as root for now
+              rootNodeId = !rootNodeId ? childUuid : rootNodeId;
+            }
+          } else {
+            // No parent ID means it's potentially a root node
+            rootNodeId = !rootNodeId ? childUuid : rootNodeId; // Assign first root found
+          }
+        });
+
+        // Ensure a root node ID is assigned (fallback to first node if hierarchy is flat/broken)
+        if (!rootNodeId && Object.keys(nodes).length > 0) {
+          rootNodeId = Object.keys(nodes)[0]!; // Re-add ! assertion for type safety
+        }
+
+        const agentPlan: AgentPlan = {
+          planId,
+          goal: result.rootGoal || goal, // Use goal from LLM or original
+          rootNodeId,
+          nodes,
+          creationTimestamp: Date.now(),
+          status: 'active',
+        };
 
         this.logger.verbose(
-          `[${agentId}] Planning chain returned ${steps.length} steps: ${JSON.stringify(steps)}`,
+          `[${agentId}] LLM generated plan ${planId} with ${Object.keys(nodes).length} nodes.`,
         );
-
-        return steps.length > 0 ? steps : fallbackSteps;
+        return agentPlan;
       },
+      // Fallback function
       async () => {
         this.logger.warn(`[${agentId}] Fallback used for generatePlanSteps.`);
-        return fallbackSteps;
+        return {
+          planId: uuid(),
+          goal,
+          rootNodeId: '',
+          nodes: {},
+          creationTimestamp: Date.now(),
+          status: 'failed',
+        };
       },
     );
   }

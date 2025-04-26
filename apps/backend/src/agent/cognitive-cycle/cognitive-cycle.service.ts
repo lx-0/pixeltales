@@ -491,71 +491,99 @@ export class CognitiveCycleService {
           ...context,
           relatedFacts: [...context.relatedFacts, ...goalFacts],
         };
-        // 1. Decompose goal into AgentPlan using augmented context
+
+        // 1. Generate hierarchical AgentPlan using LLM
         const agentPlan = await this.plannerService.generatePlan(
           agentId,
           selectedGoal,
           planningContext,
         );
-        // 2. Persist plan via memory service
-        const stepDescriptions = Object.values(agentPlan.nodes).map((n) => n.description);
-        const persistedPlanId = await this.memoryInterface.createPlanWithNodes(
-          agentId,
-          agentPlan.goal,
-          stepDescriptions,
-        );
-        // 3. Get next actionable node
-        const nextNode = await this.plannerService.getNextStep(persistedPlanId);
-        if (nextNode) {
-          resultingAction = this.mapPlanNodeToAction(nextNode, persistedPlanId);
-          stateUpdates = {
-            shortTermGoals: currentGoals.slice(1),
-            mood: resultingAction.type === 'speak' ? 'engaging' : context.dynamicState.mood,
-          };
-          this.logger.verbose(`[${agentId}] Planner-generated action. State update: remove goal.`);
-          // --- Trigger Reflection on Idle ---
-          this.reflectionService.performReflection(agentId, 'idle').catch((err) => {
-            this.logger.error(`[${agentId}] Background reflection call failed:`, err);
-          });
-          // --- Return Action & State Updates ---
-          this.logger.verbose(`[${agentId}] Decided Action (Planner): ${resultingAction.type}`);
-          if (stateUpdates) {
-            this.logger.verbose(
-              `[${agentId}] Proposed State Updates: ${JSON.stringify(stateUpdates)}`,
+
+        // Check if plan generation failed or returned empty
+        if (agentPlan.status === 'failed' || Object.keys(agentPlan.nodes).length === 0) {
+          this.logger.warn(
+            `[${agentId}] Plan generation failed or returned empty plan for goal: ${selectedGoal}. Falling back.`,
+          );
+          // Continue to LLM fallback below
+        } else {
+          // 2. Persist the Plan and its Nodes
+          try {
+            await this.memoryInterface.createPlan(agentId, agentPlan.goal, agentPlan.planId);
+            await this.memoryInterface.addPlanNodes(
+              agentPlan.planId,
+              agentId,
+              Object.values(agentPlan.nodes),
             );
+            this.logger.verbose(
+              `[${agentId}] Persisted plan ${agentPlan.planId} with ${Object.keys(agentPlan.nodes).length} nodes.`,
+            );
+
+            // 3. Get next actionable node
+            const nextNode = await this.plannerService.getNextStep(agentPlan.planId);
+            if (nextNode) {
+              resultingAction = this.mapPlanNodeToAction(nextNode, agentPlan.planId);
+              stateUpdates = {
+                shortTermGoals: currentGoals.slice(1),
+                mood: resultingAction.type === 'speak' ? 'engaging' : context.dynamicState.mood,
+              };
+              this.logger.verbose(
+                `[${agentId}] Planner-generated action from node ${nextNode.id}. State update: remove goal.`,
+              );
+              // Don't return yet, fall through to final return
+            } else {
+              this.logger.verbose(
+                `[${agentId}] Plan ${agentPlan.planId} created but no initial actionable node found (plan might be complete?).`,
+              );
+              // Plan might be immediately complete or stuck, treat as no_action for now
+              resultingAction = {
+                type: 'no_action',
+                payload: { reason: 'Plan created but no next step' },
+              };
+            }
+          } catch (persistError) {
+            this.logger.error(
+              `[${agentId}] Failed to persist plan ${agentPlan.planId}`,
+              persistError,
+            );
+            // Failed to save plan, fallback to direct LLM
+            resultingAction = { type: 'no_action', payload: { reason: 'Plan persistence error' } };
           }
-          return { action: resultingAction, stateUpdates };
         }
       }
 
-      // Fallback to System-2 LLM generation if planning did not return an action
-      this.logger.debug(`[${agentId}] No planner action, falling back to direct LLM generation...`);
-      try {
-        this.logger.debug(`[${agentId}] Calling Agent LLM Service for action generation...`);
-        const llmAction = await this.agentLlmService.generateAction(agentId, context, agent.config);
-        this.logger.verbose(
-          `[${agentId}] System-2 LLM fallback action: ${llmAction?.type ?? 'null'}`,
+      // Fallback to System-2 LLM generation if planning failed or no action derived
+      if (resultingAction.type === 'no_action') {
+        this.logger.debug(
+          `[${agentId}] Planning did not yield an action, falling back to direct LLM generation...`,
         );
-        resultingAction = llmAction ?? {
-          type: 'no_action',
-          payload: { reason: 'LLM returned null' },
-        };
-        stateUpdates = { mood: 'thinking' };
-        this.logger.verbose(
-          `[${agentId}] LLM fallback action chosen. State update: mood -> thinking.`,
-        );
-        // NO return here, fall through to final return
-      } catch (error) {
-        this.logger.error(
-          `[${agentId}] Error during System-2 LLM fallback action generation`,
-          error instanceof Error ? error.stack : error,
-        );
-        resultingAction = {
-          type: 'no_action',
-          payload: { reason: 'System-2 LLM Fallback Error' },
-        };
-        stateUpdates = { shortTermGoals: currentGoals.slice(1) };
-      }
+        try {
+          this.logger.debug(`[${agentId}] Calling Agent LLM Service for action generation...`);
+          const llmAction = await this.agentLlmService.generateAction(
+            agentId,
+            context,
+            agent.config,
+          );
+          resultingAction = llmAction ?? {
+            type: 'no_action',
+            payload: { reason: 'LLM returned null' },
+          };
+          stateUpdates = { mood: 'thinking' };
+          this.logger.verbose(
+            `[${agentId}] System-2 LLM fallback action: ${llmAction?.type ?? 'null'}`,
+          );
+          // NO return here, fall through to final return
+        } catch (error) {
+          this.logger.error(
+            `[${agentId}] Error during System-2 LLM fallback action generation`,
+            error instanceof Error ? error.stack : error,
+          );
+          resultingAction = {
+            type: 'no_action',
+            payload: { reason: 'System-2 LLM Fallback Error' },
+          };
+          stateUpdates = {}; // Reset state updates on error?
+        }
+      } // End of LLM fallback check
     } else {
       // === System-1: Fast/Intuitive Processing ===
       this.logger.verbose(`[${agentId}] Engaging System-1`);

@@ -58,7 +58,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Hook planner into the Decide & Plan phase in `CognitiveCycleService`.
 - [X] Update planner to use memory service for plan persistence.
 - [X] Update planner to use `planContext` in action payloads. **(Updated Feb 20)**
-- [P] Implement actual HTN planning logic. // Placeholder exists
+- [X] Implement actual HTN planning logic. **(LLM generates AgentPlan, Cycle persists & gets next step)**
 
 ## 5. Learning & Adaptation [P2]
 
@@ -93,7 +93,6 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Implement Agent State Update mechanism fully within/after cycle. **(Refactored to AgentRuntimeState)**
 - [P] Implement actual agent loop control (Hybrid: Event-driven + Periodic Tick).
 - [X] Replace mock perceptions with real source in SimulationService. **(Sim now publishes raw events; Perception Extensions handle processing)**
-- [ ] Update `SceneManagerService` (or equivalent) to use `AgentService` for lifecycle management.
 
 ## 8. Event Bus & Stats Pipeline [P1]
 

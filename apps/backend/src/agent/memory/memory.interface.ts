@@ -42,13 +42,14 @@ export interface IMemoryInterface {
   getAgencyBoundaries(agentId: string): Promise<string[]>;
 
   // --- Plan Persistence ---
-  createPlan(agentId: string, goal: string): Promise<string>; // Returns planId
+  /** Creates the main plan record. Returns the planId. */
+  createPlan(agentId: string, goal: string, planId?: string): Promise<string>; // Accepts planId
+  /** Adds multiple nodes to an existing plan. */
   addPlanNodes(
     planId: string,
     agentId: string,
-    nodes: { description: string; parentId?: string }[],
+    nodes: PlanNode[], // Changed to accept PlanNode objects
   ): Promise<void>;
-  createPlanWithNodes(agentId: string, goal: string, steps: string[]): Promise<string>; // Combined operation
   getPlan(planId: string): Promise<{ id: string; agentId: string; goal: string; status: string }>;
   getNextPlanNode(planId: string): Promise<PlanNode | null>;
   updatePlanNodeStatus(
