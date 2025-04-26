@@ -250,6 +250,16 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [ ] Implement performance monitoring for all agent subsystems with threshold alerts.
 - [ ] Create annotation functionality for marking significant events in metrics timeline.
 
+## X. Reflection System [P2]
+
+*(New Task Section)*
+(See [Blueprint Section 2.9.1](docs/agent-architecture/02-core-subsystems.md#2.9.1))
+- [X] Create `agent/reflection/` folder and core files (`reflection.interface.ts`, `reflection.service.ts`, `reflection.module.ts`).
+- [P] Implement actual insight generation logic (LLM call) in `ReflectionService`. **(Placeholder implemented)**
+- [P] Implement delegation logic to trigger updates in `SelfModelingService` and `OntologyService`. **(Placeholder implemented)**
+- [P] Implement persistence for `ReflectionReport` (likely via `MemoryService`). **(Placeholder implemented)**
+- [X] Integrate reflection trigger into `CognitiveCycleService` (e.g., on idle).
+
 ## Discovered During Work
 
 - [X] Implement plan persistence in memory system (Added Feb 19, 2024)

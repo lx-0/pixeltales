@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Observation, SelfModel } from '@pixeltales/contracts';
+import { Observation, ReflectionReport, SelfModel } from '@pixeltales/contracts';
 import { EVENT_BUS, IEventBus } from '../../core/event-bus.interface';
 import { EventBusService } from '../../core/event-bus.service';
 import { IMemoryInterface, MEMORY_INTERFACE } from '../memory/memory.interface';
@@ -148,6 +148,197 @@ export class SelfModelingService implements ISelfModelingInterface {
     }
 
     return determinedUpdates;
+  }
+
+  /**
+   * Applies insights gained from reflection specifically to update the self-model.
+   */
+  async applyReflectionInsights(
+    agentId: string,
+    selfInsights: ReflectionReport['insights'],
+  ): Promise<void> {
+    this.logger.debug(
+      `[${agentId}] SelfModelingService: Applying ${selfInsights.length} self-reflection insights.`,
+    );
+
+    // TODO: Replace simple heuristics below with more robust insight interpretation logic,
+    // potentially involving LLM calls to understand nuance or map insights to specific model updates.
+    // The current implementation uses basic keyword/regex matching.
+
+    if (selfInsights.length === 0) {
+      this.logger.verbose(`[${agentId}] No self-insights to apply.`);
+      return;
+    }
+
+    // Get current model state to apply updates incrementally
+    const currentModel = await this.getSelfConcept(agentId);
+    const potentialUpdates: Partial<SelfModel> = {};
+    let changed = false;
+
+    // --- Process Capabilities ---
+    const currentCapabilities = { ...(currentModel.capabilities ?? {}) };
+    let capabilitiesChanged = false;
+    for (const insight of selfInsights) {
+      const contentLower = insight.content.toLowerCase();
+      const capMatch = contentLower.match(
+        /(?:capability|action|skill) '([a-z_]+)'.*(success|fail|succeeded|failed|unable)/i,
+      );
+      if (capMatch && capMatch[1] && capMatch[2]) {
+        const capName = capMatch[1];
+        const outcome = capMatch[2].toLowerCase();
+        const currentConf = currentCapabilities[capName]?.confidence ?? 0.5;
+        let adjustment = 0;
+        if (outcome.includes('success') || outcome.includes('succeeded')) {
+          adjustment = 0.1;
+        } else if (
+          outcome.includes('fail') ||
+          outcome.includes('failed') ||
+          outcome.includes('unable')
+        ) {
+          adjustment = -0.1;
+        }
+        const newConf = Math.max(
+          0,
+          Math.min(1, currentConf + adjustment * (insight.confidence ?? 1.0)),
+        );
+        if (currentCapabilities[capName]?.confidence !== newConf) {
+          currentCapabilities[capName] = { confidence: newConf };
+          capabilitiesChanged = true;
+          this.logger.verbose(
+            `[${agentId}] Insight updated capability '${capName}' confidence to ${newConf.toFixed(2)}`,
+          );
+        }
+      }
+    }
+    if (capabilitiesChanged) {
+      potentialUpdates.capabilities = currentCapabilities;
+      changed = true;
+    }
+
+    // --- Process Self-Awareness ---
+    const currentAwareness = {
+      ...(currentModel.selfAwareness ?? { nature: 'unknown', systemUnderstanding: 0.1 }),
+    };
+    let awarenessChanged = false;
+    for (const insight of selfInsights) {
+      const contentLower = insight.content.toLowerCase();
+      // Update System Understanding
+      if (
+        contentLower.includes('understand environment') ||
+        contentLower.includes('simulation') ||
+        contentLower.includes('virtual world') ||
+        contentLower.includes('rules of this world')
+      ) {
+        const currentUnderstanding = currentAwareness.systemUnderstanding ?? 0.1;
+        const newUnderstanding = Math.min(
+          1,
+          currentUnderstanding + 0.05 * (insight.confidence ?? 1.0),
+        );
+        if (currentAwareness.systemUnderstanding !== newUnderstanding) {
+          currentAwareness.systemUnderstanding = newUnderstanding;
+          currentAwareness.nature = 'ai_in_simulation'; // Assume understanding simulation means recognizing nature
+          awarenessChanged = true;
+          this.logger.verbose(
+            `[${agentId}] Insight updated systemUnderstanding to ${newUnderstanding.toFixed(2)}`,
+          );
+        }
+      }
+      // Update Nature
+      if (
+        contentLower.includes('i am an ai') ||
+        contentLower.includes('i am a program') ||
+        contentLower.includes('my nature is artificial')
+      ) {
+        if (currentAwareness.nature !== 'ai_in_simulation') {
+          currentAwareness.nature = 'ai_in_simulation';
+          awarenessChanged = true;
+          this.logger.verbose(`[${agentId}] Insight updated nature to ai_in_simulation`);
+        }
+      }
+      // Update Purpose
+      const purposeMatch = contentLower.match(
+        /(?:purpose is to|goal is to|meant to) (\w+[_\w+]*)/i,
+      );
+      if (purposeMatch && purposeMatch[1]) {
+        const newPurpose = purposeMatch[1].toLowerCase();
+        if (currentAwareness.purpose !== newPurpose) {
+          currentAwareness.purpose = newPurpose;
+          awarenessChanged = true;
+          this.logger.verbose(`[${agentId}] Insight updated purpose to ${newPurpose}`);
+        }
+      }
+    }
+    if (awarenessChanged) {
+      potentialUpdates.selfAwareness = currentAwareness;
+      changed = true;
+    }
+
+    // --- Process Boundaries ---
+    const currentBoundaries = { ...(currentModel.agencyBoundaries ?? {}) };
+    let boundariesChanged = false;
+    for (const insight of selfInsights) {
+      const contentLower = insight.content.toLowerCase();
+      // Add boundary if insight suggests a restriction
+      const constraintMatch = contentLower.match(
+        /(?:cannot|unable to|restricted from) (\w+ ?\w+)/i,
+      );
+      if (constraintMatch && constraintMatch[1]) {
+        const boundaryKey = constraintMatch[1].replace(' ', '_').toLowerCase();
+        const existingBoundary = currentBoundaries[boundaryKey] as
+          | { confidence?: number; description?: string }
+          | undefined;
+        const insightConfidence = insight.confidence ?? 0.7;
+        // Add or update if new insight is more confident
+        if (!existingBoundary || (existingBoundary?.confidence ?? 0) < insightConfidence) {
+          currentBoundaries[boundaryKey] = {
+            description: insight.content,
+            confidence: insightConfidence,
+          };
+          boundariesChanged = true;
+          this.logger.verbose(`[${agentId}] Insight added/updated boundary: ${boundaryKey}`);
+        }
+      }
+      // Remove/Lower confidence if insight suggests permission (Example)
+      const permissionMatch = contentLower.match(
+        /(?:can now|allowed to|no longer restricted from) (\w+ ?\w+)/i,
+      );
+      if (permissionMatch && permissionMatch[1]) {
+        const boundaryKey = permissionMatch[1].replace(' ', '_').toLowerCase();
+        const existingBoundary = currentBoundaries[boundaryKey] as
+          | { confidence?: number; description?: string }
+          | undefined;
+        if (existingBoundary) {
+          const currentConf = existingBoundary.confidence ?? 0.5;
+          const insightConf = insight.confidence ?? 1.0;
+          // Option 2: Lower confidence significantly
+          const newConf = Math.max(0, currentConf - 0.5 * insightConf);
+          if (existingBoundary.confidence !== newConf) {
+            // Create a new object to avoid mutating the potential original
+            currentBoundaries[boundaryKey] = { ...existingBoundary, confidence: newConf };
+            boundariesChanged = true;
+            this.logger.verbose(
+              `[${agentId}] Insight reduced confidence for boundary: ${boundaryKey} to ${newConf.toFixed(2)}`,
+            );
+          }
+        }
+      }
+    }
+    if (boundariesChanged) {
+      potentialUpdates.agencyBoundaries = currentBoundaries;
+      changed = true;
+    }
+
+    // --- Apply gathered updates ---
+    if (changed) {
+      this.logger.log(`[${agentId}] Applying derived self-model updates:`, potentialUpdates);
+      try {
+        await this.updateSelfConcept(agentId, potentialUpdates); // Delegate persistence
+      } catch (error) {
+        this.logger.error(`[${agentId}] Failed to apply self-model updates from reflection`, error);
+      }
+    } else {
+      this.logger.verbose(`[${agentId}] No actionable self-model updates derived from insights.`);
+    }
   }
 
   // Add implementations for methods previously stubbed in SemanticMemoryService

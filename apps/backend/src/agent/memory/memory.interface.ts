@@ -5,6 +5,7 @@ import {
   Observation,
   PlanNode,
   PlanStatus,
+  ReflectionReport,
   RetrieveConceptsParams,
   RetrieveFactsParams,
   RetrieveObservationsParams,
@@ -59,6 +60,15 @@ export interface IMemoryInterface {
   markPlanFailed(planId: string): Promise<void>;
   markPlanCompleted(planId: string): Promise<void>;
   createReplan(originalPlanId: string, failureReason: string): Promise<string>; // Returns new planId
+
+  // --- Reflection Persistence ---
+  /**
+   * Persists a generated reflection report.
+   * @param agentId The ID of the agent who performed the reflection.
+   * @param report The ReflectionReport object to store.
+   * @returns A promise resolving when the report is stored.
+   */
+  addReflectionReport(agentId: string, report: ReflectionReport): Promise<void>;
 }
 
 export const MEMORY_INTERFACE = Symbol('IMemoryInterface');

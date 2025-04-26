@@ -4,7 +4,14 @@ import { Runnable, RunnableConfig } from '@langchain/core/runnables';
 import { ChatOpenAI } from '@langchain/openai';
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { AgentAction, AgentState, OrientationContext } from '@pixeltales/contracts';
+import {
+  AgentAction,
+  AgentState,
+  Observation,
+  OrientationContext,
+  ReflectionReport,
+  ReflectionReportSchema,
+} from '@pixeltales/contracts';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { IAgentLlmService } from './agent-llm.interface';
@@ -288,6 +295,76 @@ Here is the JSON Schema instance your output must adhere to:
 \`\`\`json
 ${escapedJsonString}
 \`\`\``;
+  }
+
+  /**
+   * Analyzes recent experiences to generate higher-level insights for reflection.
+   */
+  async analyzeExperiencesForInsights(
+    agentId: string,
+    observations: Observation[],
+  ): Promise<ReflectionReport['insights']> {
+    this.logger.debug(
+      `[${agentId}] LLM Service: analyzeExperiencesForInsights called for ${observations.length} observations.`,
+    );
+
+    // Construct prompt with observations, ask LLM to identify patterns, learnings, etc.
+    // Parse LLM response into the structured ReflectionReport['insights'] format.
+
+    if (observations.length === 0) {
+      return [];
+    }
+
+    if (!this.llm) {
+      this.logger.error(`[${agentId}] LLM not initialized for insight generation.`);
+      return []; // Cannot generate if LLM is down
+    }
+
+    try {
+      // Define the desired output structure (just the insights part of the report)
+      const InsightSchema = ReflectionReportSchema.shape.insights.element;
+      const InsightsListSchema = z.object({
+        insights: z.array(InsightSchema),
+      });
+
+      const outputParser = new JsonOutputParser<z.infer<typeof InsightsListSchema>>();
+      const formatInstructions = this.getFormatInstructions(InsightsListSchema);
+
+      // Prepare a summary of observations for the prompt
+      const observationSummary = observations
+        .slice(-10) // Limit context size
+        .map((obs) => `[${new Date(obs.timestamp).toISOString()}] ${obs.content}`)
+        .join('\n');
+
+      const prompt = ChatPromptTemplate.fromMessages([
+        [
+          'system',
+          `You are a reflective assistant analyzing an agent's recent experiences.
+           Identify 1-3 key insights, patterns, or learnings from the provided observations.
+           Categorize each insight (self, world, social, goal, learning, other) and estimate confidence.
+           Reference supporting observation IDs if applicable.
+
+           ${formatInstructions}`,
+        ],
+        ['human', `Recent Observations:\n---\n${observationSummary}\n---\nInsights:`],
+      ]);
+
+      const chain = prompt.pipe(this.llm).pipe(outputParser);
+
+      this.logger.verbose(`[${agentId}] Invoking insight generation chain...`);
+      const result = await chain.invoke({}); // No specific input variables beyond prompt content
+
+      this.logger.verbose(
+        `[${agentId}] Insight generation complete, ${result.insights.length} insights found.`,
+      );
+      return result.insights;
+    } catch (error: unknown) {
+      this.logger.error(
+        `[${agentId}] Error during LLM insight generation: ${error instanceof Error ? error.message : String(error)}`,
+        error instanceof Error ? error.stack : undefined,
+      );
+      return []; // Return empty on error
+    }
   }
 
   // TODO: Implement other LLM methods

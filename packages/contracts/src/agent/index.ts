@@ -14,6 +14,7 @@ export * from './MemorySchemas';
 export * from './Metrics';
 export * from './PlanNode';
 export * from './PlanSchemas';
+export * from './ReflectionSchemas';
 export * from './SensoryEvents';
 
 export * from './SimulationEvents';

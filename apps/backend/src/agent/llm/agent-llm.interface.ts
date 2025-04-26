@@ -1,4 +1,10 @@
-import { AgentAction, AgentState, OrientationContext } from '@pixeltales/contracts';
+import {
+  AgentAction,
+  AgentState,
+  Observation,
+  OrientationContext,
+  ReflectionReport,
+} from '@pixeltales/contracts';
 
 /**
  * Interface for the agent-specific LLM service.
@@ -26,6 +32,17 @@ export interface IAgentLlmService {
    * @returns A promise resolving to an ordered array of step descriptions.
    */
   generatePlanSteps(agentId: string, goal: string, context: OrientationContext): Promise<string[]>;
+
+  /**
+   * Analyzes recent experiences to generate higher-level insights for reflection.
+   * @param agentId The ID of the agent.
+   * @param observations The recent observations to analyze.
+   * @returns A promise resolving to an array of generated insights, matching the structure expected by ReflectionReportSchema.
+   */
+  analyzeExperiencesForInsights(
+    agentId: string,
+    observations: Observation[],
+  ): Promise<ReflectionReport['insights']>;
 
   // TODO: Add other methods as needed, e.g.:
   // generatePlanDecomposition(agentId: string, goal: string, context: OrientationContext): Promise<PlanNode[]>;

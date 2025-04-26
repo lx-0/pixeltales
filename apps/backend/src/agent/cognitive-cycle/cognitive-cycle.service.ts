@@ -26,6 +26,7 @@ import { IRewardFunction, REWARD_FUNCTION } from '../learning/reward.function.in
 import { AGENT_LLM_SERVICE, IAgentLlmService } from '../llm/agent-llm.interface';
 import { IMemoryInterface, MEMORY_INTERFACE } from '../memory/memory.interface';
 import { IPlannerService, PLANNER_SERVICE } from '../planner/planner.interface';
+import { IReflectionService, REFLECTION_SERVICE } from '../reflection/reflection.interface';
 
 // Define return type for cognitive cycle step
 type CycleResult = {
@@ -50,6 +51,7 @@ export class CognitiveCycleService {
     @Inject(AGENT_LLM_SERVICE) private readonly agentLlmService: IAgentLlmService,
     @Inject(LEARNING_INTERFACE) private readonly learningInterface: ILearningInterface,
     @Inject(REWARD_FUNCTION) private readonly rewardFunction: IRewardFunction,
+    @Inject(REFLECTION_SERVICE) private readonly reflectionService: IReflectionService,
   ) {}
 
   /**
@@ -370,6 +372,33 @@ export class CognitiveCycleService {
     };
   }
 
+  /**
+   * Determines the agent's next action based on the current orientation context.
+   * This method orchestrates the core Decide & Plan phase of the cognitive cycle,
+   * incorporating the dual-process (System-1/System-2) model.
+   *
+   * Steps:
+   * 1.  **Cognitive Effort Allocation:** Determine if System-1 (fast, intuitive) or System-2 (slow, deliberative) processing is needed based on context (perception complexity, goals, relevance).
+   * 2.  **System-2 Processing (if triggered):**
+   *     a. Check for active `shortTermGoals`.
+   *     b. If goal exists, call `plannerService.generatePlan` to get an `AgentPlan`.
+   *     c. Persist the plan using `memoryInterface.createPlanWithNodes`.
+   *     d. Get the next actionable `PlanNode` using `plannerService.getNextStep`.
+   *     e. If a node is available, map it to an `AgentAction` using `mapPlanNodeToAction`.
+   *     f. If planning yields an action, return it along with state updates (e.g., remove goal).
+   *     g. **Fallback:** If no goal or planning failed, call `agentLlmService.generateAction` for a direct response.
+   * 3.  **System-1 Processing (if System-2 not triggered):**
+   *     a. Apply lightweight heuristics (e.g., check for greetings, questions).
+   *     b. Consult recent memory (`internalTools['memory.retrieveObservations']`).
+   *     c. Select a predefined simple response or default action.
+   * 4.  **Final Action Determination:** Ensure a valid `AgentAction` (even `no_action`) is assigned.
+   * 5.  **Idle Reflection Trigger:** If the final decision is `no_action`, asynchronously trigger `reflectionService.performReflection`.
+   * 6.  **Return Result:** Return the determined `AgentAction` and any associated `stateUpdates`.
+   *
+   * @param agent The current runtime state of the agent.
+   * @param context The orientation context gathered in the previous phase.
+   * @returns A promise resolving to a CycleResult containing the action and state updates.
+   */
   private async decideAndPlan(
     agent: AgentRuntimeState,
     context: OrientationContext,
@@ -484,6 +513,17 @@ export class CognitiveCycleService {
             mood: resultingAction.type === 'speak' ? 'engaging' : context.dynamicState.mood,
           };
           this.logger.verbose(`[${agentId}] Planner-generated action. State update: remove goal.`);
+          // --- Trigger Reflection on Idle ---
+          this.reflectionService.performReflection(agentId, 'idle').catch((err) => {
+            this.logger.error(`[${agentId}] Background reflection call failed:`, err);
+          });
+          // --- Return Action & State Updates ---
+          this.logger.verbose(`[${agentId}] Decided Action (Planner): ${resultingAction.type}`);
+          if (stateUpdates) {
+            this.logger.verbose(
+              `[${agentId}] Proposed State Updates: ${JSON.stringify(stateUpdates)}`,
+            );
+          }
           return { action: resultingAction, stateUpdates };
         }
       }
@@ -504,7 +544,7 @@ export class CognitiveCycleService {
         this.logger.verbose(
           `[${agentId}] LLM fallback action chosen. State update: mood -> thinking.`,
         );
-        return { action: resultingAction, stateUpdates };
+        // NO return here, fall through to final return
       } catch (error) {
         this.logger.error(
           `[${agentId}] Error during System-2 LLM fallback action generation`,
@@ -514,7 +554,7 @@ export class CognitiveCycleService {
           type: 'no_action',
           payload: { reason: 'System-2 LLM Fallback Error' },
         };
-        return { action: resultingAction, stateUpdates: { shortTermGoals: currentGoals.slice(1) } };
+        stateUpdates = { shortTermGoals: currentGoals.slice(1) };
       }
     } else {
       // === System-1: Fast/Intuitive Processing ===
@@ -567,8 +607,24 @@ export class CognitiveCycleService {
       }
 
       this.logger.verbose(`[${agentId}] System-1 chose action: ${resultingAction.type}`);
-      return { action: resultingAction, stateUpdates };
+      // NO return here, fall through to final return
     }
+
+    // --- Trigger Reflection on Idle ---
+    if (resultingAction.type === 'no_action') {
+      this.logger.verbose(`[${agentId}] Agent decided no_action, triggering reflection (async).`);
+      // Non-blocking call to reflection service
+      this.reflectionService.performReflection(agentId, 'idle').catch((err) => {
+        this.logger.error(`[${agentId}] Background reflection call failed:`, err);
+      });
+    }
+
+    // --- Final Return ---
+    this.logger.verbose(`[${agentId}] Final Decided Action: ${resultingAction.type}`);
+    if (stateUpdates) {
+      this.logger.verbose(`[${agentId}] Final State Updates: ${JSON.stringify(stateUpdates)}`);
+    }
+    return { action: resultingAction, stateUpdates };
   }
 
   /**

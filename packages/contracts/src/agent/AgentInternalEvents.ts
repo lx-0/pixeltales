@@ -121,6 +121,23 @@ export const AgentDynamicStateUpdatedEventSchema = BaseEventSchema.extend({
 });
 export type AgentDynamicStateUpdatedEvent = z.infer<typeof AgentDynamicStateUpdatedEventSchema>;
 
+// NEW: Payload for Reflection Completion
+export const AgentReflectionCompletedPayloadSchema = z.object({
+  agentId: z.string().uuid(),
+  reportId: z.string().uuid().describe('ID of the generated reflection report.'),
+  trigger: z.string().describe('The trigger that initiated the reflection.'),
+  insightCount: z.number().int().min(0).describe('Number of insights generated.'),
+  durationMs: z.number().int().min(0).describe('Duration of the reflection cycle in ms.'),
+});
+export type AgentReflectionCompletedPayload = z.infer<typeof AgentReflectionCompletedPayloadSchema>;
+
+// NEW: Event Type for Reflection Completion
+export const AgentReflectionCompletedEventSchema = BaseEventSchema.extend({
+  type: z.literal('agent.reflection.completed'),
+  payload: AgentReflectionCompletedPayloadSchema,
+});
+export type AgentReflectionCompletedEvent = z.infer<typeof AgentReflectionCompletedEventSchema>;
+
 // --- Discriminated Union Schema for Agent Internal Events ---
 
 export const AgentInternalEventSchema = z.discriminatedUnion('type', [
@@ -131,7 +148,8 @@ export const AgentInternalEventSchema = z.discriminatedUnion('type', [
   SelfModelUpdatedEventSchema,
   ExperimentResultRecordedEventSchema,
   SystemNotificationDispatchedEventSchema,
-  AgentDynamicStateUpdatedEventSchema, // Added the new event schema here
+  AgentDynamicStateUpdatedEventSchema,
+  AgentReflectionCompletedEventSchema,
   // Add other internal schemas here
 ]);
 

@@ -1,5 +1,10 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { Concept, RetrieveConceptsParams, UpsertConceptParams } from '@pixeltales/contracts';
+import {
+  Concept,
+  ReflectionReport,
+  RetrieveConceptsParams,
+  UpsertConceptParams,
+} from '@pixeltales/contracts';
 import { IMemoryInterface, MEMORY_INTERFACE } from '../memory/memory.interface';
 import { IOntologyInterface } from './ontology.interface';
 
@@ -111,6 +116,113 @@ export class OntologyService implements IOntologyInterface {
     } catch (error) {
       this.logger.error(`[${agentId}] Error during property inference:`, error);
       return {};
+    }
+  }
+
+  /**
+   * Applies insights gained from reflection specifically to update the ontology.
+   */
+  async applyReflectionInsights(
+    agentId: string,
+    ontologyInsights: ReflectionReport['insights'],
+  ): Promise<void> {
+    this.logger.debug(
+      `[${agentId}] OntologyService: Applying ${ontologyInsights.length} ontology-related reflection insights.`,
+    );
+
+    // TODO: Replace simple heuristics below with more robust insight interpretation logic.
+    // This should ideally involve LLM calls to understand the semantics and map to
+    // structured ontology updates (concepts AND relations). Currently uses basic regex
+    // and only attempts concept creation or storing relations as simple facts.
+
+    if (ontologyInsights.length === 0) {
+      this.logger.verbose(`[${agentId}] No ontology insights to apply.`);
+      return;
+    }
+
+    let updatesAppliedCount = 0;
+    for (const insight of ontologyInsights) {
+      // Focus only on insights tagged as 'world' or potentially 'social' for ontology
+      if ((insight.type === 'world' || insight.type === 'social') && insight.confidence > 0.5) {
+        // Try to extract a potential concept name
+        const conceptMatch = insight.content.match(/concept of '([^']+)'/i);
+        // Try to extract an is-a relationship
+        const isAMatch = insight.content.match(/'([^']+)' is a type of '([^']+)'/i);
+        // Try to extract a has-property relationship
+        const hasPropMatch = insight.content.match(
+          /'([^']+)' has property '([^']+)' with value '([^']+)'/i,
+        );
+
+        let appliedUpdate = false;
+
+        if (conceptMatch && conceptMatch[1]) {
+          const conceptName = conceptMatch[1];
+          const conceptParams: UpsertConceptParams = {
+            name: conceptName,
+            description: insight.content,
+            confidence: insight.confidence,
+            category: 'inferred_from_reflection',
+            properties: { derivedFromReflection: true },
+          };
+          this.logger.log(
+            `[${agentId}] Attempting to upsert concept '${conceptName}' from insight...`,
+          );
+          try {
+            await this.upsertConcept(agentId, conceptParams);
+            appliedUpdate = true;
+          } catch (error) {
+            this.logger.error(
+              `[${agentId}] Failed to upsert concept '${conceptName}' from reflection insight`,
+              error,
+            );
+          }
+        } else if (isAMatch && isAMatch[1] && isAMatch[2]) {
+          // Placeholder: Add relation as a fact if relation schema/methods aren't available
+          const subjectConcept = isAMatch[1];
+          const objectConcept = isAMatch[2];
+          this.logger.log(`[${agentId}] Attempting to add 'is_a' relation as fact...`);
+          try {
+            await this.memoryInterface.upsertFact(agentId, {
+              subjectVisualId: subjectConcept, // Using name as ID here, might need better resolution
+              key: 'is_a',
+              value: objectConcept,
+              confidence: insight.confidence,
+            });
+            appliedUpdate = true;
+          } catch (error) {
+            this.logger.error(`[${agentId}] Failed to add relation as fact`, error);
+          }
+        } else if (hasPropMatch && hasPropMatch[1] && hasPropMatch[2] && hasPropMatch[3]) {
+          // Add property as a fact
+          const subjectConcept = hasPropMatch[1];
+          const propertyKey = hasPropMatch[2];
+          const propertyValue = hasPropMatch[3];
+          this.logger.log(`[${agentId}] Attempting to add property '${propertyKey}' as fact...`);
+          try {
+            await this.memoryInterface.upsertFact(agentId, {
+              subjectVisualId: subjectConcept,
+              key: propertyKey,
+              value: propertyValue,
+              confidence: insight.confidence,
+            });
+            appliedUpdate = true;
+          } catch (error) {
+            this.logger.error(`[${agentId}] Failed to add property as fact`, error);
+          }
+        }
+
+        if (appliedUpdate) {
+          updatesAppliedCount++;
+        }
+      }
+    }
+
+    if (updatesAppliedCount === 0) {
+      this.logger.log(`[${agentId}] No actionable ontology updates derived from insights.`);
+    } else {
+      this.logger.log(
+        `[${agentId}] Applied ${updatesAppliedCount} ontology updates from insights.`,
+      );
     }
   }
 }

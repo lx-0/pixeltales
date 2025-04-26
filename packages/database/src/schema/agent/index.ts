@@ -5,6 +5,7 @@ export * from './hypotheses.schema';
 export * from './metrics.schema';
 export * from './plan-nodes.schema';
 export * from './plans.schema';
+export * from './reflection-reports.schema';
 export * from './rewards.schema';
 export * from './semantic-concepts.schema';
 export * from './semantic-facts.schema';

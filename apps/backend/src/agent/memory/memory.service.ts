@@ -6,6 +6,7 @@ import {
   Observation,
   PlanNode,
   PlanStatus,
+  ReflectionReport,
   RetrieveConceptsParams,
   RetrieveFactsParams,
   RetrieveObservationsParams,
@@ -143,5 +144,11 @@ export class MemoryService implements IMemoryInterface {
   createReplan(originalPlanId: string, failureReason: string): Promise<string> {
     this.logger.debug(`Facade: Delegating createReplan for ${originalPlanId}`);
     return this.semantic.createReplan(originalPlanId, failureReason);
+  }
+
+  // --- Reflection Persistence --- //
+  addReflectionReport(agentId: string, report: ReflectionReport): Promise<void> {
+    this.logger.debug(`[${agentId}] Facade: Delegating addReflectionReport`);
+    return this.semantic.addReflectionReport(agentId, report);
   }
 }

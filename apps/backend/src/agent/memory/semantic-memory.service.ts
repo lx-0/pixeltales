@@ -4,6 +4,7 @@ import {
   Fact,
   PlanNode,
   PlanStatus,
+  ReflectionReport,
   RetrieveConceptsParams,
   RetrieveFactsParams,
   SelfModel,
@@ -551,6 +552,35 @@ export class SemanticMemoryService
       throw new Error(
         `Failed to create plan with nodes: ${error instanceof Error ? error.message : String(error)}`,
       );
+    }
+  }
+
+  // --- Reflection Persistence --- //
+  /**
+   * Persists a generated reflection report.
+   */
+  async addReflectionReport(agentId: string, report: ReflectionReport): Promise<void> {
+    this.logger.debug(`[${agentId}] Persisting reflection report ${report.reportId}`);
+    try {
+      await this.db.insert(schema.reflectionReports).values({
+        id: report.reportId,
+        agentId: agentId,
+        trigger: report.trigger,
+        timestamp: new Date(report.timestamp),
+        processedObservationIds: report.processedObservationIds,
+        insights: report.insights, // Stored as JSON
+        potentialSelfModelUpdates: report.potentialSelfModelUpdates,
+        potentialOntologyUpdates: report.potentialOntologyUpdates,
+        newGoalsSuggested: report.newGoalsSuggested,
+      });
+      this.logger.verbose(`[${agentId}] Persisted reflection report ${report.reportId}`);
+    } catch (error) {
+      this.logger.error(
+        `[${agentId}] Failed to persist reflection report ${report.reportId}`,
+        error instanceof Error ? error.stack : error,
+      );
+      // Decide if this should throw or just log
+      throw error;
     }
   }
 }

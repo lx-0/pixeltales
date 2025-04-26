@@ -1,4 +1,9 @@
-import { Concept, RetrieveConceptsParams, UpsertConceptParams } from '@pixeltales/contracts';
+import {
+  Concept,
+  ReflectionReport,
+  RetrieveConceptsParams,
+  UpsertConceptParams,
+} from '@pixeltales/contracts';
 
 /**
  * Interface for the Ontology Service, handling structured knowledge
@@ -38,6 +43,17 @@ export interface IOntologyInterface {
     entityId: string,
     propertiesToInfer: string[],
   ): Promise<Record<string, any>>;
+
+  /**
+   * Applies insights gained from reflection specifically to update the ontology.
+   * @param agentId The ID of the agent.
+   * @param ontologyInsights An array of reflection insights tagged with relevant types (e.g., 'world').
+   * @returns A promise resolving when updates are processed.
+   */
+  applyReflectionInsights(
+    agentId: string,
+    ontologyInsights: ReflectionReport['insights'], // Use the insight structure
+  ): Promise<void>;
 
   // TODO: Add methods for relation management (addRelation, removeRelation, retrieveRelations) if needed
 }
