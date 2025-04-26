@@ -291,14 +291,11 @@ export class AgentService implements OnModuleInit {
       return;
     }
 
-    // Create a new dynamic state object by merging the existing one with updates
-    const newDynamicState: AgentDynamicState = {
-      ...currentAgentRuntimeState.dynamicState,
-      ...updates,
-    };
+    // Call the method on the runtime state object to handle the update
+    currentAgentRuntimeState.updateDynamicState(updates);
 
-    // Update the dynamicState property of the *existing* runtime state object
-    currentAgentRuntimeState.dynamicState = newDynamicState;
+    // Get the potentially updated state for the event payload
+    const newDynamicState = currentAgentRuntimeState.dynamicState;
 
     // Emit event about the state change
     try {

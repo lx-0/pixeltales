@@ -33,10 +33,20 @@ export class AgentRuntimeState {
     this.lastActivityTimestamp = Date.now(); // Initialize on creation
   }
 
-  // Methods to update state safely could go here
+  /**
+   * Updates the dynamic state safely by merging updates.
+   * @param updates Partial updates to apply.
+   */
   updateDynamicState(updates: Partial<AgentDynamicState>): void {
-    this.dynamicState = { ...this.dynamicState, ...updates };
-    // Optionally trigger events or validation
+    // Ensure updates is an object
+    if (updates && typeof updates === 'object') {
+      this.dynamicState = { ...this.dynamicState, ...updates };
+      this.lastActivityTimestamp = Date.now(); // Update activity on state change too
+    } else {
+      // Log a warning if updates is not a valid object (or handle as needed)
+      console.warn(`[AgentRuntimeState ${this.agentId}] Received invalid state updates:`, updates);
+    }
+    // Optionally trigger internal validation or events within the state object itself if needed later
   }
 
   setActivePlan(planId: string, planNodes: PlanNode[]): void {
