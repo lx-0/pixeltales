@@ -9,6 +9,7 @@ import {
   Observation,
   OrientationContext,
   PerceptionState,
+  PlanNode,
   RewardFunctionInput,
   SelfModel,
 } from '@pixeltales/contracts';
@@ -429,7 +430,7 @@ export class CognitiveCycleService {
     // --- End Allocator --- //
 
     // --- Decision Logic --- //
-    let resultingAction: AgentAction;
+    let resultingAction: AgentAction = { type: 'no_action', payload: { reason: 'initial' } };
     let stateUpdates: Partial<AgentDynamicState> | undefined;
 
     if (useSystem2) {
@@ -437,69 +438,83 @@ export class CognitiveCycleService {
       this.logger.verbose(`[${agentId}] Engaging System-2`);
       const currentGoals = context.dynamicState?.shortTermGoals ?? [];
       this.logger.debug(`[${agentId}] System-2 considering goals: ${JSON.stringify(currentGoals)}`);
-      let plannedAction: AgentAction | null = null;
-      if (currentGoals.length > 0) {
+      if (currentGoals.length > 0 && currentGoals[0]) {
         const selectedGoal = currentGoals[0];
         this.logger.verbose(`[${agentId}] Selected goal for planning: ${selectedGoal}`);
-        if (selectedGoal) {
-          try {
-            plannedAction = await this.plannerService.generatePlan(agentId, selectedGoal, context);
-            if (plannedAction && plannedAction.type !== 'no_action') {
-              resultingAction = plannedAction;
-              stateUpdates = {
-                shortTermGoals: currentGoals.slice(1),
-                mood: resultingAction.type === 'speak' ? 'engaging' : context.dynamicState.mood,
-              };
-              this.logger.verbose(`[${agentId}] Planner action chosen. State update: remove goal.`);
-              return { action: resultingAction, stateUpdates };
-            }
-            plannedAction = null;
-          } catch (error) {
-            this.logger.error(
-              `[${agentId}] Error during planning for goal: ${selectedGoal}`,
-              error instanceof Error ? error.stack : error,
-            );
-          }
-        }
-      }
-
-      if (!plannedAction) {
-        this.logger.debug(
-          `[${agentId}] No goal or planner action, falling back to direct LLM generation...`,
-        );
+        // Retrieve semantic facts relevant to the goal
+        let goalFacts: Fact[] = [];
         try {
-          this.logger.debug(`[${agentId}] Calling Agent LLM Service for action generation...`);
-          const llmAction = await this.agentLlmService.generateAction(
-            agentId,
-            context,
-            agent.config,
-          );
+          goalFacts = await this.internalTools['memory.retrieveFacts'](agentId, {
+            query: selectedGoal,
+            limit: 5,
+          });
           this.logger.verbose(
-            `[${agentId}] System-2 LLM fallback action: ${llmAction?.type ?? 'null'}`,
-          );
-          resultingAction = llmAction ?? {
-            type: 'no_action',
-            payload: { reason: 'LLM returned null' },
-          };
-          stateUpdates = { mood: 'thinking' };
-          this.logger.verbose(
-            `[${agentId}] LLM fallback action chosen. State update: mood -> thinking.`,
+            `[${agentId}] Retrieved ${goalFacts.length} semantic facts for goal.`,
           );
         } catch (error) {
           this.logger.error(
-            `[${agentId}] Error during System-2 LLM fallback action generation`,
-            error instanceof Error ? error.stack : error,
+            `[${agentId}] Error retrieving semantic facts for goal planning`,
+            error,
           );
-          resultingAction = {
-            type: 'no_action',
-            payload: { reason: 'System-2 LLM Fallback Error' },
+        }
+        // Merge new facts into planning context
+        const planningContext: OrientationContext = {
+          ...context,
+          relatedFacts: [...context.relatedFacts, ...goalFacts],
+        };
+        // 1. Decompose goal into AgentPlan using augmented context
+        const agentPlan = await this.plannerService.generatePlan(
+          agentId,
+          selectedGoal,
+          planningContext,
+        );
+        // 2. Persist plan via memory service
+        const stepDescriptions = Object.values(agentPlan.nodes).map((n) => n.description);
+        const persistedPlanId = await this.memoryInterface.createPlanWithNodes(
+          agentId,
+          agentPlan.goal,
+          stepDescriptions,
+        );
+        // 3. Get next actionable node
+        const nextNode = await this.plannerService.getNextStep(persistedPlanId);
+        if (nextNode) {
+          resultingAction = this.mapPlanNodeToAction(nextNode, persistedPlanId);
+          stateUpdates = {
+            shortTermGoals: currentGoals.slice(1),
+            mood: resultingAction.type === 'speak' ? 'engaging' : context.dynamicState.mood,
           };
+          this.logger.verbose(`[${agentId}] Planner-generated action. State update: remove goal.`);
+          return { action: resultingAction, stateUpdates };
         }
-      } else {
-        resultingAction = plannedAction;
-        if (resultingAction.type !== 'no_action') {
-          stateUpdates = { shortTermGoals: currentGoals.slice(1) };
-        }
+      }
+
+      // Fallback to System-2 LLM generation if planning did not return an action
+      this.logger.debug(`[${agentId}] No planner action, falling back to direct LLM generation...`);
+      try {
+        this.logger.debug(`[${agentId}] Calling Agent LLM Service for action generation...`);
+        const llmAction = await this.agentLlmService.generateAction(agentId, context, agent.config);
+        this.logger.verbose(
+          `[${agentId}] System-2 LLM fallback action: ${llmAction?.type ?? 'null'}`,
+        );
+        resultingAction = llmAction ?? {
+          type: 'no_action',
+          payload: { reason: 'LLM returned null' },
+        };
+        stateUpdates = { mood: 'thinking' };
+        this.logger.verbose(
+          `[${agentId}] LLM fallback action chosen. State update: mood -> thinking.`,
+        );
+        return { action: resultingAction, stateUpdates };
+      } catch (error) {
+        this.logger.error(
+          `[${agentId}] Error during System-2 LLM fallback action generation`,
+          error instanceof Error ? error.stack : error,
+        );
+        resultingAction = {
+          type: 'no_action',
+          payload: { reason: 'System-2 LLM Fallback Error' },
+        };
+        return { action: resultingAction, stateUpdates: { shortTermGoals: currentGoals.slice(1) } };
       }
     } else {
       // === System-1: Fast/Intuitive Processing ===
@@ -508,18 +523,41 @@ export class CognitiveCycleService {
       // Example: Simple acknowledgment or default action
       // More sophisticated System-1 could involve basic sentiment check,
       // predefined social responses, or simple state updates.
-      if (perceptionContent?.toLowerCase().includes('hello')) {
+
+      // Retrieve recent observations for quick context
+      let recentSys1Obs: Observation[] = [];
+      try {
+        recentSys1Obs = await this.internalTools['memory.retrieveObservations'](agentId, {
+          limit: 5,
+        });
+      } catch (error) {
+        this.logger.error(`[${agentId}] System-1 memory retrieval error`, error);
+      }
+
+      // Apply light-weight heuristics
+      const lower = perceptionContent.toLowerCase();
+      const firstSys1Obs = recentSys1Obs[0];
+
+      if (/\b(hello|hi|hey)\b/.test(lower)) {
+        resultingAction = { type: 'speak', payload: { content: 'Hey there!' } };
+        stateUpdates = { mood: 'friendly' };
+      } else if (/\b(bye|goodbye|see you)\b/.test(lower)) {
+        resultingAction = { type: 'speak', payload: { content: 'Goodbye!' } };
+        stateUpdates = { mood: 'calm' };
+      } else if (lower.endsWith('?')) {
         resultingAction = {
-          type: 'speak', // Respond with a simple greeting
-          payload: { content: 'Hi there!' },
+          type: 'speak',
+          payload: { content: "That's an interesting question." },
         };
-        stateUpdates = { mood: 'friendly' }; // Update state based on simple trigger
+        stateUpdates = { mood: 'curious' };
+      } else if (firstSys1Obs && firstSys1Obs.content.includes(perceptionContent)) {
+        resultingAction = {
+          type: 'speak',
+          payload: { content: 'I think we just discussed that.' },
+        };
+        stateUpdates = { mood: 'thoughtful' };
       } else {
-        // Default System-1 action
-        resultingAction = {
-          type: 'no_action',
-          payload: { reason: 'System-1 Default / No specific trigger' },
-        };
+        resultingAction = { type: 'speak', payload: { content: 'Okay.' } };
         stateUpdates = {
           participationInterest: Math.max(
             0,
@@ -527,21 +565,31 @@ export class CognitiveCycleService {
           ),
         };
       }
+
       this.logger.verbose(`[${agentId}] System-1 chose action: ${resultingAction.type}`);
+      return { action: resultingAction, stateUpdates };
     }
+  }
 
-    // ... action validation and return ...
-    if (!resultingAction) {
-      this.logger.warn(`[${agentId}] decideAndPlan resulted in undefined action.`);
-      resultingAction = { type: 'no_action', payload: { reason: 'Undefined decision outcome' } };
+  /**
+   * Convert a PlanNode to an AgentAction, preserving original mapping logic.
+   */
+  private mapPlanNodeToAction(node: PlanNode, planId: string): AgentAction {
+    const desc = node.description;
+    const firstStep = desc.toLowerCase().trim();
+    const planContext = { planId, nodeId: node.id };
+    // Simplified mapping logic (expand as needed)
+    if (/\b(speak|say|tell|ask|greet|respond)\b/.test(firstStep)) {
+      return { type: 'speak', payload: { content: desc, tone: 'neutral', planContext } };
     }
-
-    this.logger.verbose(`[${agentId}] Decided Action: ${resultingAction.type}`);
-    if (stateUpdates) {
-      this.logger.verbose(`[${agentId}] Proposed State Updates: ${JSON.stringify(stateUpdates)}`);
+    if (/\b(move|go to|walk|approach|head to)\b/.test(firstStep)) {
+      return { type: 'move', payload: { target: desc, pathfinding: 'shortest', planContext } };
     }
-
-    return { action: resultingAction, stateUpdates };
+    if (/\b(interact|use|pick up|take)\b/.test(firstStep)) {
+      return { type: 'interact', payload: { objectId: desc, interactionType: 'use', planContext } };
+    }
+    // Fallback
+    return { type: 'speak', payload: { content: desc, tone: 'neutral', planContext } };
   }
 
   // TODO: Add methods for handling asynchronous operations and callbacks as per section 2.3.3

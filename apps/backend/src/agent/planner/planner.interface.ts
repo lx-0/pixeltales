@@ -1,4 +1,4 @@
-import { AgentAction, OrientationContext, PlanNode } from '@pixeltales/contracts';
+import { AgentPlan, OrientationContext, PlanNode } from '@pixeltales/contracts';
 
 /**
  * Planner Service interface for HTN planning
@@ -6,17 +6,13 @@ import { AgentAction, OrientationContext, PlanNode } from '@pixeltales/contracts
  */
 export interface IPlannerService {
   /**
-   * Generate the next actionable step (AgentAction) for a given goal and context.
-   * @param agentId The ID of the agent requesting the plan/action.
+   * Decompose a high-level goal into a full HTN plan object.
+   * @param agentId The ID of the agent requesting the plan.
    * @param goal The high-level goal description.
    * @param context The current orientation context for the agent.
-   * @returns A promise resolving to the next AgentAction, or null if no immediate action derived.
+   * @returns A promise resolving to an AgentPlan representing the full HTN plan.
    */
-  generatePlan(
-    agentId: string,
-    goal: string,
-    context: OrientationContext,
-  ): Promise<AgentAction | null>;
+  generatePlan(agentId: string, goal: string, context: OrientationContext): Promise<AgentPlan>;
 
   /**
    * Retrieves the next actionable step from a given plan ID or state.

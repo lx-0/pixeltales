@@ -1,5 +1,5 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { AgentAction, OrientationContext, PlanNode, PlanStatus } from '@pixeltales/contracts';
+import { AgentPlan, OrientationContext, PlanNode, PlanStatus, uuid } from '@pixeltales/contracts';
 import { AGENT_LLM_SERVICE, IAgentLlmService } from '../llm/agent-llm.interface';
 import { IMemoryInterface, MEMORY_INTERFACE } from '../memory/memory.interface';
 import { IPlannerService } from './planner.interface';
@@ -13,22 +13,22 @@ export class HtnPlannerService implements IPlannerService {
   private readonly logger = new Logger(HtnPlannerService.name);
 
   constructor(
-    // Inject LLM service for decomposition
     @Inject(AGENT_LLM_SERVICE) private readonly agentLlmService: IAgentLlmService,
-    // Inject Memory interface for plan persistence
     @Inject(MEMORY_INTERFACE) private readonly memory: IMemoryInterface,
   ) {}
 
   /**
-   * Decompose goal using LLM and return the first actionable step.
+   * Decompose a high-level goal into a full HTN plan object.
    */
   async generatePlan(
     agentId: string,
     goal: string,
     context: OrientationContext,
-  ): Promise<AgentAction | null> {
+  ): Promise<AgentPlan> {
     this.logger.debug(
-      `[${agentId}] Planner received goal: "${goal}" with context (keys: ${Object.keys(context).join(', ')})`,
+      `[${agentId}] Planner received goal: "${goal}" with context (keys: ${Object.keys(
+        context,
+      ).join(', ')})`,
     );
 
     // --- Step 1: Decompose goal using LLM --- //
@@ -37,160 +37,50 @@ export class HtnPlannerService implements IPlannerService {
       steps = await this.agentLlmService.generatePlanSteps(agentId, goal, context);
     } catch (error) {
       this.logger.error(`[${agentId}] Error calling LLM for plan decomposition`, error);
-      return null; // Fail planning if decomposition fails
+      throw error;
     }
 
     if (!steps || steps.length === 0 || !steps[0]) {
       this.logger.warn(`[${agentId}] LLM decomposition returned no steps for goal: "${goal}"`);
-      return null;
-    }
-
-    // --- Step 2: Store the plan in memory --- //
-    let planId: string;
-    try {
-      // Create a plan with all steps in a single operation
-      planId = await this.memory.createPlanWithNodes(agentId, goal, steps);
-      this.logger.verbose(`[${agentId}] Stored plan ${planId} with ${steps.length} steps`);
-    } catch (error) {
-      this.logger.error(`[${agentId}] Error storing plan in memory`, error);
-      planId = ''; // Continue even if persistence fails
-    }
-
-    // --- Step 3: Convert first step description to AgentAction --- //
-    const firstStep = steps[0].toLowerCase().trim();
-    this.logger.verbose(`[${agentId}] Planner attempting to execute first step: "${firstStep}"`);
-
-    let generatedAction: AgentAction | null = null;
-    const planContextValue = planId ? { planId, nodeId: 'NODE_ID_PLACEHOLDER' } : undefined; // TODO: Get actual Node ID
-
-    // TODO: Use more robust parsing/mapping (maybe another LLM call)
-    if (
-      firstStep.includes('speak') ||
-      firstStep.includes('say') ||
-      firstStep.includes('tell') ||
-      firstStep.includes('ask') ||
-      firstStep.includes('greet') ||
-      firstStep.includes('respond') ||
-      firstStep.startsWith('introduce') ||
-      firstStep.match(/conversation|talking|chat|discuss/)
-    ) {
-      // Extract content and tone from step description
-      const content = steps[0]; // Use original formatting for content
-      let tone = 'neutral';
-
-      // Try to extract tone from content if specified
-      const tonePatterns = [
-        { regex: /\b(friendly|warm|kind|casual)\b/i, tone: 'friendly' },
-        { regex: /\b(formal|professional|respectful|polite)\b/i, tone: 'formal' },
-        { regex: /\b(excited|enthusiastic|energetic)\b/i, tone: 'excited' },
-        { regex: /\b(curious|inquiring|questioning)\b/i, tone: 'curious' },
-        { regex: /\b(cautious|careful|hesitant)\b/i, tone: 'cautious' },
-      ];
-
-      for (const pattern of tonePatterns) {
-        if (content.match(pattern.regex)) {
-          tone = pattern.tone;
-          break;
-        }
-      }
-
-      generatedAction = {
-        type: 'speak',
-        payload: {
-          content: `(Plan: ${content})`,
-          tone,
-          planContext: planContextValue,
-        },
-      };
-    } else if (
-      firstStep.includes('move') ||
-      firstStep.includes('go to') ||
-      firstStep.includes('walk') ||
-      firstStep.includes('approach') ||
-      firstStep.includes('head to')
-    ) {
-      // Try to extract target location from step
-      const locationPatterns = [
-        /(?:move|go|walk|approach|head)\s+to\s+(?:the\s+)?([a-z0-9_\s]+)/i,
-        /(?:move|go|walk|approach|head)\s+(?:towards|toward)\s+(?:the\s+)?([a-z0-9_\s]+)/i,
-        /(?:at|to|in)\s+(?:the\s+)?([a-z0-9_\s]+)/i,
-      ];
-
-      let target = 'nearby'; // Default
-
-      for (const pattern of locationPatterns) {
-        const match = firstStep.match(pattern);
-        if (match && match[1]) {
-          target = match[1].trim();
-          break;
-        }
-      }
-
-      generatedAction = {
-        type: 'move',
-        payload: {
-          target: target,
-          pathfinding: 'shortest',
-          planContext: planContextValue,
-        },
-      };
-    } else if (
-      firstStep.includes('interact') ||
-      firstStep.includes('use') ||
-      firstStep.includes('pick up') ||
-      firstStep.includes('take')
-    ) {
-      // Try to extract object and interaction type
-      const target =
-        firstStep.match(/(?:with|use|pick up|take)\s+(?:the\s+)?([a-z0-9_\s]+)/i)?.[1]?.trim() ||
-        'nearest object';
-      const action =
-        firstStep.includes('pick up') || firstStep.includes('take')
-          ? 'pickup'
-          : firstStep.includes('open')
-            ? 'open'
-            : firstStep.includes('close')
-              ? 'close'
-              : firstStep.includes('push')
-                ? 'push'
-                : firstStep.includes('pull')
-                  ? 'pull'
-                  : 'examine'; // Default interaction
-
-      generatedAction = {
-        type: 'interact',
-        payload: {
-          objectId: target,
-          interactionType: action,
-          planContext: planContextValue,
-        },
-      };
-    } else {
-      this.logger.warn(
-        `[${agentId}] Planner could not map first step "${firstStep}" to a known action type.`,
-      );
-
-      // Default to speaking the step as a fallback
-      generatedAction = {
-        type: 'speak',
-        payload: {
-          content: `(I'll ${steps[0]})`,
-          tone: 'neutral',
-          planContext: planContextValue,
-        },
+      // Return an empty plan structure
+      return {
+        planId: uuid(),
+        goal,
+        rootNodeId: '',
+        nodes: {},
+        creationTimestamp: Date.now(),
+        status: 'active',
       };
     }
 
-    // --- Step 4: Return action --- //
-    if (generatedAction) {
-      this.logger.verbose(`[${agentId}] Planner generated action: ${generatedAction.type}`);
-    } else {
-      this.logger.log(
-        `[${agentId}] Planner failed to generate actionable step for goal: "${goal}"`,
-      );
-    }
+    // --- Step 2: Build full plan object --- //
+    const planId = uuid();
+    const nodes: Record<string, PlanNode> = {};
+    steps.forEach((description, index) => {
+      const nodeId = uuid();
+      nodes[nodeId] = {
+        id: nodeId,
+        parentId: undefined,
+        description,
+        status: index === 0 ? 'in_progress' : 'pending',
+        taskType: 'primitive',
+      };
+    });
+    const rootNodeId = Object.keys(nodes)[0]!;
+    const agentPlan: AgentPlan = {
+      planId,
+      goal,
+      rootNodeId,
+      nodes,
+      creationTimestamp: Date.now(),
+      status: 'active',
+    };
+    this.logger.verbose(
+      `[${agentId}] Planner created AgentPlan ${planId} with ${steps.length} nodes`,
+    );
 
-    return generatedAction;
+    // --- Step 3: Return full plan --- //
+    return agentPlan;
   }
 
   /**
