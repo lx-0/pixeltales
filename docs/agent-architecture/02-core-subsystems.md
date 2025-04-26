@@ -983,13 +983,13 @@ The agent interacts with the world by producing a typed `AgentAction` object at 
 - `IActionService`: Defines the contract for the Action System.
 - Schemas (`packages/contracts`):
     - `AgentActionSchema`: The core discriminated union defining all possible action types:
-        - `speak`: Contains the detailed `CharacterResponseSchema` payload (content, tone, target audience if applicable).
-        - `move`: Specifies target coordinates, object, or path.
-        - `interact`: Specifies target object and interaction type.
-        - `use_internal_tool`: Specifies the internal interface tool and input (e.g., memory query).
-        - `update_state`: Represents an internal decision to change mood, focus, etc.
-        - `no_action`: Explicitly indicates the agent chose not to act, potentially with a reason.
-        - `experiment`: Indicates the agent is testing a hypothesis about the world.
+    - `speak`: Contains the detailed `CharacterResponseSchema` payload (content, tone, target audience if applicable).
+    - `move`: Specifies target coordinates, object, or path.
+    - `interact`: Specifies target object and interaction type.
+    - `use_internal_tool`: Specifies the internal interface tool and input (e.g., memory query).
+    - `update_state`: Represents an internal decision to change mood, focus, etc.
+    - `no_action`: Explicitly indicates the agent chose not to act, potentially with a reason.
+    - `experiment`: Indicates the agent is testing a hypothesis about the world.
     - Specific payload schemas for each action type (e.g., `CharacterResponseSchema` for `speak`).
 
 **Knowledge Representation:**

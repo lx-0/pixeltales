@@ -78,7 +78,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Create `agent/internal-tools/internal-tools.module.ts`.
 - [X] Create `agent/extensions/extensions.module.ts`.
 - [P] Implement logic within specific internal tool methods (Memory tools delegated; others are stubs). **(Memory retrieve/upsert integrated in CognitiveCycle)**
-- [P] Implement logic within capability extensions (interacting with simulation layer). **(SpeechOutputExtension & MotionControlExtension emit simulation events)**
+- [P] Implement logic within capability extensions (interacting with simulation layer). **(SpeechOutputExtension & MotionControlExtension emit simulation events; Visual/Auditory Perception Extensions process raw events)**
 
 ## 7. Cognitive Cycle & Agent Lifecycle [P1]
 
@@ -91,8 +91,8 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Create `agent/cognitive-cycle/cognitive-cycle.module.ts`.
 - [P] Implement detailed logic within `CognitiveCycleService` phases. **(Orientation fetches real context, Decide/Plan has improved System-1/2 allocation & initial tool integration, Action logs action to memory, Learn records reward; Reflection logic pending)**
 - [ ] Implement Agent State Update mechanism fully within/after cycle.
-- [P] Implement actual agent loop control (Hybrid: Event-driven + Periodic Tick). **(Basic routing implemented, needs refinement/upstream events)**
-- [ ] Replace mock perceptions with real source in `SimulationService`.
+- [P] Implement actual agent loop control (Hybrid: Event-driven + Periodic Tick).
+- [X] Replace mock perceptions with real source in SimulationService. **(Sim now publishes raw events; Perception Extensions handle processing)**
 - [ ] Update `SceneManagerService` (or equivalent) to use `AgentService` for lifecycle management.
 
 ## 8. Event Bus & Stats Pipeline [P1]

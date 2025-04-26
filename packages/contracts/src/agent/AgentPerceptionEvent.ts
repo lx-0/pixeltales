@@ -3,11 +3,12 @@ import { BaseEventSchema } from './EventBase';
 
 // --- Perception Payload Schemas --- //
 
-const MessageBroadcastPayloadSchema = z.object({
+export const MessageBroadcastPayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here
   content: z.string().describe('The text content of the message.'),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type MessageBroadcastPayload = z.infer<typeof MessageBroadcastPayloadSchema>;
 
 const AgentEnteredPayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (might be the environment source)
@@ -15,18 +16,21 @@ const AgentEnteredPayloadSchema = z.object({
   visualDescription: z.string().optional().describe("A description of the agent's appearance."),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type AgentEnteredPayload = z.infer<typeof AgentEnteredPayloadSchema>;
 
 const AgentLeftPayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (might be the environment source)
   visualId: z.string().describe('The visual identifier of the agent that left.'),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type AgentLeftPayload = z.infer<typeof AgentLeftPayloadSchema>;
 
 const SceneUpdatePayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (might be the environment source)
   description: z.string().describe('Description of the change in the scene.'),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type SceneUpdatePayload = z.infer<typeof SceneUpdatePayloadSchema>;
 
 const AgentMovedPayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (agent causing the move)
@@ -34,12 +38,14 @@ const AgentMovedPayloadSchema = z.object({
   newPosition: z.object({ x: z.number(), y: z.number() }),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type AgentMovedPayload = z.infer<typeof AgentMovedPayloadSchema>;
 
 const AgentVisiblePayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (agent causing the visibility event - likely self)
   visualId: z.string().describe('The visual identifier of the agent that is visible.'),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type AgentVisiblePayload = z.infer<typeof AgentVisiblePayloadSchema>;
 
 const ObjectInteractionPayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (agent causing the interaction)
@@ -48,6 +54,7 @@ const ObjectInteractionPayloadSchema = z.object({
   interactionType: z.string().describe('Type of interaction (e.g., picked_up, used).'),
   metadata: z.record(z.string(), z.any()).optional(),
 });
+export type ObjectInteractionPayload = z.infer<typeof ObjectInteractionPayloadSchema>;
 
 // --- Specific Perception Event Schemas (Extend BaseEventSchema directly) --- //
 
