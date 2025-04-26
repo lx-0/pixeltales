@@ -113,7 +113,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Create base `core/config.service.ts`.
 - [X] Create base `core/notifications/notification.service.ts`.
 - [X] Create `core/notifications/notification.module.ts`.
-- [ ] Implement actual config loading in `ConfigService`.
+- [X] Implement actual config loading in ConfigService.
 - [ ] Implement notification dispatch logic (WebSockets?). (See [Blueprint Section 3.6](docs/agent-architecture/03-instrumentation-features.md#3.6))
 - [X] Create `core/core.module.ts` providing/exporting core services.
 - [X] Create `AgentModule` (`apps/backend/src/agent/agent.module.ts`) importing necessary submodules.

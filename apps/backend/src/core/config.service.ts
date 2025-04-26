@@ -1,45 +1,49 @@
 import { Injectable } from '@nestjs/common';
+import { ConfigService as NestConfigService } from '@nestjs/config';
 
 // TODO: Implement actual configuration loading (e.g., from .env, config files)
 // using NestJS ConfigModule or similar.
 @Injectable()
 export class ConfigService {
-  // Placeholder methods - implement actual config retrieval
-  get(key: string): any {
-    // Example: return process.env[key];
-    console.warn(`ConfigService.get(${key}) called - using placeholder`);
-    // Provide sensible defaults or throw if critical config is missing
-    if (key === 'LLM_API_KEY') return 'dummy_api_key';
-    if (key === 'DATABASE_URL') return 'sqlite::memory:';
-    return undefined;
+  // Inject the core NestJS ConfigService
+  constructor(private nestConfigService: NestConfigService) {}
+
+  get<T = any>(key: string): T | undefined {
+    return this.nestConfigService.get<T>(key);
   }
 
-  // Example of a typed getter
   getNumber(key: string, defaultValue?: number): number | undefined {
-    const value = this.get(key);
-    const num = parseInt(value, 10);
-    if (isNaN(num)) {
-      return defaultValue;
-    }
-    return num;
-  }
-
-  getString(key: string, defaultValue?: string): string | undefined {
-    const value = this.get(key);
-    // Ensure we return a string or the default
-    if (typeof value === 'string') {
+    const value = this.get<string | number>(key);
+    // Check if value is already a number
+    if (typeof value === 'number') {
       return value;
     }
-    // If value is not a string (including undefined, null, or other types),
-    // return the defaultValue.
+    // Try parsing if it's a string
+    if (typeof value === 'string') {
+      const num = parseInt(value, 10);
+      if (!isNaN(num)) {
+        return num;
+      }
+    }
+    // Return default if parsing failed or type was wrong
     return defaultValue;
   }
 
-  getBoolean(key: string, defaultValue?: boolean): boolean {
-    const value = this.get(key);
+  getString(key: string, defaultValue?: string): string | undefined {
+    // Use the base get method and handle default explicitly
+    const value = this.get<string>(key);
+    return value ?? defaultValue; // Return value if it exists (and is string), otherwise default
+  }
+
+  getBoolean(key: string, defaultValue = false): boolean {
+    const value = this.get<string | boolean>(key);
     if (value === undefined || value === null) {
-      return defaultValue ?? false;
+      return defaultValue;
     }
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    // Handle string representations
     return String(value).toLowerCase() === 'true';
   }
 }

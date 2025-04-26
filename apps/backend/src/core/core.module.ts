@@ -1,8 +1,11 @@
 import { Global, Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { ConfigService } from './config.service';
 import { EVENT_BUS } from './event-bus.interface';
 import { EventBusService } from './event-bus.service';
+import { NotificationsModule } from './notifications/notification.module';
 import { NotificationService } from './notifications/notification.service';
+import { MetricsModule } from './stats/metrics.module';
 import { StatsCollectorService } from './stats/stats-collector.service';
 // Import Stats/Notification Modules when created
 // import { StatsModule } from './stats/metrics.module';
@@ -10,7 +13,14 @@ import { StatsCollectorService } from './stats/stats-collector.service';
 
 @Global() // Make core services available globally without importing CoreModule everywhere
 @Module({
-  // imports: [StatsModule, NotificationsModule], // Import submodules
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: '.env',
+    }),
+    NotificationsModule,
+    MetricsModule,
+  ],
   providers: [
     ConfigService,
     // Provide EventBusService for the IEventBus token
