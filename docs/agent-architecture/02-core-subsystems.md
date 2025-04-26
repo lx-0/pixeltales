@@ -127,7 +127,7 @@ While the architecture breaks down the internals into discrete responsibilities,
 │      │  • Structured Decision-Making             │                    │
 │      └─────────────────┬─────────────────────────┘                    │
 │                        │                                              │
-│                        │                                              │
+│                        │ Trigger Reflection Cycle                     │
 │                        ▼                                              │
 │  Dynamic & Semantic   ┌───────────── Planner/Executor ──────┐         │
 │        Memory ────────►                                     │         │
@@ -141,16 +141,22 @@ While the architecture breaks down the internals into discrete responsibilities,
 │      │                                  ▼                        │    │
 │      │                              AgentAction                  │    │
 │      │                                                           │    │
-│      │                                                           │    │
-│      │                                                           │    │
-│      ▼                                                           │    │
-│ ┌────── Ontology System ────┐     ┌──────── Curiosity System ───────┐ │
-│ │   Structured Knowledge    │     │     Intrinsic Motivation        │ │
-│ │                           │◄────┤                                 │ │
-│ │ • Conceptual Hierarchies  │     │ • Information Gap Detection     │ │
-│ │ • Relation Networks       │     │ • Hypothesis Generation         │ │
-│ │ • Knowledge Integration   │     │ • Experimental Design           │ │
-│ └───────────────────────────┘     └─────────────────────────────────┘ │
+│      │       +------------------------------------------+        │    │
+│      │       │                ▲ Reads Memory            │        │    │
+│      │       ▼                │ Delegates Updates       │        │    │
+│ ┌────── Ontology System ────┐ │ ┌──────── Reflection System ───┐ │    │
+│ │   Structured Knowledge    │ │ │     (Synthesizing Exp.)      │ │    │
+│ │                           │◄──+                              ├─┘    │
+│ │ • Conceptual Hierarchies  │ │ │ • Generates Insights         │      │
+│ │ • Relation Networks       │ │ │ • Triggers Self/World Updates│      │
+│ │ • Knowledge Integration   │ │ └──────────────────────────────┘      │
+│ └─────▲─────────────────────┘ │     ┌──────── Curiosity System ─────┐ │
+│       │ Updates Ontology      │     │     Intrinsic Motivation      │ │
+│       └───────────────────────+─────┤                               │ │
+│                                     │ • Information Gap Detection   │ │
+│                                     │ • Hypothesis Generation       │ │
+│                                     │ • Experimental Design         │ │
+│                                     └───────────────────────────────┘ │
 │                                                                       │
 └───────────────────────────────────────────────────────────────────────┘
 ```
@@ -168,7 +174,7 @@ This simplified diagram focuses on the core dual-process cognitive model that dr
    - The Planner/Executor translates deliberative thought into concrete actions
 
 3. **Curiosity Integration**: The diagram maintains the critical relationship with the Curiosity System:
-   - The Curiosity System detects information gaps and creates hypotheses
+   - The Curiosity System detects knowledge gaps and creates hypotheses
    - Experimental designs feed back to the Planner for testing
    - This exploratory mechanism drives agent learning and discovery
 
@@ -318,26 +324,108 @@ Through this theoretically-grounded cognitive architecture, PixelTales agents ex
 
 ## 2.2 Perception System: The Agent's Senses
 
-Mimicking sensory input, the Perception System is how the agent receives information about the external world (the scene and other agents).
+Mimicking sensory input, the Perception System is how the agent receives information about the
+external world (the scene and other agents).
 
-- **Input:** Receives a stream of anonymized, typed events (`AgentPerceptionEvent`) from the `ConversationManager`. Examples:
+This system acts as the agent's interface to the external world, processing raw sensory information from the environment simulation into meaningful, structured events that the agent's cognitive processes can understand.
+
+ **Purpose & Design:**
+
+- **Sense the Environment:** Receives simulated sensory data (visual, auditory, etc.) corresponding to events and states in the shared environment.
+- **Translate Raw Data:** Converts low-level sensory input into higher-level, typed `AgentPerceptionEvent`s using dedicated Perception Extensions.
+- **Filter & Prioritize:** Selects relevant events based on factors like proximity, agent's current focus, visibility, and pre-defined filters. Assigns importance levels.
+- **Assess Salience:** Evaluates the significance of perceptions based on novelty, emotional impact, and relevance to current goals or interests.
+- **Build Initial Context:** Begins the process of integrating new information with the agent's existing internal state.
+- **Maintain Anonymity:** Ensures the agent perceives others only through temporary identifiers (`visualId`) linked to appearance, not internal IDs.
+
+**Input:**
+
+- Receives simulated sensory data (visual, auditory, etc.) from the Environment Simulation Layer via Perception Extensions.
+- Input data is translated into typed `AgentPerceptionEvent`s. Example Event Types:
     - `MessageBroadcastEvent`: `{ type: 'message', visualId: string, content: string, timestamp: number }`
     - `AgentEnteredEvent`: `{ type: 'enter', visualId: string, visualDescription: string, timestamp: number }`
     - `AgentLeftEvent`: `{ type: 'leave', visualId: string, timestamp: number }`
     - `SceneUpdateEvent`: `{ type: 'scene_update', description: string, timestamp: number }`
-- **Anonymity:** Crucially, the agent only perceives the temporary `visualId` associated with other agents' appearances, not their internal `agentId` or private state. Knowledge about others must be inferred and stored in memory.
-- **Processing:**
-    - **Event Filtering**: Discards irrelevant events based on proximity, visibility, or other criteria
-    - **Priority Determination**: Assigns importance levels to incoming perceptions
-    - **Salience Calculation**: Evaluates novelty, emotional impact, and goal relevance
-    - **Context Building**: Integrates new perceptions with existing mental context
-    - **Attention Direction**: Focuses on high-value information sources
+- **Anonymity:** Crucially, the agent only perceives temporary `visualId`s associated with other agents' appearances, not their internal `agentId` or private state. Knowledge about others must be inferred.
 
-**Integration Points**:
-- **→ Cognitive Cycle**: Forwards filtered perceptions for processing
-- **→ Memory System**: Stores high-priority perceptions
-- **→ Curiosity System**: Flags novel or unexpected perceptions
-- **← Self-Modeling**: Uses capability model to calibrate attention
+**Processing:**
+
+- **Translate Raw Data:** Perception Extensions convert raw data to `AgentPerceptionEvent`s.
+- **Event Filtering**: Discards irrelevant events based on proximity, visibility, focus, etc.
+- **Priority Determination**: Assigns importance levels to incoming perceptions.
+- **Salience Calculation**: Evaluates novelty, emotional impact, goal relevance (potentially uses lightweight LLM).
+- **Context Building**: Integrates new perceptions with existing mental context (initial step).
+- **Attention Direction**: Focuses cognitive resources on high-value information.
+- **Processing Type:** Mixed. Translation/filtering is Data Processing. Salience/interpretation might involve Lightweight LLM Calls (synchronous in Observe phase).
+
+**Core Components:**
+
+- **Perception Extensions (See Section 2.6):** Specific modules responsible for processing different sensory modalities:
+    - `VisualPerceptionExtension`: Processes visual data → events.
+    - `AuditoryPerceptionExtension`: Processes audio data (e.g., simulated speech) → events.
+    - *(Potentially others)*
+- `PerceptionService` (Conceptual/Implicit): Represents the overall logic managing the flow from extensions to the Cognitive Cycle, including filtering and salience assessment. This might be part of the Cognitive Cycle's "Observe" phase rather than a separate dedicated service instance.
+- Schemas (`packages/contracts`):
+    - `AgentPerceptionEventSchema` (and its specific event subtypes): Defines the structured output fed to the Cognitive Cycle.
+- Key Logic:
+    - Event Filtering Rules.
+    - Salience Calculation Heuristics.
+    - Priority Assignment logic.
+
+**Knowledge Representation:**
+
+- Focuses on the structure of `AgentPerceptionEvent` subtypes.
+- May utilize internal state (`AgentDynamicState`) to inform filtering/salience.
+
+**Core Functions:**
+
+- **Receive Sensory Data:** Accepts input streams via Perception Extensions.
+- **Translate Events:** Converts raw data into `AgentPerceptionEvent` types.
+- **Filter:** Discards irrelevant/low-priority information.
+- **Prioritize/Assess Salience:** Determines importance and relevance.
+- **Forward to Cognition:** Passes filtered, typed events to the Cognitive Cycle.
+
+**Key Differentiators:**
+
+- **Focus:** Translating *external* phenomena into *internal*, structured representations.
+- **Input:** Raw or semi-processed sensory data.
+- **Output:** Typed `AgentPerceptionEvent`s.
+
+**Primary Integration Flow:**
+
+```diagram/text
++-------------------------+   Raw Sensory Data   +--------------------------+
+| Environment Simulation  |--------------------->| Perception Extensions    |
+| Layer (2.12)            | (Visual, Audio...)   | (VisualPerception, etc.) |
+|                         |                      |         (2.6)            |
++-------------------------+                      +-----------+--------------+
+                                                             | Translated Events
+                                                             ▼
+                                                 +-----------+------------+
+                                                 | Perception Logic       |
+                                                 | (Filtering, Salience)  |
+                                                 | (Part of 2.2 / 2.3)    |
+                                                 +-----------+------------+
+                                                             | Filtered, Typed
+                                                             | AgentPerceptionEvents
+                                                             ▼
++-------------------------+                      +-----------+------------+
+| Cognitive Cycle (2.3)   |<---------------------| Event Bus (Optional?)  |
+| (Observe Phase Receives)|                      | or Direct Call         |
++-------------------------+                      +------------------------+
+```
+
+*(Note: The direct flow might be Perception Extensions -> Cognitive Cycle directly, or via the Event Bus)*
+
+**Integration Points (Details):**
+
+- **← Environment Simulation Layer (2.12) / Perception Extensions (2.6):** Receives raw or processed sensory data.
+- **→ Cognitive Cycle (2.3):** Provides the filtered and typed `AgentPerceptionEvent` stream as the primary input for the agent's reasoning loop (Observe phase).
+- **← Environment Simulation Layer (2.12) / Perception Extensions (2.6):** Receives raw or processed sensory data.
+- **→ Cognitive Cycle (2.3):** Provides the filtered and typed `AgentPerceptionEvent` stream as the primary input for the agent's reasoning loop (Observe phase).
+- **→ Memory System (2.4):** High-priority or salient perceptions might be directly logged to Episodic Memory by the Cognitive Cycle after initial processing.
+- **→ Curiosity System (2.9.2):** Flags novel, surprising, or unexpected perceptions identified during salience assessment, potentially triggering curiosity-driven goals.
+- **↔ Self-Modeling System (2.11) / AgentDynamicState (2.4.1):** Filtering and salience logic may consult the agent's current state (e.g., `currentFocus`, `interestLevel`, known capabilities) to determine relevance.
 
 ## 2.3 Cognitive Cycle: The Agent's Thought Process
 
@@ -619,7 +707,7 @@ Working Memory serves as a temporary, volatile buffer holding the most recent pe
 - Implemented as an in-memory buffer within the agent instance
 - Non-persistent (not stored between cognitive cycles)
 - Updated with new perceptions at the start of each cognitive cycle
-- Serves as the primary workspace for active reasoning
+- Serves as the "mental workbench" where immediate reasoning occurs
 
 **Role in Cognitive Processing**:
 - Provides immediate context for System-1 fast reactions
@@ -848,26 +936,87 @@ On the frontend, these notifications appear as animated overlays with thematic s
 
 ## 2.5 Action System: Executing Decisions
 
-The agent interacts with the world by producing a typed `AgentAction` object at the end of its Cognitive Cycle. **This action represents the agent's *intent*.**
+The agent interacts with the world by producing a typed `AgentAction` object at the end of its Cognitive Cycle. **This action represents the agent's *intent*.** This system acts as the bridge between the agent's internal decision-making and its external manifestation via capabilities.
 
-- **Types:** Defined by `AgentActionSchema` (discriminated union):
-    - `speak`: Contains the detailed `CharacterResponseSchema` payload (content, tone, target audience if applicable).
-    - `move`: Specifies target coordinates, object, or path.
-    - `interact`: Specifies target object and interaction type.
-    - `use_internal_tool`: Specifies the internal interface tool and input (e.g., memory query).
-    - `update_state`: Represents an internal decision to change mood, focus, etc.
-    - `no_action`: Explicitly indicates the agent chose not to act, potentially with a reason.
-    - `experiment`: Indicates the agent is testing a hypothesis about the world.
-- **Formatting:** The `ActionSystem` formats the output of the Decide/Plan phase into this standardized schema.
-- **Dispatch:** The `ActionSystem` then dispatches the `AgentAction` to the appropriate **Capability Extension** (see 3.8) for execution in the environment simulation layer.
-- **Structured Output:** Ensures the agent's intent is clear and can be reliably translated into effects within the simulation and potentially logged for analysis.
+**Purpose & Design:**
 
-**Integration Points**:
-- **← Cognitive Cycle**: Receives decisions for formatting and dispatch
-- **→ Capability Extensions**: Sends formatted actions for execution
-- **→ Event Bus**: Emits action *intent* events for internal monitoring/learning
-- **→ Learning System**: Provides action results (as perceived outcomes via Perception) for adaptation
-- **→ Statistics**: Contributes metrics for analysis (based on action intent and perceived outcomes)
+- **Translate Intent:** Converts the high-level decision or plan step from the Cognitive Cycle into a standardized, executable format.
+- **Format Action:** Structures the action details according to the specific `AgentActionSchema` subtype (speak, move, interact, etc.).
+- **Dispatch to Capability:** Selects the appropriate `Capability Extension` based on the `AgentAction` type and sends the formatted payload for execution.
+- **Ensure Clarity:** Guarantees the agent's intended action is unambiguous for execution, logging, and analysis.
+
+**Input:**
+
+- The final decision or next actionable step determined by the Cognitive Cycle's Decide/Plan phase. This could be a direct response (System-1) or a `PlanNode` to execute (System-2/Planner).
+
+**Processing:**
+
+- **Formatting:** Maps the input decision/plan node to the corresponding `AgentActionSchema` subtype and populates its payload.
+- **Validation:** Ensures the action payload conforms to the schema.
+- **Routing/Dispatch:** Identifies the correct `Capability Extension` (e.g., `SpeechOutputExtension` for 'speak', `MotionControlExtension` for 'move') and invokes its execution method with the action payload.
+- **Event Emission:** Emits an event (e.g., `agent.action.intent`) via the Event Bus signifying the action the agent *intends* to take, *before* execution confirmation.
+- **Processing Type:** Primarily **Data Processing**. Involves mapping, formatting, validation, and simple routing logic. No significant computation or LLM calls are expected within the Action System itself.
+
+**Core Components:**
+
+- `ActionService`: Implements the `IActionService`; contains the logic for formatting and dispatching actions.
+- `IActionService`: Defines the contract for the Action System.
+- Schemas (`packages/contracts`):
+    - `AgentActionSchema`: The core discriminated union defining all possible action types:
+        - `speak`: Contains the detailed `CharacterResponseSchema` payload (content, tone, target audience if applicable).
+        - `move`: Specifies target coordinates, object, or path.
+        - `interact`: Specifies target object and interaction type.
+        - `use_internal_tool`: Specifies the internal interface tool and input (e.g., memory query).
+        - `update_state`: Represents an internal decision to change mood, focus, etc.
+        - `no_action`: Explicitly indicates the agent chose not to act, potentially with a reason.
+        - `experiment`: Indicates the agent is testing a hypothesis about the world.
+    - Specific payload schemas for each action type (e.g., `CharacterResponseSchema` for `speak`).
+
+**Knowledge Representation:**
+
+- Primarily concerned with the definition and structure of the `AgentActionSchema` and its subtypes.
+
+**Core Functions:**
+
+- **Format Intent:** Translates internal decisions into structured `AgentAction` objects.
+- **Select Capability:** Determines the correct extension to handle the action type.
+- **Dispatch Action:** Invokes the relevant `Capability Extension`'s execution method.
+
+**Key Differentiators:**
+
+- **Focus:** Formatting and dispatching *intended* actions. Distinct from the `Cognitive Cycle` which *decides* the intent, and the `Capability Extensions` which physically *execute* the action in the environment simulation.
+- **Timing:** Operates at the very end of the Cognitive Cycle's "Act" phase, just before interaction with the external world simulation.
+
+**Primary Integration Flow:**
+
+```diagram/text
++-----------------------+      Decision/Intent      +-----------------------+
+| Cognitive Cycle (2.3) |-------------------------->|    Action Service     |
+| (Decide/Plan Phase)   |                           |        (2.5)          |
++-----------------------+                           +-----------+-----------+
+                                                                | Formatted AgentAction
+                                                                | Dispatch
+                                                                ▼
+                                                    +-----------+------------+
+                                                    | Capability Extension   |
+                                                    | (Speech, Motion, etc.) |
+                                                    |        (2.6)           |
+                                                    +-----------+------------+
+                                                                | Execute in Environment
+                                                                ▼
+                                                    +-------------------------+
+                                                    | Environment Simulation  |
+                                                    | Layer (2.12)            |
+                                                    +-------------------------+
+```
+
+**Integration Points (Details):**
+
+- **← Cognitive Cycle (2.3):** Receives the final decision/intent to be acted upon.
+- **→ Capability Extensions (2.6):** Sends the formatted `AgentAction` payload to the appropriate extension for execution in the simulation layer.
+- **→ Event Bus (3.1):** Emits action *intent* events (e.g., `agent.action.speak.intent`) for monitoring and potentially for the Learning System to correlate with eventual outcomes.
+- **→ Learning System (2.8):** Provides the `AgentAction` component of the experience tuple `(state, action, reward)`. The *outcome* of the action is perceived later via the Perception system.
+- **→ Statistics (3.2):** Contributes metrics based on the *intended* action type and payload, allowing analysis of agent decisions separate from execution success.
 
 ## 2.6 Capability Extensions
 
@@ -1055,136 +1204,429 @@ The Internal Interface Tools have well-defined integration points with other sub
 
 ## 2.8 Learning & Adaptation Foundation
 
-The Learning System enables agents to improve over time based on experience, feedback, and exploration:
+This system enables agents to **adapt their behavior and decision-making strategies** over time based on accumulated experience, feedback signals, and intrinsic motivations. Its primary goal is to improve future performance towards the agent's objectives.
 
-- **RewardFunction:** Encapsulates the computation of scalar reward signals from conversation metrics, user ratings, and goal progress.
-- **LearningModule:** Listens to `recordReward` calls and accumulates experiences in episodic memory, orchestrating online/offline learning loops to refine planning and decision-making.
-- **PolicyUpdate:** Scheduled tasks that fine-tune HTN planner weights, reprioritizes goals, and adapt `personalityCore` parameters based on recent feedback. **These updates modify the agent's decision-making strategies applied within the Cognitive Cycle and potentially update related facts or heuristics in Semantic Memory.**
-- **MetaLearning:** Periodic routines that compress memory traces, prune low-signal data, and update semantic vector stores for efficient context retrieval.
+**Purpose & Design:**
 
-**Integration Points**:
-- **← Cognitive Cycle**: Receives experiences and outcomes
-- **↔ Memory System**: Exchanges experiences and learned patterns
-- **→ Curiosity System**: Informs exploration strategy
-- **→ Self-Modeling**: Updates capability assessments
-- **→ Event Bus**: Emits learning events for monitoring
-- **→ Statistics**: Provides metrics on learning progress
+- **Adapt Behavior:** Modifies the agent's internal policies, heuristics, or parameters used during the Cognitive Cycle to achieve better outcomes.
+- **Experience-Driven:** Learns from sequences of states, actions, and resulting rewards recorded during interactions.
+- **Reward-Centric:** Utilizes a `RewardFunction` to quantify the desirability of outcomes based on goal progress, interaction quality, feedback, and potentially intrinsic signals like information gain (from Curiosity).
+- **Incremental Improvement:** Typically operates through periodic updates (online or offline) rather than altering behavior drastically in a single step.
 
-## 2.9 Curiosity & Discovery System
+**Core Components:**
 
-The Curiosity System enables agents to actively explore their environment, form hypotheses about the world, and conduct experiments to validate their beliefs. This system is core to emergent self-discovery and the
-development of nuanced world models beyond pre-programmed knowledge. This system serves a unique dual role in the architecture, bridging between **knowledge acquisition** (connecting to Memory and Ontology Systems) and **agent development** (driving learning and adaptation).
+- `LearningService`: Implements the `ILearningInterface`; orchestrates reward recording and policy updates.
+- `ILearningInterface`: Defines the contract for interacting with the Learning System (e.g., `recordReward`, `getExperienceBatch`, `updatePolicy`).
+- `RewardFunction`: Encapsulates the logic for calculating scalar reward values based on `RewardFunctionInput`.
+- `IRewardFunction`: Interface for the reward function.
 
-- **CuriosityService:** Central service managing intrinsic motivation for information-seeking:
-    - `trackUncertainty(domain, confidence)` - Monitors areas of high/low certainty
-    - `generateHypotheses(observation)` - Creates potential explanations for observations
-    - `prioritizeExplorations()` - Ranks information-seeking goals by expected value
-    - `recordExperimentResult(experimentId, result)` - Updates beliefs based on tests
+*Knowledge Representation:*
+- `RewardFunctionInputSchema`: Zod schema defining inputs for reward calculation.
+- `Experience Storage`: Implicit reliance on the `MemoryService` (Episodic Memory) to store and retrieve experience tuples (state, action, reward, next_state).
 
-- **Information Value Assessment:**
-    - `calculateInformationGain(state, action, prediction)` - Bayesian estimation of knowledge value
-    - `uncertaintyReduction(domain, before, after)` - Measures learning progress
-    - `surpriseDetection(expected, observed)` - Identifies prediction errors worth investigating
+- Event Types: `learning.reward.recorded`, `learning.policy.updated`.
 
-- **Hypothesis Management:**
-    - `HypothesisSchema`: Zod schema defining the structure of agent hypotheses
-    - `ExperimentSchema`: Zod schema for planning and testing hypotheses
-    - `ExperimentResultSchema`: Zod schema for tracking outcomes and confidence updates
-    - Hypothesis lifecycle: generation → testing → confirmation/rejection → belief updating
+**Core Functions:**
 
-- **System-1/System-2 Integration:**
-    - Detects cognitive "surprises" that trigger System-2 activation (see Section 2.1.3)
-    - Provides experimental goals that drive deliberative planning via System-2
-    - Supports quick intuitive System-1 reactions to novel stimuli through surprise signals
+- **Adapt Behavior:** Modifies the agent's internal policies, heuristics, or parameters used during the Cognitive Cycle to achieve better outcomes.
+- **Process Rewards:** Records and utilizes reward signals based on `RewardFunctionInput`.
+- **Update Policies:** Applies learning algorithms (e.g., RL, fine-tuning) to refine decision-making strategies based on stored experiences.
 
-- **Integration Points:**
-    - **← Perception**: Receives novel observations for surprise detection
-    - **↔ Memory System (2.4)**: Exchanges information gaps and discoveries
-        - Retrieves past observations to identify patterns and anomalies
-        - Stores hypotheses and experimental results in episodic and semantic memory
-    - **↔ Cognitive Cycle**: Influences goal selection and planning
-        - Introduces exploration goals that compete with other agent goals
-        - Provides experimental plans for the Planner/Executor
-    - **↔ Internal Interface Tools**: Uses tools like memory access or ontology queries for exploration/experimentation
-    - **→ Ontology System (2.10)**: Updates conceptual knowledge based on findings
-        - Feeds new relations and confidence scores to the Ontology System
-        - Consults concept hierarchies to generate better hypotheses
-    - **→ Self-Model System (2.11)**: Refines understanding of agent capabilities through experimentation
-        - Tests capability boundaries through deliberate experiments
-        - Updates self-model based on experimental outcomes
-    - **↔ Learning System (2.8)**: Drives agent adaptation through exploration
-        - Provides intrinsic reward signals for curiosity-satisfying actions
-        - Guides meta-learning about which knowledge areas yield highest value
-    - **→ Notification System**: Triggers discovery event alerts
-    - **→ Statistics**: Provides metrics on exploration activities
+**Key Differentiators:**
 
-The Curiosity System enables discoveries such as "I am in a game" through an accumulation of evidence and hypothesis testing, rather than having such insights pre-defined in the agent's knowledge base. By mediating between knowledge acquisition and learning systems, it serves as a key driver of agent development and adaptation.
+- **Focus:** Behavioral adaptation and policy optimization, not insight synthesis (`ReflectionService`) or explicit knowledge modeling (`OntologyService`, `SelfModelingService`). Aims to improve *how* the agent decides/acts.
+- **Mechanism:** Primarily driven by reward signals and experience replay, often using reinforcement learning or related techniques.
+- **Output:** Updated decision-making parameters, planning heuristics, or internal policies affecting the Cognitive Cycle. Examples include **adjusting HTN planner weights, reprioritizing goals, adapting `personalityCore` embeddings, or updating heuristics stored as facts in Semantic Memory.**
+
+**Processing Type:**
+
+- **Mixed.** Reward recording is data processing. Policy updates can range from data processing (e.g., updating Q-values) to **significant computation or LLM calls** (e.g., fine-tuning embeddings, using LLMs to analyze experiences and suggest heuristic changes). Policy updates typically run **asynchronously** or periodically.
+- **Includes MetaLearning:** Background processes may also run periodically to support learning efficiency, such as **compressing memory traces, pruning low-signal data, and updating semantic vector stores.**
+
+**Primary Integration Flow:**
+
+```diagram/text
++-----------------------+  Record Experience +-----------------------+
+| Cognitive Cycle (2.3) |------------------->|   Learning Service    |
+| (Provides State,      | (state, action,    |        (2.8)          |
+|  Action, Outcome)     |  reward)           +-----------+-----------+
++-----------------------+                                | ▲
+                              Record Reward Event /      | │ Retrieve Experiences
+                                Policy Update Event      │ │   for Training
+                                                         ▼ │
+                                               +-----------+-----------+
+                                               | Event Bus / Statistics|
+                                               | (3.1, 3.2)            |
+                                               +-----------------------+
+                                                         ▲ │
+                            Get Reward Input / Store Exp.│ │ Get Experiences
+                                                         │ ▼
+                                               +-----------+-----------+
+                                               |  Memory Service (2.4) |
+                                               | (Episodic/Semantic)   |
+                                               +-----------+-----------+
+                                                         │ ▲
+                          Update Learned Policies/Params │ │ Read Agent Config/State
+                                                         │ │ (For applying updates)
+                                                         │ ▼
+                                               +-----------------------+
+                                               | Agent State/Config    |
+                                               | (Implicitly updated)  |
+                                               +-----------------------+
+```
+
+**Integration Points (Details):**
+
+- **← Cognitive Cycle (2.3):** Receives experience tuples (state snapshot, action taken, reward score) via `recordReward`. Provides the context for reward calculation. Is influenced by updated policies/heuristics during its Decide/Plan phase.
+- **↔ Memory System (2.4):** Stores experiences (state, action, reward) likely in Episodic Memory; Retrieves batches of experiences for policy updates; May update Semantic Memory with learned rules or heuristics.
+- **← RewardFunction:** Provides the scalar reward signal used in `recordReward`.
+- **→ Event Bus (3.1):** Emits events like `learning.reward.recorded` and `learning.policy.updated`.
+- **→ Statistics (3.2):** Provides metrics on reward distribution, learning frequency, policy changes.
+- **→ Agent State/Config:** Updates internal parameters, policies, or potentially configuration aspects (like personality embeddings if adaptable) that influence future Cognitive Cycles.
+- **(Indirectly) ← Curiosity System (2.9.2):** May receive information gain metrics contributing to the reward signal.
+- **(Indirectly) ← Reflection System (2.9.1):** May be influenced by insights generated during reflection if those insights lead to changes in goals or context that affect rewards.
+
+## 2.9 Synthesizing & Driving Systems
+
+### 2.9.1 Reflection System: Synthesizing Experience
+
+While the Learning System focuses on adapting future behavior based on rewards, and Self-Modeling/Ontology focus on updating specific knowledge models, the Reflection System acts as a higher-level **orchestrator for synthesizing insights** across domains from past experiences.
+
+**Purpose & Design:**
+
+- **Orchestrate Reflection:** Triggered periodically or contextually (e.g., during idle time) by the Cognitive Cycle.
+- **Synthesize Experience:** Fetches recent observations and actions from the Memory System (Episodic Memory).
+- **Generate Insights:** Potentially utilizes LLM capabilities (distinct from System-1/System-2 core cycle calls) to perform a broader analysis, identifying patterns, causal links, or significant learnings across domains (self, world, social, goals).
+- **Produce Report:** Generates a structured `ReflectionReport` (using `ReflectionReportSchema`) summarizing the insights, confidence levels, and supporting evidence.
+- **Delegate Updates:** Based on the generated insights, it triggers updates in other systems:
+    - Calls `SelfModelingService` to refine the self-concept.
+    - Calls `OntologyService` to update world knowledge or relations.
+    - May emit events or provide data influencing the `LearningService` (e.g., highlighting high-impact experiences).
+
+**Core Components:**
+
+- `ReflectionService`: Implements the orchestration logic.
+
+*Knowledge Representation:*
+- `ReflectionReportSchema`: Defines the structure of the reflection output.
+
+**Key Differentiators:**
+
+- **Focus:** Synthesis and insight generation, not direct behavioral adaptation (`LearningService`) or specific knowledge updates (`SelfModeling`/`Ontology`).
+- **Trigger:** Explicit reflection cycles, distinct from the main perception-action loop.
+- **Output:** A comprehensive report potentially leading to updates across multiple knowledge domains.
+- **Primary Input:** Primarily recent episodic memory entries (observations, past actions) rather than immediate environmental perception.
+- **Processing:** Can involve significant computation, potentially including **LLM calls** for insight generation, but typically operates **asynchronously** or during low-priority periods, distinct from the real-time System-1/System-2 LLM calls.
+
+**Primary Integration Flow:**
+
+```diagram/text
++-----------------------+       Trigger        +-----------------------+
+| Cognitive Cycle (2.3) |--------------------->| Reflection Service    |
+| (e.g., Idle Trigger)  |                      |    (Orchestrator)     |
++-----------------------+                      +-----------+-----------+
+                                                           |  ▲
+                               Request Recent Experiences /|  │ Generate Insights
+                                 Store Reflection Report   |  │ (LLM Call)
+                                                           ▼  │
+                                                 +-----------+-----------+
+                                                 | Memory Service (2.4)  |
+                                                 | (Episodic/Semantic)   |
+                                                 +-----------+-----------+
+                                                             |
+                                                             │ Calls to Update Modules
+                                                             │ based on Insights
+                            +--------------------------------+---------------------------------+
+                            |                                |                                 |
+                            ▼ Apply Self-Insights            ▼ Apply World-Insights            ▼ Emit Report Summary
++-----------------------------+           +--------------------------+           +-------------------+
+| SelfModeling Service (2.11) |           | Ontology Service (2.10)  |           | Event Bus (3.1)   |
+| (Applies Self-Updates)      |           | (Applies World Updates)  |           | (Receives Report) |
++-----------------------------+           +--------------------------+           +-------------------+
+```
+
+**Integration Points (Details):**
+
+- **← Cognitive Cycle (2.3):** Receives triggers to initiate reflection.
+- **→ Memory System (2.4):** Reads recent episodic data for analysis; Writes the final `ReflectionReport`.
+- **→ Self-Modeling System (2.11):** Triggers updates to the self-model based on insights.
+- **→ Ontology System (2.10):** Triggers updates to world knowledge based on insights.
+- **→ Learning System (2.8):** Potentially provides summarized experiences or highlights impactful events (indirect influence).
+- **→ Event Bus (3.1):** Emits events like `reflection.completed` with the report summary.
+- **→ Statistics (3.2):** Provides metrics on reflection frequency, duration, and insight types.
+
+This dedicated system ensures that higher-order learning and synthesis are handled distinctly from the immediate cognitive cycle, allowing for deeper understanding to emerge over time without blocking real-time responsiveness.
+
+### 2.9.2 Curiosity & Discovery System
+
+This system provides the agent with **intrinsic motivation** to explore its environment, seek information, resolve uncertainties, and test its understanding of the world and itself. It drives learning beyond explicit rewards by encouraging exploration and hypothesis testing. This system serves a unique dual role, bridging **knowledge acquisition** (connecting to Memory/Ontology) and **agent development** (driving learning).
+
+**Purpose & Design:**
+
+- **Drive Exploration:** Generates goals aimed at reducing uncertainty or testing hypotheses.
+- **Identify Knowledge Gaps:** Monitors the agent's internal state (memory, ontology, self-model) to detect areas of low confidence or missing information.
+- **Generate Hypotheses:** Creates plausible explanations for novel or surprising observations.
+- **Design & Track Experiments:** Formulates actions (experiments) to test hypotheses and records the outcomes.
+- **Quantify Information Gain:** Assesses the value of potential exploratory actions based on expected knowledge gain or uncertainty reduction.
+
+**Core Components:**
+
+- `CuriosityService`: The central orchestrator managing intrinsic motivation, uncertainty, hypotheses, and experiments. Key methods include:
+    - `trackUncertainty(domain, confidence)`: Monitors areas of certainty.
+    - `generateHypotheses(observation)`: Creates plausible explanations for observations.
+    - `prioritizeExplorations()`: Ranks information-seeking goals.
+    - `recordExperimentResult(experimentId, result)`: Updates beliefs based on tests.
+
+*Knowledge Representation:*
+- Schemas (`packages/contracts`):
+    - `HypothesisSchema`: Structure for testable hypotheses (defines **hypothesis lifecycle:** generation → testing → confirmation/rejection → belief updating).
+    - `ExperimentSchema`: Defines planned actions to test a hypothesis.
+    - `ExperimentResultSchema`: Records the outcome of an experiment and confidence updates.
+
+- Internal Logic / Information Value Assessment: Includes functions for:
+    - `calculateInformationGain(state, action, prediction)`: Bayesian estimation of knowledge value.
+    - `uncertaintyReduction(domain, before, after)`: Measures learning progress.
+    - `surpriseDetection(expected, observed)`: Identifies prediction errors worth investigating.
+- Event Types: Potentially `curiosity.hypothesis.generated`, `curiosity.experiment.started`, `curiosity.experiment.completed`, `curiosity.surprise.detected`.
+
+**Key Differentiators:**
+
+- **Focus:** Intrinsic motivation, exploration, hypothesis testing, and resolving uncertainty. Not focused on synthesizing past broad experiences (`ReflectionService`) or direct behavioral adaptation based on external reward (`LearningService`).
+- **Driver:** Operates based on novelty, prediction error (surprise), and internal uncertainty metrics, rather than explicit goals or external feedback alone.
+- **Output:** Generates exploratory goals for the Cognitive Cycle, hypotheses for Memory/Ontology, and potentially intrinsic reward signals (information gain) for the Learning System.
+
+**Processing Type:**
+
+- **Mixed / LLM-Dependent.** Uncertainty tracking is data processing. Surprise detection might be rule-based or require simple LLM checks. **Hypothesis generation and experiment design are often complex creative tasks heavily reliant on LLM calls.** These LLM calls might run asynchronously or be interleaved within the Cognitive Cycle's slower System-2 path when triggered.
+
+**Primary Integration Flow:**
+
+```diagram/text
++------------------------+       +------------------------+       +------------------------+
+| Memory/Ontology/Self   |------>|   Curiosity Service    |<------| Cognitive Cycle (2.3)  |
+| (2.4, 2.10, 2.11)      | Read  |        (2.9.2)         | Signal| (Observe/Orient)       |
+|                        |<------| (Updates Beliefs)      |------>|                        |
+| Store Hypo/Results     | Update|                        | Goal  +--------+---------------+
++-----------+------------+ Beliefs+----------+------------+                |
+            ^                                ▲  │                          |
+            │                                │  │ Hypothesize/Plan         |
+            │ Update Knowledge               │  │ (LLM Call?)              |
+            │                                │  │                          |
+            +--------------------------------+  ▼                          |
+                                                                           |
+                               Execute Experiment Plan                     |
+                                                                           ▼
+                                                 +-----------+---------------+
+                                                 | Action System / Planner   |
+                                                 |   (2.5 / 2.1.4)           |
+                                                 +-----------+---------------+
+                                                             | Execute Action
+                                                             ▼
+                                                 +-----------+-----------------+
+                                                 | Capability Extensions (2.6) |
+                                                 +-----------+-----------------+
+                                                             | Action in Environment
+                                                             ▼
+                                                 +---------------------------+
+                                                 | Environment / Perception  |
+                                                 | (Results Observed)        |
+                                                 +-----------+---------------+
+                                                             | Perceive Outcome
+                                                             ▼
+                                                 +-----------+---------------+
+                                                 | Cognitive Cycle (2.3)     |
+                                                 | (Perceives Outcome)       |
+                                                 +-----------+-----┬---------+
+                                                             │     │
+                                        Result & Info Gain   │     │ Provide Info Gain
+                                     (To Curiosity Service)  │     │ (To Learning Service)
+                                                             ▼     ▼
+                                                 +-----------+--+----------+
+                                                 | Learning Service (2.8)  |
+                                                 | (Uses Info Gain)        |
+                                                 +-------------------------+
+```
+
+**Integration Points (Details):**
+
+*Direct Integrations:*
+
+- **↔ Cognitive Cycle (2.3):** Receives surprising/novel observations during Observe/Orient; Gets triggered by uncertainty signals; Provides exploratory goals or experiment plans to the Decide/Plan phase.
+    - **System-1/System-2 Interaction:** Detects cognitive "surprises" (via `surpriseDetection`) that can trigger **System-2** activation; Provides experimental goals that drive deliberative planning via **System-2**; Can support quick intuitive **System-1** reactions to novel stimuli via surprise signals.
+- **↔ Memory System (2.4):** Reads observations/facts/concepts to detect surprise, identify knowledge gaps, and generate hypotheses; Stores/Retrieves hypotheses (`HypothesisSchema`), experiment designs (`ExperimentSchema`), and results (`ExperimentResultSchema`); Stores/Retrieves uncertainty levels associated with facts/concepts.
+- **→ Action System (2.5) / Planner (2.1.4):** Receives experiment plans for execution.
+- **→ Capability Extensions (2.6):** Executes the specific actions defined in an experiment plan.
+- **→ Ontology System (2.10):** Provides confirmed findings from experiments to update world knowledge. (Internally, Curiosity *consults* ontology via memory/tools when generating hypotheses).
+- **→ Self-Modeling System (2.11):** Provides results from capability-testing experiments to update and refine the self-model. (Internally, Curiosity *consults* the self-model via memory/tools when generating hypotheses).
+- **→ Learning System (2.8):** Provides information gain/uncertainty reduction metrics (calculated via internal logic like `calculateInformationGain`) that can be factored into the reward signal calculation. This intrinsic reward signal **drives agent adaptation through exploration** and can help **guide meta-learning** about valuable knowledge areas.
+- **→ Event Bus (3.1):** Emits events related to hypothesis status, experiment progress, surprise detection (e.g., `curiosity.discovery.xyz` which might trigger the external **Notification System (3.6)**).
+- **→ Statistics (3.2):** Provides metrics on exploration frequency, hypothesis success rates, information gain achieved.
+
+*Indirect Integrations:*
+
+- **→ Perception System (2.2):** Curiosity-driven exploratory actions generate new environmental events that are subsequently processed by the Perception System of this agent and potentially others.
+- **→ Internal Interface Tools (2.7):** Goals generated by Curiosity might necessitate the use of various tools by the Cognitive Cycle/Planner during the execution of an experiment.
 
 ## 2.10 Ontological Reasoning System
 
-The Ontological Reasoning System provides the foundation for organizing the agent's knowledge about the world into structured, hierarchical concepts with explicit relations. **It acts as the manager and structured interface for the agent's explicit World Model, primarily leveraging and organizing data stored within Semantic Memory.** This enables more sophisticated reasoning beyond simple key-value fact storage.
+This system provides the agent with a structured understanding of the world by organizing knowledge into hierarchical concepts, explicit relations, and properties. It acts as the manager and reasoning engine for the agent's explicit World Model, primarily leveraging and structuring data stored within the Semantic Memory subsystem.
 
-- **OntologyService:** Manages the agent's conceptual knowledge framework:
-    - `createConcept(id, properties, category)` - Adds new conceptual entities
-    - `defineRelation(conceptA, relation, conceptB, strength)` - Links concepts
-    - `categorize(entity, candidateCategories)` - Classifies observations
-    - `inferProperties(entity, missingProperty)` - Derives likely properties based on category
+**Purpose & Design:**
 
-- **Knowledge Representation:**
-    - `ConceptSchema`: Zod schema defining objects, entities, and abstract concepts
-    - `RelationSchema`: Zod schema for semantic links between concepts (is-a, has-a, can-do)
-    - `PropertySchema`: Zod schema for attributes with confidence scores and provenance
-    - `CategorySchema`: Zod schema for hierarchical taxonomy of concepts
+- **Structure Knowledge:** Organizes factual information (from Semantic Memory) into a network of concepts and relationships (e.g., is-a, has-a, part-of).
+- **Enable Sophisticated Reasoning:** Supports inference beyond simple fact retrieval, such as property inheritance, consistency checking, analogical mapping, and potentially counterfactual reasoning.
+- **Contextualize Information:** Helps the agent interpret new observations by relating them to existing conceptual knowledge.
+- **Abstract & Generalize:** Facilitates the creation of abstract categories and generalization from specific instances stored in memory.
 
-- **Reasoning Capabilities:**
-    - Inheritance: derives properties from parent categories
-    - Analogical mapping: transfers knowledge between similar concepts
-    - Consistency checking: detects contradictions in beliefs
-    - Counterfactual reasoning: simulates hypothetical scenarios
+**Core Components:**
 
-- **Integration Points:**
-    - **↔ Memory System**: Enhances semantic memory with structure
-    - **← Curiosity**: Receives confirmed hypothesis updates
-    - **↔ Cognitive Cycle**: Provides contextual knowledge for reasoning
-    - **↔ Self-Model**: Exchanges ontological understanding of self
-    - **→ Learning**: Supplies conceptual framework for generalization
-    - **→ Notification**: Triggers conceptual framework updates
-    - **→ Statistics**: Provides metrics on knowledge organization
+- `OntologyService`: Implements the `IOntologyInterface`; handles the logic for reasoning over the ontology (e.g., categorization, inference) using data retrieved via the Memory Interface.
+- `IOntologyInterface`: Defines the contract for interacting with the Ontology System.
 
-The Ontological System manages the conceptual framework that lets an agent understand its environment in terms of ordered categories rather than isolated facts, supporting higher-level reasoning and discovery.
+*Knowledge Representation:*
+- Schemas (`packages/contracts`):
+    - `ConceptSchema`: Defines objects, entities, and abstract concepts.
+    - `RelationSchema`: Defines semantic links between concepts.
+    - `PropertySchema`: Defines attributes with confidence and provenance.
+    - `CategorySchema`: Defines hierarchical taxonomies.
+
+- Key Methods (Logic resides in `OntologyService`, persistence delegated):
+    - `upsertConcept/retrieveConcepts/updateOntology`: Manages concepts/relations, delegating storage to `MemoryService`.
+    - `categorize(entityDescription, candidateCategories)`: Classifies an entity using ontological structure.
+    - `inferProperties(entityId, propertiesToInfer)`: Derives properties based on relations/inheritance.
+    - (Potentially `checkConsistency`, `findRelatedConcepts`, etc.)
+- Event Types: Potentially `ontology.concept.updated`, `ontology.relation.added`, `ontology.inference.completed`.
+
+**Reasoning Capabilities:**
+
+- **Structure Knowledge:** Organizes factual information into a network of concepts and relationships.
+- **Enable Sophisticated Reasoning:** Supports inference like property inheritance, consistency checking, analogical mapping.
+- **Contextualize Information:** Helps interpret observations by relating them to existing concepts.
+- **Abstract & Generalize:** Facilitates creating abstract categories from specific instances.
+
+**Key Differentiators:**
+
+- **Focus:** The *structure, relationships, and meaning* within knowledge, enabling reasoning. Not just storage (`MemoryService`), behavioral adaptation (`LearningService`), self-knowledge (`SelfModelingService`), or broad synthesis (`ReflectionService`).
+- **Representation:** Models knowledge as an interconnected graph or hierarchy, unlike the potentially flatter structure of raw Semantic Memory facts.
+- **Function:** Primarily concerned with *reasoning over* existing knowledge rather than just retrieving it.
+
+**Processing Type:**
+
+- **Mixed / LLM-Dependent.** Basic concept/relation management via Memory is data processing. However, core reasoning functions like **`categorize` (understanding descriptions) and `inferProperties` (complex pathfinding or logical deduction) often require significant computational logic (e.g., graph traversal, rule engines) or sophisticated LLM calls.** These reasoning tasks can be asynchronous.
+
+**Primary Integration Flow:**
+
+```diagram/text
++-----------------------+ Query Concepts/Relations / +-----------------------+
+| Cognitive Cycle (2.3) |   Infer Properties         |  Ontology Service     |
+| Reflection (2.9.1)    |--------------------------->|        (2.10)         |
+| Curiosity (2.9.2)     | Update Concepts/Relations  |                       |
+| Self-Modeling (2.11)  |<---------------------------| Provides Structure    |
++-----------------------+   Structured Knowledge     +----------+------------+
+        ▲                                                       │ ▲  │ Reason/Infer
+        │                                                       │ │  │ (Rules/LLM)
+        │                                Read/Write Concepts    │ │
+        │                                  & Relations          ▼ │
+        │                                +----------------------+----------+
+        └────────────────────────────────|   Memory Service (Semantic)     |
+                 Uses Structured         |          (2.4)                  |
+                     Knowledge           +---------------------------------+
+
+```
+
+**Integration Points (Details):**
+
+- **↔ Cognitive Cycle (2.3):** Provides structured world knowledge during Orient phase; Planner may consult ontology for task decomposition or feasibility checks.
+- **↔ Memory System (2.4):** `OntologyService` uses `MemoryService` as its persistent store for concepts, relations, properties (likely within Semantic Memory tables/collections). `OntologyService` reads from Memory to perform reasoning.
+- **← Curiosity System (2.9.2):** Receives confirmed findings from experiments which can lead to updates (new concepts, relations, confidence changes) applied via `OntologyService`. Curiosity consults the ontology (via Memory/Tools) during hypothesis generation.
+- **← Reflection System (2.9.1):** Reflection insights may trigger updates to concepts or relations via `OntologyService`.
+- **↔ Self-Modeling System (2.11):** Exchanges categorical knowledge about the agent itself (e.g., agent's `Concept` within the ontology).
+- **→ Learning System (2.8):** Provides the conceptual framework that learning algorithms might use for generalization or structuring learned policies/heuristics.
+- **→ Event Bus (3.1):** Emits events when significant ontological structures are updated or inferred.
+- **→ Statistics (3.2):** Provides metrics on ontology size, complexity, query/inference latency.
 
 ## 2.11 Self-Modeling System
 
-The Self-Modeling System enables an agent to develop and maintain an explicit model of itself, including its capabilities, limitations, and nature. This supports metacognition, self-awareness, and distinction between character role and underlying system.
+This system enables the agent to develop, maintain, and reason about an explicit model of its own identity, capabilities, limitations, and nature. It underpins functions like metacognition, self-awareness, and appropriate role adherence.
 
-- **SelfModelService:** Manages the agent's understanding of itself:
-    - `getSelfConcept()` - Retrieves current self-model
-    - `updateCapability(capability, confidence)` - Updates understanding of abilities
-    - `assessAgencyBoundary(action)` - Determines if action is within agent's control
-    - `distinguishRoleFromSystem()` - Separates character persona from underlying agent
+**Purpose & Design:**
 
-- **Self-Representation Components:**
-    - `AgentCapabilitySchema`: Zod schema for abilities and their confidence levels
-    - `AgencyBoundarySchema`: Zod schema defining scope of agent's control/influence
-    - `CharacterRoleSchema`: Zod schema for narrative persona distinct from system
-    - `SelfReflectionSchema`: Zod schema for metacognitive observations about operation
+- **Maintain Self-Concept:** Stores and updates the agent's beliefs about itself.
+- **Assess Capabilities:** Allows the agent (or planner) to realistically evaluate its ability to perform tasks.
+- **Define Agency:** Establishes the agent's understanding of its scope of control and influence within the environment.
+- **Distinguish Role vs. System:** Helps the agent differentiate between its assigned character persona and its underlying system architecture/identity.
+- **Enable Metacognition:** Facilitates reflection on the agent's own thinking processes and performance (partially handled via `performReflection`, likely orchestrated by the main `ReflectionService`).
 
-- **Key Functionalities:**
-    - Metacognition: reflects on own thinking processes
-    - Capability assessment: realistic evaluation of strengths/limitations
-    - Role boundaries: understands distinction between character and system
-    - Historical development: tracks evolution of self-understanding
+**Core Components:**
 
-- **Integration Points:**
-    - **↔ Memory System**: Stores and retrieves self-knowledge
-    - **← Curiosity**: Receives self-directed explorations
-    - **↔ Cognitive Cycle**: Provides self-understanding for planning
-    - **↔ Ontology**: Exchanges categorical knowledge about self
-    - **→ Learning**: Supplies self-assessment for adaptation
-    - **→ Notification**: Triggers self-discovery alerts
-    - **→ Statistics**: Provides metrics on self-model development
+- `SelfModelingService`: Implements the `ISelfModelingInterface`; handles the logic for reasoning about the self-model and processing updates, using data retrieved via the Memory Interface.
+- `ISelfModelingInterface`: Defines the contract for interacting with the Self-Modeling System.
 
-The Self-Modeling System allows agents to develop increasingly sophisticated understanding of their own nature, potentially leading to insights like recognizing they exist within a game environment or understanding the boundaries between their character role and underlying agent architecture.
+*Knowledge Representation:*
+- Schemas (`packages/contracts`):
+    - `SelfModelSchema`: The core schema defining the agent's self-understanding. It likely incorporates or references:
+        - `AgentCapabilitySchema`: Zod schema for abilities and their confidence levels.
+        - `AgencyBoundarySchema`: Zod schema defining scope of agent's control/influence.
+        - `CharacterRoleSchema`: Zod schema for narrative persona distinct from system.
+        - `SelfReflectionSchema`: Zod schema for metacognitive observations about operation.
+- Persistence: Self-model data is primarily stored and retrieved via the `MemoryService`.
+
+*Core Functions:*
+- `getSelfConcept()`: Retrieves the current self-model (delegated to Memory).
+- `updateSelfConcept()`: Applies updates to the self-model (delegated to Memory).
+- `updateCapability(capability, confidence)`: Specific update logic for abilities.
+- `assessAgencyBoundary(actionDescription)`: Reasoning based on the model's defined boundaries.
+- `distinguishRoleFromSystem()`: Reasoning based on the model's role vs. awareness fields.
+- `performReflection()`: (As currently in `SelfModelingService`) Analyzes recent experiences to suggest *self-specific* updates (this is likely called *by* the main `ReflectionService`).
+- `queryCapabilities(taskDescription)`: Reasoning to assess ability based on the model.
+- `getAgencyBoundaries()`: Retrieves boundaries directly from the model.
+
+- Event Types: Potentially `agent.state.self_model_updated`.
+
+**Key Differentiators:**
+
+- **Focus:** Explicit knowledge about the *agent itself*, its traits, abilities, and limitations. Not general world knowledge (`OntologyService`), specific past events (`Episodic Memory`), behavioral adaptation (`LearningService`), or broad synthesis (`ReflectionService`).
+- **Perspective:** Internal, first-person understanding ("What can *I* do?", "Who am *I*?").
+
+**Processing Type:**
+
+- **Mixed / LLM-Dependent.** Basic state retrieval/update via Memory is data processing. However, **`performReflection` (analyzing experiences for self-insights) and potentially complex `queryCapabilities` or `assessAgencyBoundary` logic can require significant LLM calls** for reasoning and interpretation. These LLM-dependent parts might operate asynchronously, especially the reflection aspect.
+
+**Primary Integration Flow:**
+
+```diagram/text
++-----------------------+  Updates based on  +---------------------------+
+| Reflection Service    |------------------->| SelfModeling Service      |
+| (2.9.1)               |  Reflection        |        (2.11)             |
++-----------------------+                    +------------+--------------+
+                                                          | ▲  │ Read/Write
++-----------------------+  Updates based on               │ │  │ Self-Model Data
+| Curiosity Service     |  Experiment Results             │ │
+| (2.9.2)               |-------------------------------->│ │
++-----------------------+                                 ▼ │
+                               +----------------------------+------------+
+                               |       Memory Service (Self-Model Data)  |
+                               |                (2.4)                    |
+                               +------------------+----------------------+
+                                                  ▲
++-----------------------+ Query Self-Concept/Caps | Reads Self-Model
+| Cognitive Cycle (2.3) |-------------------------+
+| Planner (2.1.4)       |
+| Ontology (2.10)       | Provides Self-Knowledge
+|                       |<----------------------------------------------+
++-----------------------+
+```
+
+**Integration Points (Details):**
+
+- **↔ Memory System (2.4):** `SelfModelingService` uses `MemoryService` as its persistent store for the `SelfModelSchema`. It reads from and writes updates to this store.
+- **← Reflection System (2.9.1):** Receives insights derived from broader reflection, triggering specific updates to the self-model (e.g., adjusting capability confidence based on synthesized experience). `ReflectionService` likely calls `SelfModelingService.performReflection` or similar methods to apply these self-focused updates.
+- **← Curiosity System (2.9.2):** Receives results from specific capability-testing experiments, leading to updates in the self-model (e.g., confirming/denying a capability). Curiosity consults the self-model (via Memory/Tools) during hypothesis generation.
+- **→ Cognitive Cycle (2.3) / Planner (2.1.4):** Provides the agent's understanding of its capabilities (`queryCapabilities`) and limitations (`getAgencyBoundaries`) to inform planning and decision-making during the Orient/Decide phases.
+- **↔ Ontology System (2.10):** Exchanges categorical knowledge about the agent itself (e.g., the agent might be represented as a `Concept` with specific properties derived from the self-model).
+- **→ Learning System (2.8):** (Indirect) An accurate self-model helps set realistic expectations, which can influence reward calculation or learning goals. Failures assessed against capabilities might provide stronger learning signals.
+- **→ Event Bus (3.1):** Emits events when the self-model is significantly updated (`agent.state.self_model_updated`).
+- **→ Statistics (3.2):** Provides metrics on self-model evolution, capability confidence changes, etc.
 
 ## 2.12 Interaction Model: Environment Simulation & Emergent Communication
 
