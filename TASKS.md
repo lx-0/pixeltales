@@ -126,10 +126,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 
 (See [Blueprint Section 4.6](docs/agent-architecture/04-integration-architecture-performance.md#4.6))
 - [X] Update `SimulationService` to use `EventBusService` and correct perception event types.
-- [ ] Update `SceneManagerService` and `ConversationStateService` to use `EventBusService`.
-- [ ] Replace direct memory calls in `MessageGenerationService` with `MemoryService` adapters.
-- [ ] Implement `CircuitBreakerService` and integrate with `LlmService` calls.
-- [ ] Update `MessagesDbService` to record metrics and pass events to `EventBusService`.
+- [X] Implement `CircuitBreakerService` and integrate with `LlmService` calls.
 
 ## 11. Frontend Integration [P3]
 
@@ -142,7 +139,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [ ] Integrate Psychological Profile display. (See [Blueprint Section 3.3](docs/agent-architecture/03-instrumentation-features.md#3.3))
 - [ ] Integrate Communication Analysis display. (See [Blueprint Section 3.4](docs/agent-architecture/03-instrumentation-features.md#3.4))
 
-## 12. Testing & Validation [P1/P2]
+## 12. Testing & Validation [P3]
 
 - [ ] Write unit tests for each new agent submodule (Memory, Planner, Learning, InternalTools, CognitiveCycle, etc.).
 - [ ] Write integration tests for the EventBus → StatsCollector → Adapter pipeline.

@@ -14,6 +14,7 @@ import {
 } from '@pixeltales/contracts';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { CircuitBreakerService } from '../../core/resilience/circuit-breaker.service';
 import { IAgentLlmService } from './agent-llm.interface';
 
 @Injectable()
@@ -22,7 +23,10 @@ export class AgentLlmService implements IAgentLlmService {
   private llm: ChatOpenAI | null = null;
   private actionChain: Runnable<any, string, RunnableConfig<Record<string, any>>> | null = null;
 
-  constructor(private readonly configService: ConfigService) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly circuitBreaker: CircuitBreakerService,
+  ) {
     const apiKey = this.configService.get<string>('OPENAI_API_KEY');
     const modelName = this.configService.get<string>('AGENT_LLM_MODEL', 'gpt-4o');
 
@@ -73,68 +77,69 @@ export class AgentLlmService implements IAgentLlmService {
   ): Promise<AgentAction> {
     this.logger.debug(`[${agentId}] LLM generateAction called.`);
 
-    if (!this.actionChain || !this.llm) {
-      this.logger.error(`[${agentId}] LLM Action Chain or LLM not initialized.`);
-      return { type: 'no_action', payload: { reason: 'LLM Service not initialized' } };
-    }
+    const operationKey = `llm_generateAction_${agentId}`.substring(0, 50);
 
-    try {
-      // Prepare input for the chain - extract content from the first perception or combine multiple perceptions
-      let perceptionContent = 'No current perceptions';
-
-      if (context.currentPerception && context.currentPerception.length > 0) {
-        if (context.currentPerception.length === 1) {
-          // Single perception
-          const perception = context.currentPerception[0];
-          perceptionContent =
-            typeof perception?.content === 'string'
-              ? perception.content
-              : JSON.stringify(perception?.content ?? '');
-        } else {
-          // Multiple perceptions - combine them
-          perceptionContent = context.currentPerception
-            .map((p) => {
-              const content = typeof p.content === 'string' ? p.content : JSON.stringify(p.content);
-              return `[${p.type}] ${content}`;
-            })
-            .join('; ');
+    return this.circuitBreaker.execute(
+      operationKey,
+      async () => {
+        if (!this.actionChain || !this.llm) {
+          this.logger.error(`[${agentId}] LLM Action Chain or LLM not initialized.`);
+          return { type: 'no_action', payload: { reason: 'LLM Service not initialized' } };
         }
-      }
 
-      const input = {
-        persona: agentConfig?.personalityCore ?? 'a friendly character',
-        mood: context.dynamicState.mood ?? 'neutral',
-        perception_content: perceptionContent,
-      };
+        // Prepare input for the chain - extract content from the first perception or combine multiple perceptions
+        let perceptionContent = 'No current perceptions';
 
-      this.logger.verbose(
-        `[${agentId}] Invoking LLM action chain with input: ${JSON.stringify(input).substring(0, 100)}...`,
-      );
+        if (context.currentPerception && context.currentPerception.length > 0) {
+          if (context.currentPerception.length === 1) {
+            // Single perception
+            const perception = context.currentPerception[0];
+            perceptionContent =
+              typeof perception?.content === 'string'
+                ? perception.content
+                : JSON.stringify(perception?.content ?? '');
+          } else {
+            // Multiple perceptions - combine them
+            perceptionContent = context.currentPerception
+              .map((p) => {
+                const content =
+                  typeof p.content === 'string' ? p.content : JSON.stringify(p.content);
+                return `[${p.type}] ${content}`;
+              })
+              .join('; ');
+          }
+        }
 
-      // *** Execute the actual LangChain chain ***
-      const llmResponse: string = await this.actionChain.invoke(input);
+        const input = {
+          persona: agentConfig?.personalityCore ?? 'a friendly character',
+          mood: context.dynamicState.mood ?? 'neutral',
+          perception_content: perceptionContent,
+        };
 
-      this.logger.verbose(
-        `[${agentId}] LLM response received: "${llmResponse.substring(0, 50)}..."`,
-      );
+        this.logger.verbose(`[${agentId}] Invoking LLM action chain (via circuit breaker)...`);
 
-      // Construct the AgentAction based on the LLM response
-      const generatedAction: AgentAction = {
-        type: 'speak', // Assuming the basic chain generates speech content
-        payload: {
-          content: llmResponse, // Use the direct string output
-          tone: 'generated', // TODO: Could try to infer tone later or use structured output
-        },
-      };
-      return generatedAction;
-    } catch (error) {
-      this.logger.error(
-        `[${agentId}] Error during LLM action chain invocation`,
-        error instanceof Error ? error.stack : error,
-      );
-      // Return no_action on error
-      return { type: 'no_action', payload: { reason: 'LLM generation error' } };
-    }
+        // *** Execute the actual LangChain chain ***
+        const llmResponse: string = await this.actionChain.invoke(input);
+
+        this.logger.verbose(
+          `[${agentId}] LLM response received: "${llmResponse.substring(0, 50)}..."`,
+        );
+
+        // Construct the AgentAction based on the LLM response
+        const generatedAction: AgentAction = {
+          type: 'speak', // Assuming the basic chain generates speech content
+          payload: {
+            content: llmResponse, // Use the direct string output
+            tone: 'generated', // TODO: Could try to infer tone later or use structured output
+          },
+        };
+        return generatedAction;
+      },
+      async () => {
+        this.logger.warn(`[${agentId}] Fallback used for generateAction.`);
+        return { type: 'no_action', payload: { reason: 'LLM Circuit Open or Failed' } };
+      },
+    );
   }
 
   /**
@@ -147,30 +152,35 @@ export class AgentLlmService implements IAgentLlmService {
   ): Promise<string[]> {
     this.logger.debug(`[${agentId}] LLM generatePlanSteps called for goal: "${goal}"`);
 
-    if (!this.llm) {
-      this.logger.error(`[${agentId}] LLM not initialized for plan generation.`);
-      return [`address the goal: ${goal}`]; // Fallback
-    }
+    const operationKey = `llm_generatePlanSteps_${agentId}`.substring(0, 50);
+    const fallbackSteps = [`address the goal: ${goal}`];
 
-    try {
-      // Define the steps schema using Zod
-      const PlanStepsSchema = z.object({
-        steps: z
-          .array(z.string())
-          .describe('List of 3-5 clear, actionable steps to achieve the goal'),
-      });
+    return this.circuitBreaker.execute(
+      operationKey,
+      async () => {
+        if (!this.llm) {
+          this.logger.error(`[${agentId}] LLM not initialized for plan generation.`);
+          return [`address the goal: ${goal}`]; // Fallback
+        }
 
-      // Create a structured output parser
-      const outputParser = new JsonOutputParser<z.infer<typeof PlanStepsSchema>>();
+        // Define the steps schema using Zod
+        const PlanStepsSchema = z.object({
+          steps: z
+            .array(z.string())
+            .describe('List of 3-5 clear, actionable steps to achieve the goal'),
+        });
 
-      // Get JSON schema for output formatting
-      const formatInstructions = this.getFormatInstructions(PlanStepsSchema);
+        // Create a structured output parser
+        const outputParser = new JsonOutputParser<z.infer<typeof PlanStepsSchema>>();
 
-      // Create a specific prompt for goal decomposition with structured output
-      const planningPrompt = ChatPromptTemplate.fromMessages([
-        [
-          'system',
-          `You are a planning assistant for an agent in an interactive scene.
+        // Get JSON schema for output formatting
+        const formatInstructions = this.getFormatInstructions(PlanStepsSchema);
+
+        // Create a specific prompt for goal decomposition with structured output
+        const planningPrompt = ChatPromptTemplate.fromMessages([
+          [
+            'system',
+            `You are a planning assistant for an agent in an interactive scene.
 
 When given a goal, decompose it into 3-5 clear, concrete, actionable steps that the agent should take to achieve it.
 Each step should be a simple instruction like "move to the door", "speak a greeting", etc.
@@ -181,45 +191,41 @@ Agent identity: {persona}
 Current situation: {context_summary}
 
 ${formatInstructions}`,
-        ],
-        ['human', 'Goal: {goal}'],
-      ]);
+          ],
+          ['human', 'Goal: {goal}'],
+        ]);
 
-      // Create the planning chain with structured output
-      const planningChain = planningPrompt.pipe(this.llm).pipe(outputParser);
+        // Create the planning chain with structured output
+        const planningChain = planningPrompt.pipe(this.llm).pipe(outputParser);
 
-      // Prepare context summary for prompt
-      const contextSummary = this.summarizeContext(context);
+        // Prepare context summary for prompt
+        const contextSummary = this.summarizeContext(context);
 
-      // Prepare inputs for the planning chain
-      const planningInput = {
-        goal: goal,
-        persona: context.agentSelfConcept || 'a character in an interactive scene',
-        mood: context.dynamicState?.mood || 'neutral',
-        context_summary: contextSummary,
-      };
+        // Prepare inputs for the planning chain
+        const planningInput = {
+          goal: goal,
+          persona: context.agentSelfConcept || 'a character in an interactive scene',
+          mood: context.dynamicState?.mood || 'neutral',
+          context_summary: contextSummary,
+        };
 
-      this.logger.verbose(
-        `[${agentId}] Invoking planning chain with input: ${JSON.stringify(planningInput).substring(0, 100)}...`,
-      );
+        this.logger.verbose(`[${agentId}] Invoking planning chain (via circuit breaker)...`);
 
-      // Execute the planning chain
-      const result = await planningChain.invoke(planningInput);
-      const steps = result.steps;
+        // Execute the planning chain
+        const result = await planningChain.invoke(planningInput);
+        const steps = result.steps;
 
-      this.logger.verbose(
-        `[${agentId}] Planning chain returned ${steps.length} steps: ${JSON.stringify(steps)}`,
-      );
+        this.logger.verbose(
+          `[${agentId}] Planning chain returned ${steps.length} steps: ${JSON.stringify(steps)}`,
+        );
 
-      return steps.length > 0 ? steps : [`address the goal: ${goal}`]; // Fallback if no steps generated
-    } catch (error) {
-      this.logger.error(
-        `[${agentId}] Error during plan generation`,
-        error instanceof Error ? error.stack : error,
-      );
-      // Return a simple fallback step on error
-      return [`address the goal: ${goal}`];
-    }
+        return steps.length > 0 ? steps : fallbackSteps;
+      },
+      async () => {
+        this.logger.warn(`[${agentId}] Fallback used for generatePlanSteps.`);
+        return fallbackSteps;
+      },
+    );
   }
 
   /**
@@ -311,60 +317,65 @@ ${escapedJsonString}
     // Construct prompt with observations, ask LLM to identify patterns, learnings, etc.
     // Parse LLM response into the structured ReflectionReport['insights'] format.
 
-    if (observations.length === 0) {
-      return [];
-    }
+    const operationKey = `llm_analyzeInsights_${agentId}`.substring(0, 50);
 
-    if (!this.llm) {
-      this.logger.error(`[${agentId}] LLM not initialized for insight generation.`);
-      return []; // Cannot generate if LLM is down
-    }
+    return this.circuitBreaker.execute(
+      operationKey,
+      async () => {
+        if (observations.length === 0) {
+          return [];
+        }
 
-    try {
-      // Define the desired output structure (just the insights part of the report)
-      const InsightSchema = ReflectionReportSchema.shape.insights.element;
-      const InsightsListSchema = z.object({
-        insights: z.array(InsightSchema),
-      });
+        if (!this.llm) {
+          this.logger.error(`[${agentId}] LLM not initialized for insight generation.`);
+          return []; // Cannot generate if LLM is down
+        }
 
-      const outputParser = new JsonOutputParser<z.infer<typeof InsightsListSchema>>();
-      const formatInstructions = this.getFormatInstructions(InsightsListSchema);
+        // Define the desired output structure (just the insights part of the report)
+        const InsightSchema = ReflectionReportSchema.shape.insights.element;
+        const InsightsListSchema = z.object({
+          insights: z.array(InsightSchema),
+        });
 
-      // Prepare a summary of observations for the prompt
-      const observationSummary = observations
-        .slice(-10) // Limit context size
-        .map((obs) => `[${new Date(obs.timestamp).toISOString()}] ${obs.content}`)
-        .join('\n');
+        const outputParser = new JsonOutputParser<z.infer<typeof InsightsListSchema>>();
+        const formatInstructions = this.getFormatInstructions(InsightsListSchema);
 
-      const prompt = ChatPromptTemplate.fromMessages([
-        [
-          'system',
-          `You are a reflective assistant analyzing an agent's recent experiences.
-           Identify 1-3 key insights, patterns, or learnings from the provided observations.
-           Categorize each insight (self, world, social, goal, learning, other) and estimate confidence.
-           Reference supporting observation IDs if applicable.
+        // Prepare a summary of observations for the prompt
+        const observationSummary = observations
+          .slice(-10) // Limit context size
+          .map((obs) => `[${new Date(obs.timestamp).toISOString()}] ${obs.content}`)
+          .join('\n');
 
-           ${formatInstructions}`,
-        ],
-        ['human', `Recent Observations:\n---\n${observationSummary}\n---\nInsights:`],
-      ]);
+        const prompt = ChatPromptTemplate.fromMessages([
+          [
+            'system',
+            `You are a reflective assistant analyzing an agent's recent experiences.
+             Identify 1-3 key insights, patterns, or learnings from the provided observations.
+             Categorize each insight (self, world, social, goal, learning, other) and estimate confidence.
+             Reference supporting observation IDs if applicable.
 
-      const chain = prompt.pipe(this.llm).pipe(outputParser);
+             ${formatInstructions}`,
+          ],
+          ['human', `Recent Observations:\n---\n${observationSummary}\n---\nInsights:`],
+        ]);
 
-      this.logger.verbose(`[${agentId}] Invoking insight generation chain...`);
-      const result = await chain.invoke({}); // No specific input variables beyond prompt content
+        const chain = prompt.pipe(this.llm).pipe(outputParser);
 
-      this.logger.verbose(
-        `[${agentId}] Insight generation complete, ${result.insights.length} insights found.`,
-      );
-      return result.insights;
-    } catch (error: unknown) {
-      this.logger.error(
-        `[${agentId}] Error during LLM insight generation: ${error instanceof Error ? error.message : String(error)}`,
-        error instanceof Error ? error.stack : undefined,
-      );
-      return []; // Return empty on error
-    }
+        this.logger.verbose(
+          `[${agentId}] Invoking insight generation chain (via circuit breaker)...`,
+        );
+        const result = await chain.invoke({}); // No specific input variables beyond prompt content
+
+        this.logger.verbose(
+          `[${agentId}] Insight generation complete, ${result.insights.length} insights found.`,
+        );
+        return result.insights;
+      },
+      async () => {
+        this.logger.warn(`[${agentId}] Fallback used for analyzeExperiencesForInsights.`);
+        return []; // Return empty array on failure/circuit open
+      },
+    );
   }
 
   // TODO: Implement other LLM methods

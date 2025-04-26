@@ -1,10 +1,14 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config'; // LLM Service needs ConfigService
+import { ResilienceModule } from '../../core/resilience/resilience.module'; // Import ResilienceModule
 import { AGENT_LLM_SERVICE } from './agent-llm.interface';
 import { AgentLlmService } from './agent-llm.service';
 
 @Module({
-  imports: [ConfigModule], // Import ConfigModule to make ConfigService available
+  imports: [
+    ConfigModule, // Import ConfigModule to make ConfigService available
+    ResilienceModule, // Import ResilienceModule
+  ],
   providers: [
     {
       provide: AGENT_LLM_SERVICE,
