@@ -153,6 +153,30 @@ export class CognitiveCycleService {
       this.logger.verbose(`[${agentId}] Act Phase Start`);
       if (action && action.type !== 'no_action') {
         await this.actionService.dispatchAction(agentId, action);
+
+        // --- Log the executed action to Episodic Memory --- //
+        try {
+          const actionObsParams: AddObservationParams = {
+            timestamp: Date.now(), // Use current time for action observation
+            eventType: `agent.action.${action.type}`, // Specific event type for action
+            content: JSON.stringify(action.payload), // Store action payload
+            metadata: {
+              actionType: action.type,
+              source: 'agent_self',
+              // Safely access planContext if it exists
+              planContext: 'planContext' in action.payload ? action.payload.planContext : undefined,
+            },
+          };
+          await this.memoryInterface.addObservation(agentId, actionObsParams);
+          this.logger.verbose(`[${agentId}] Logged action ${action.type} to episodic memory.`);
+        } catch (error) {
+          this.logger.error(
+            `[${agentId}] Failed to log action ${action.type} to episodic memory`,
+            error instanceof Error ? error.stack : error,
+          );
+          // Continue even if logging fails
+        }
+        // --- End Action Logging --- //
       } else {
         this.logger.log(`[${agentId}] No action dispatched.`);
       }

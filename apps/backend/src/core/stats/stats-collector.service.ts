@@ -1,9 +1,5 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import {
-  AgentDynamicStateUpdatedEvent,
-  CognitiveCyclePhaseCompletedEvent,
-  Metric,
-} from '@pixeltales/contracts';
+import { DomainEvent, Metric } from '@pixeltales/contracts';
 import { EVENT_BUS, IEventBus, ISubscription } from '../event-bus.interface';
 import { IMetricsAdapter, METRICS_ADAPTER } from './adapters/metrics.adapter.interface';
 import { IMetricFormatter, METRIC_FORMATTER } from './formatters/metric.formatter.interface';
@@ -12,6 +8,11 @@ import { IMetricFormatter, METRIC_FORMATTER } from './formatters/metric.formatte
 export class StatsCollectorService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(StatsCollectorService.name);
   private subscriptions: ISubscription[] = [];
+  private metricBuffer: Metric[] = [];
+  private batchTimer: NodeJS.Timeout | null = null;
+  private readonly BATCH_SIZE = 50; // Configurable: How many metrics trigger a flush
+  private readonly BATCH_INTERVAL_MS = 5000; // Configurable: Flush every 5 seconds
+  private isFlushing = false; // Define the flushing flag property
 
   constructor(
     @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
@@ -24,94 +25,152 @@ export class StatsCollectorService implements OnModuleInit, OnModuleDestroy {
   }
 
   onModuleInit() {
-    this.logger.log('Initializing StatsCollectorService subscriptions...');
-    // --- Subscribe to Dynamic State Updates --- //
-    const dynamicStateSub = this.eventBus.subscribe<AgentDynamicStateUpdatedEvent>(
-      'agent.state.dynamic.updated', // The specific event type string
-      this.handleDynamicStateUpdate.bind(this),
-    );
-    this.subscriptions.push(dynamicStateSub);
-    this.logger.log("Subscribed to 'agent.state.dynamic.updated' events.");
+    this.logger.log('Initializing StatsCollectorService subscriptions and batching...');
 
-    // --- Subscribe to Cognitive Cycle Phase Completion --- //
-    const stepTimingSub = this.eventBus.subscribe<CognitiveCyclePhaseCompletedEvent>(
+    // List of event types to subscribe to for metrics
+    const metricEventTypes: DomainEvent['type'][] = [
+      'agent.state.dynamic.updated',
       'agent.cognitive.cycle.phase_completed',
-      this.handleStepTiming.bind(this),
-    );
-    this.subscriptions.push(stepTimingSub);
-    this.logger.log("Subscribed to 'agent.cognitive.cycle.phase_completed' events.");
+      'simulation.agent.speak',
+      'simulation.agent.move',
+      'learning.reward.recorded',
+      // Add other event types here as needed
+    ];
 
-    // --- Subscribe to other relevant events --- //
-    // Example: Subscribe to agent actions
-    // const actionSub = this.eventBus.subscribe('simulation.agent.speak', this.handleAgentAction.bind(this));
-    // this.subscriptions.push(actionSub);
+    metricEventTypes.forEach((eventType) => {
+      try {
+        const sub = this.eventBus.subscribe<DomainEvent>(eventType, this.handleEvent.bind(this));
+        this.subscriptions.push(sub);
+        this.logger.log(`Subscribed to '${eventType}' events.`);
+      } catch (error) {
+        this.logger.error(`Failed to subscribe to event type ${eventType}`, error);
+      }
+    });
 
-    // Add subscriptions for other events like step timing, rewards etc.
+    // Initialize batching timer
+    this.batchTimer = setInterval(() => {
+      if (this.metricBuffer.length > 0) {
+        this.logger.log(
+          `Flushing metric buffer due to interval (${this.metricBuffer.length} metrics)`,
+        );
+        this.flushBuffer();
+      }
+    }, this.BATCH_INTERVAL_MS);
   }
 
   /**
-   * Handles the 'agent.state.dynamic.updated' event.
-   * Formats it into a metric and persists it using adapters.
+   * Generic handler for all subscribed metric-worthy events.
    */
-  private async handleDynamicStateUpdate(event: AgentDynamicStateUpdatedEvent): Promise<void> {
-    this.logger.debug(`Handling dynamic state update for agent ${event.payload.agentId}`);
+  private async handleEvent(event: DomainEvent): Promise<void> {
+    this.logger.debug(`Handling event type: ${event.type}`);
     try {
-      const metric = this.formatter.formatDynamicStateUpdateMetric(event);
+      const metrics = this.formatter.formatEvent(event);
 
-      if (metric) {
-        this.logger.verbose(`Formatted dynamic state metric: ${JSON.stringify(metric)}`);
-        await this.persistMetric(metric);
+      if (metrics && metrics.length > 0) {
+        this.logger.verbose(`Formatted ${metrics.length} metric(s) from event ${event.type}`);
+        this.addMetricsToBuffer(metrics);
       } else {
-        this.logger.debug('Formatter returned null for dynamic state update event.');
+        this.logger.debug(`Formatter returned no metrics for event type ${event.type}.`);
       }
     } catch (error) {
-      this.logger.error(
-        `Error processing dynamic state update event for agent ${event.payload.agentId}`,
-        error,
-      );
+      this.logger.error(`Error processing event type ${event.type}`, error);
     }
   }
 
   /**
-   * Handles the 'agent.cognitive.cycle.phase_completed' event.
+   * Adds metrics to the buffer and triggers flush if size threshold is reached.
    */
-  private async handleStepTiming(event: CognitiveCyclePhaseCompletedEvent): Promise<void> {
-    this.logger.debug(
-      `Handling step timing for agent ${event.payload.agentId}, phase ${event.payload.phase}`,
+  private addMetricsToBuffer(metrics: Metric[]): void {
+    this.metricBuffer.push(...metrics);
+    this.logger.verbose(
+      `Added ${metrics.length} metrics to buffer (current size: ${this.metricBuffer.length})`,
     );
-    try {
-      const metric = this.formatter.formatStepTimingMetric(event);
-      if (metric) {
-        await this.persistMetric(metric);
-      } else {
-        this.logger.debug('Formatter returned null for step timing event.');
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error processing step timing event for agent ${event.payload.agentId}`,
-        error,
+
+    if (this.metricBuffer.length >= this.BATCH_SIZE) {
+      this.logger.log(
+        `Flushing metric buffer due to size limit (${this.metricBuffer.length} >= ${this.BATCH_SIZE})`,
       );
+      // Use setTimeout to avoid blocking the event handler. Ignore promise from async flushBuffer.
+      setTimeout(() => {
+        void this.flushBuffer();
+      }, 0);
     }
   }
 
-  // Generic helper to persist a metric using all adapters
-  private async persistMetric(metric: Metric): Promise<void> {
-    this.logger.verbose(`Persisting metric: ${JSON.stringify(metric)}`);
+  /**
+   * Flushes the metric buffer by sending batches to adapters.
+   */
+  private async flushBuffer(): Promise<void> {
+    // Prevent concurrent flushes using the class property
+    if (this.isFlushing) {
+      this.logger.warn('Flush already in progress, skipping.');
+      return;
+    }
+
+    // Grab current buffer and clear it immediately
+    const metricsToFlush = [...this.metricBuffer];
+    this.metricBuffer = [];
+
+    if (metricsToFlush.length === 0) {
+      return; // Nothing to flush
+    }
+
+    this.logger.log(`Flushing ${metricsToFlush.length} metrics to adapters...`);
+    this.isFlushing = true; // Set the flag
+
     try {
-      await Promise.all(this.adapters.map((adapter) => adapter.writePoint(metric)));
-      this.logger.debug(`Persisted metric via ${this.adapters.length} adapters.`);
+      await Promise.allSettled(
+        this.adapters.map(async (adapter) => {
+          try {
+            if (adapter.batchInsert) {
+              await adapter.batchInsert(metricsToFlush);
+            } else {
+              // Fallback if adapter doesn't implement batchInsert
+              this.logger.warn(
+                `Adapter ${adapter.constructor.name} does not implement batchInsert, falling back to writePoint per metric.`,
+              );
+              for (const metric of metricsToFlush) {
+                await adapter.writePoint(metric);
+              }
+            }
+          } catch (adapterError) {
+            // Log error specific to this adapter
+            this.logger.error(
+              `Adapter ${adapter.constructor.name} failed during batch insert`,
+              adapterError,
+            );
+            // Don't rethrow, let other adapters proceed
+          }
+        }),
+      );
+      this.logger.debug(`Finished flushing ${metricsToFlush.length} metrics.`);
     } catch (error) {
-      this.logger.error(`Failed to persist metric via adapters`, error);
+      // Catch potential errors from Promise.allSettled itself (unlikely)
+      this.logger.error('Unexpected error during flushBuffer Promise.allSettled', error);
+    } finally {
+      this.isFlushing = false; // Reset the flag
     }
   }
 
-  // Add other handlers like handleAgentAction, handleStepTiming etc.
-  // private async handleAgentAction(event: DomainEvent): Promise<void> { ... }
-
-  // Ensure subscriptions are cleaned up on destroy
   async onModuleDestroy() {
-    this.logger.log('Cleaning up StatsCollectorService subscriptions...');
+    this.logger.log('Cleaning up StatsCollectorService...');
+
+    // Clear interval timer
+    if (this.batchTimer) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
+
+    // Unsubscribe from events
     this.subscriptions.forEach((sub) => sub.unsubscribe());
     this.subscriptions = [];
+
+    // Ensure any remaining metrics in the buffer are flushed
+    if (this.metricBuffer.length > 0) {
+      this.logger.log(`Flushing remaining ${this.metricBuffer.length} metrics on destroy.`);
+      await this.flushBuffer();
+    }
+
+    this.logger.log('StatsCollectorService cleanup complete.');
   }
 }

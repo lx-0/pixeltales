@@ -48,8 +48,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Create `agent/memory/memory.service.ts` (Facade).
 - [X] Create `agent/memory/memory.module.ts` providing `MEMORY_INTERFACE`.
 - [X] Implement actual persistence logic for memory services.
-- [X] Implement plan persistence in memory system.
-- [P] Integrate calls to `memoryInterface` in the Cognitive Cycle and other services. **(Orientation phase integrated, Action/Reflection pending)**
+- [X] Integrate calls to `memoryInterface` in the Cognitive Cycle and other services. **(Orientation, Action integrated; Reflection pending)**
 
 ## 4. Planner (HTN) System [P2]
 
@@ -68,7 +67,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Define and Implement `RewardFunction` service implementing `IRewardFunction` in `agent/learning/reward.function.ts`. **(Placeholder logic implemented)**
 - [X] Create `agent/learning/learning.module.ts`.
 - [ ] Schedule periodic policy updates and meta-learning routines.
-- [P] Connect reward recording to post-action in `CognitiveCycleService`. **(Placeholder reward inputs used)**
+- [X] Connect reward recording to post-action in `CognitiveCycleService`. **(Uses placeholder reward inputs - Needs integration with Goal/Conversation/Curiosity systems for full reward signal)**
 - [ ] Implement actual learning algorithms and policy updates in `LearningService`.
 
 ## 6. Internal Tools & Capability Extensions [P2]
@@ -90,7 +89,7 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Implement `AgentService` for agent management and basic loop triggering.
 - [X] Update `AgentService.updateAgentDynamicState` to emit event. **(Done Feb 20)**
 - [X] Create `agent/cognitive-cycle/cognitive-cycle.module.ts`.
-- [P] Implement detailed logic within `CognitiveCycleService` phases. **(Orientation fetches real context, Decide/Plan has improved System1/2 allocation, Action/Learn integration pending)**
+- [P] Implement detailed logic within `CognitiveCycleService` phases. **(Orientation fetches real context, Decide/Plan has improved System1/2 allocation, Action logs action to memory, Learn records reward; Reflection logic pending)**
 - [ ] Implement Agent State Update mechanism fully within/after cycle.
 - [ ] Implement actual agent loop control (beyond `setInterval` timer).
 - [ ] Replace mock perceptions with real source in `SimulationService`.
@@ -102,12 +101,12 @@ This file tracks the step-by-step tasks needed to transform the existing PixelTa
 - [X] Create `core/event-bus.interface.ts` and base `event-bus.service.ts`. **(Includes static createEvent, updated DomainEvent)**
 - [X] Create base `core/stats/stats-collector.service.ts`.
 - [X] Implement subscription logic in `StatsCollectorService` for dynamic state and cycle phase events. **(Done Feb 20)**
-- [X] Implement `DefaultMetricFormatter` with specific formatting logic. **(Refactored Feb 20)**
-- [X] Create `core/stats/metrics.module.ts` wiring collector, formatter, adapters.
-- [P] Implement `IMetricsAdapter` interface and concrete adapters (`TimeSeriesAdapter`, `OLAPAdapter`) in `core/stats/adapters/`. // Placeholders exist
-- [P] Implement `IMetricFormatter` interface and concrete formatters in `core/stats/formatters/`. // Placeholder exists. **(Updated to use DomainEvent)**
-- [X] Create `core/stats/metrics.module.ts` wiring collector, adapters, formatters.
-- [X] Implement formatting and storage logic in `StatsCollectorService`. // Basic logic done, subscription needs refinement.
+- [X] `DefaultMetricFormatter` implementation exists. **(Handles AgentAction, StepTiming, Reward, DynamicState events; some type casts needed)**
+- [X] Create `core/stats/metrics.module.ts` wiring collector, formatter, adapters. // Corrected imports after resolving duplicates
+- [X] Implement `TimeSeriesAdapter` and `OlapAdapter` to write to SQLite `metrics` table using Drizzle.
+- [X] Implement `IMetricsAdapter` interface and concrete adapters (`TimeSeriesAdapter`, `OLAPAdapter`) in `core/stats/adapters/`. // **Implemented using SQLite target.**
+- [X] Implement `IMetricFormatter` interface and concrete formatters in `core/stats/formatters/`. // **Default formatter exists and handles key events.**
+- [X] Implement formatting and storage logic in `StatsCollectorService`. // Basic logic done, subscription needs refinement. **(Formatter and Adapters implemented for SQLite)**
 
 ## 9. Core Module & Other Services [P1/P2]
 
