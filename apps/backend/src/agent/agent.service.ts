@@ -57,30 +57,36 @@ export class AgentService implements OnModuleInit {
    * Filters events based on whether they target an active agent managed by this service.
    */
   private async handleIncomingPerception(event: AgentPerceptionEvent): Promise<void> {
-    // FIXME: Implement robust target identification logic here!
-    // This placeholder assumes the payload *might* have a targetAgentId.
-    // A real implementation might check visualIds against agent states,
-    // check scene coordinates, or rely on explicit routing info in the event.
     let targetAgentId: string | undefined = undefined;
-    if ('targetAgentId' in event.payload && typeof event.payload.targetAgentId === 'string') {
-      targetAgentId = event.payload.targetAgentId;
-    }
-    // Add more logic here to determine target based on event.type and payload details
-    // e.g., for a message, check if targetVisualId matches an active agent's visualId
 
-    // If no specific target identified by the payload, consider it a potential broadcast
-    // or environment update relevant to all agents in the vicinity/scene.
-    // For now, we only process specifically targeted events.
+    // --- Basic Target Identification Logic (Requires event payload standardization) ---
+    // TODO: Make this logic more robust based on final event structures & routing strategy.
+    if (event.payload && typeof event.payload === 'object') {
+      // Scenario 1: Event payload explicitly contains the target agent ID
+      if ('targetAgentId' in event.payload && typeof event.payload.targetAgentId === 'string') {
+        targetAgentId = event.payload.targetAgentId;
+        this.logger.verbose(
+          `Routing event ${event.type} based on payload.targetAgentId: ${targetAgentId}`,
+        );
+      }
+      // Scenario 2: Add other potential routing rules here (e.g., based on event type, visual ID matching?)
+      // else if (event.type === 'perception.message' && event.payload.targetVisualId) {
+      //   targetAgentId = this.findAgentByVisualId(event.payload.targetVisualId);
+      // }
+    }
+
+    // --- Processing Logic ---
     if (!targetAgentId) {
-      // Or, if broadcast, iterate through all active agents?
-      // this.logger.verbose(`Ignoring non-targeted perception event: ${event.type}`);
+      // If no specific target identified, potentially treat as broadcast or ignore for now.
+      this.logger.debug(`Ignoring event ${event.type} - No specific target agent identified.`);
       return;
     }
 
     // Check if the target agent is active and managed by this service instance
     const agent = this.activeAgents.get(targetAgentId);
     if (!agent) {
-      // Not an agent managed by this service instance
+      // Not an agent managed by this service instance or agent not found
+      this.logger.debug(`Agent ${targetAgentId} not active/found, ignoring event ${event.type}.`);
       return;
     }
 

@@ -13,7 +13,6 @@ import { ISimulationService } from './simulation.interface';
 @Injectable()
 export class SimulationService implements ISimulationService {
   private readonly logger = new Logger(SimulationService.name);
-  private eventQueue = new Map<string, AgentPerceptionEvent[]>(); // agentId -> queue
 
   constructor(
     @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
@@ -34,11 +33,9 @@ export class SimulationService implements ISimulationService {
   }
 
   /**
-   * Handles events emitted by Capability Extensions, potentially generating perceptions for others.
-   * Now uses strictly typed event parameter.
+   * Handles events emitted by Capability Extensions, generating and publishing perceptions.
    */
   private handleAgentAction(event: SimulationAgentActionEvent): void {
-    // No need to cast 'event' anymore, TS knows its type based on subscription
     const actingAgentId = event.payload.agentId;
     if (!actingAgentId) {
       this.logger.error(`Simulation event missing agentId: ${event.type}`);
@@ -46,45 +43,30 @@ export class SimulationService implements ISimulationService {
     }
     this.logger.debug(`Simulation received action event: ${event.type} from ${actingAgentId}`);
 
-    const activeAgentIds = this.agentService.listActiveAgents();
-    const perceivingAgentIds = activeAgentIds.filter((id) => id !== actingAgentId);
-    if (perceivingAgentIds.length === 0) return;
+    let perceptionPayload: AgentPerceptionEvent['payload'] | null = null;
+    let perceptionType: AgentPerceptionEvent['type'] | null = null;
 
-    let perception: AgentPerceptionEvent | null = null;
-
-    // Switch on the event type (now strictly typed)
     switch (event.type) {
       case 'simulation.agent.speak': {
-        const payload = event.payload;
-        // Use EventBusService.createEvent
-        perception = EventBusService.createEvent(
-          'SimulationService', // source
-          'perception.message', // type
-          {
-            // payload object
-            sourceVisualId: actingAgentId,
-            content: payload.content ?? '',
-            metadata: { tone: payload.tone },
-          },
-          // No topic needed here, set later
-        );
+        const simPayload = event.payload;
+        perceptionType = 'perception.message';
+        perceptionPayload = {
+          sourceVisualId: actingAgentId,
+          content: simPayload.content ?? '',
+          metadata: { tone: simPayload.tone },
+        };
         break;
       }
       case 'simulation.agent.move': {
-        const payload = event.payload;
-        // Use EventBusService.createEvent
-        perception = EventBusService.createEvent(
-          'SimulationService', // source
-          'perception.agent_moved', // type
-          {
-            // payload object
-            sourceVisualId: actingAgentId,
-            visualId: actingAgentId,
-            newPosition: { x: Math.random() * 100, y: Math.random() * 100 },
-            metadata: { target: payload.target },
-          },
-          // No topic needed here, set later
-        );
+        const simPayload = event.payload;
+        perceptionType = 'perception.agent_moved';
+        const newPosition = { x: Math.random() * 100, y: Math.random() * 100 };
+        perceptionPayload = {
+          sourceVisualId: actingAgentId,
+          visualId: actingAgentId,
+          newPosition: newPosition,
+          metadata: { target: simPayload.target },
+        };
         break;
       }
       default: {
@@ -97,42 +79,37 @@ export class SimulationService implements ISimulationService {
       }
     }
 
-    if (perception) {
-      perceivingAgentIds.forEach((id) => {
-        // Set agent-specific topic before queuing
-        const agentSpecificPerception = { ...perception, topic: `agent.${id}.perception` };
-        this.queuePerception(id, agentSpecificPerception);
+    if (perceptionPayload && perceptionType) {
+      const activeAgentIds = this.agentService.listActiveAgents();
+      const perceivingAgentIds = activeAgentIds.filter((id) => id !== actingAgentId);
+
+      this.logger.debug(
+        `Publishing perception ${perceptionType} to agents: ${perceivingAgentIds.join(', ')}`,
+      );
+
+      perceivingAgentIds.forEach((targetAgentId) => {
+        const perceptionEvent = EventBusService.createEvent(
+          SimulationService.name,
+          perceptionType,
+          perceptionPayload,
+          `agent.${targetAgentId}.perception`,
+        );
+        this.eventBus.publish(perceptionEvent);
       });
+    } else {
+      this.logger.warn(`No perception generated for simulation event: ${event.type}`);
     }
   }
 
   /**
-   * Queues a perception for a specific agent.
-   */
-  private queuePerception(agentId: string, perception: AgentPerceptionEvent): void {
-    if (!this.eventQueue.has(agentId)) {
-      this.eventQueue.set(agentId, []);
-    }
-    this.eventQueue.get(agentId)?.push(perception);
-    this.logger.verbose(`Queued perception [${perception.type}] for agent ${agentId}`);
-  }
-
-  /**
-   * Gets the next perception event for an agent (mock implementation).
+   * Gets the next perception event for an agent - Now returns null as perceptions are event-driven.
+   * Kept for interface compliance, but should not be actively polled.
+   * @deprecated
    */
   async getNextPerception(agentId: string): Promise<AgentPerceptionEvent | null> {
-    // Simple mock: return queued event, or generate a periodic tick/dummy event
-    const queue = this.eventQueue.get(agentId);
-    if (queue && queue.length > 0) {
-      const perception = queue.shift(); // Get first event
-      this.logger.debug(`[${agentId}] Dequeuing perception: ${perception?.type}`);
-      return perception ?? null;
-    }
-
-    // If queue is empty, maybe return a generic 'tick' or 'idle' perception?
-    // Or just null to indicate nothing new happened.
-    // Let's return null for now to avoid infinite mock loops without external input.
-    // To test loop: return { type: 'scene_update', description: 'Time passes...', timestamp: Date.now() };
+    this.logger.warn(
+      `[${agentId}] getNextPerception was called, but perceptions are now push-based via EventBus. Returning null.`,
+    );
     return null;
   }
 
