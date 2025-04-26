@@ -594,6 +594,26 @@ Effectively interacting with LLMs requires careful selection and formatting of t
 
 The `CognitiveCycleService`, in conjunction with the `MemoryService` and potentially specialized context management utilities, is responsible for applying these strategies dynamically based on the required cognitive task (e.g., quick reaction vs. deep reflection vs. planning).
 
+### 2.3.6 Agent Loop Strategy (Hybrid Approach)
+
+To balance responsiveness with background processing needs (like reflection or periodic checks), a hybrid loop strategy is employed:
+
+1. **Event-Driven Reactivity:**
+    - The `AgentService` subscribes to perception events (e.g., via the Event Bus or directly from a Simulation/Routing service).
+    - When a perception arrives for a specific agent, it is added to the agent's internal `perceptionBuffer`.
+    - A processing function (`_tryProcessAgentPerceptions`) is immediately triggered.
+    - This function attempts to acquire a processing lock (`isProcessing` flag) for the agent.
+    - If successful, it sequentially processes *all* perceptions currently in the buffer by calling `CognitiveCycleService.processPerceptionEvent` for each one, applying state updates after each cycle.
+    - This ensures immediate reaction to incoming stimuli.
+
+2. **Periodic Background Tick:**
+    - A low-frequency `setInterval` (e.g., 15-30 seconds) runs for each active agent (`startAgentBackgroundLoop`).
+    - On each tick, it checks if the agent has been idle beyond a threshold (`IDLE_THRESHOLD_MS`).
+    - If idle and not currently processing, it can trigger background tasks like reflection (`reflectionService.performReflection`) asynchronously.
+    - It *also* calls `_tryProcessAgentPerceptions` as a fallback mechanism to ensure any buffered perceptions are eventually processed, even if the primary event trigger failed.
+
+This hybrid model allows agents to react quickly to events while providing opportunities for slower, non-critical background tasks like reflection and periodic checks.
+
 ## 2.4 Internal State & Memory System
 
 ### 2.4.1 Internal State: Dynamic State

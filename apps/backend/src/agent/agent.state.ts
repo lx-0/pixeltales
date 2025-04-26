@@ -24,11 +24,13 @@ export class AgentRuntimeState {
 
   // Perception buffer for unprocessed perceptions
   public perceptionBuffer: AgentPerceptionEvent[] = [];
+  public lastActivityTimestamp: number; // Added to track last action/perception
 
   constructor(agentId: string, config: AgentConfig, initialState: AgentDynamicState) {
     this.agentId = agentId;
     this.config = config;
     this.dynamicState = initialState;
+    this.lastActivityTimestamp = Date.now(); // Initialize on creation
   }
 
   // Methods to update state safely could go here
@@ -57,6 +59,7 @@ export class AgentRuntimeState {
    */
   addPerception(perception: AgentPerceptionEvent): void {
     this.perceptionBuffer.push(perception);
+    this.lastActivityTimestamp = Date.now(); // Update timestamp on perception
   }
 
   /**
@@ -73,6 +76,10 @@ export class AgentRuntimeState {
    */
   getAllPendingPerceptions(): AgentPerceptionEvent[] {
     return [...this.perceptionBuffer];
+  }
+
+  clearPerceptionBuffer(): void {
+    this.perceptionBuffer = [];
   }
 }
 
