@@ -1,9 +1,8 @@
+import { LoginButton, UserAvatar } from '@/lib/auth';
 import { Button } from '@/lib/shadcn-ui/button';
+import { SceneProposalForm } from '@/v1/components/SceneProposalForm';
 import { User } from '@pixeltales/contracts';
 import { Layout, Volume2, VolumeX } from 'lucide-react';
-import { SceneProposalForm } from '../SceneProposalForm';
-import LoginButton from '../auth/LoginButton';
-import UserAvatar from '../auth/UserAvatar';
 
 interface AppControlsProps {
   user: User | null;

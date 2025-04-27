@@ -5,7 +5,7 @@ export function AppFooter() {
     <footer className="p-2 sm:p-4 bg-gray-800 mt-3 sm:mt-6 border-t border-gray-700">
       <div className="mx-auto w-full">
         <p className="text-center text-gray-400 text-xs sm:text-sm">
-          © 2024 PixelTales - An AI Character Interaction Experiment
+          © 2024/2025 PixelTales - An AI Character Interaction Experiment
         </p>
         <p className="text-center text-gray-400 text-xs sm:text-sm mt-1">
           Powered by{' '}

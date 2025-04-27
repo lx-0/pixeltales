@@ -32,13 +32,13 @@ const SceneUpdatePayloadSchema = z.object({
 });
 export type SceneUpdatePayload = z.infer<typeof SceneUpdatePayloadSchema>;
 
-const AgentMovedPayloadSchema = z.object({
+export const AgentMovedPerceptionPayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (agent causing the move)
   visualId: z.string().describe('The visual identifier of the agent that moved.'),
   newPosition: z.object({ x: z.number(), y: z.number() }),
   metadata: z.record(z.string(), z.any()).optional(),
 });
-export type AgentMovedPayload = z.infer<typeof AgentMovedPayloadSchema>;
+export type AgentMovedPayload = z.infer<typeof AgentMovedPerceptionPayloadSchema>;
 
 const AgentVisiblePayloadSchema = z.object({
   sourceVisualId: z.string().optional(), // Moved here (agent causing the visibility event - likely self)
@@ -85,7 +85,7 @@ const SceneUpdateEventSchema = BaseEventSchema.extend({
 const AgentMovedEventSchema = BaseEventSchema.extend({
   // Extends BaseEventSchema directly
   type: z.literal('perception.agent_moved'),
-  payload: AgentMovedPayloadSchema,
+  payload: AgentMovedPerceptionPayloadSchema,
 });
 
 const AgentVisibleEventSchema = BaseEventSchema.extend({

@@ -42,6 +42,14 @@ export const AgentMoveSimulationPayloadSchema = z.object({
 
 // --- Raw Simulation Event/State Payloads --- //
 
+// Define a structure for per-perceiver context
+export const PerceiverContextSchema = z.object({
+  perceiverAgentId: z.string().uuid(),
+  distance: z.number().optional().describe('Calculated distance from source to perceiver'),
+  // Add other context like relativeAngle, lineOfSight: z.boolean() if needed later
+});
+export type PerceiverContext = z.infer<typeof PerceiverContextSchema>;
+
 // Payload for when speech occurs in the simulation
 export const SpeechOccurredSimulationEventPayloadSchema = z.object({
   agentId: z.string().uuid().describe('ID of the agent who spoke'),
@@ -51,6 +59,10 @@ export const SpeechOccurredSimulationEventPayloadSchema = z.object({
     .object({ x: z.number(), y: z.number() })
     .optional()
     .describe('Position where speech occurred'),
+  perceiverContextList: z
+    .array(PerceiverContextSchema)
+    .optional()
+    .describe('Context for each agent determined by simulation to be a potential listener'),
   // Potentially add sceneId if needed for context
 });
 export type SpeechOccurredSimulationEventPayload = z.infer<
@@ -63,6 +75,10 @@ export const AgentMovedSimulationStatePayloadSchema = z.object({
   newPosition: z.object({ x: z.number(), y: z.number() }),
   previousPosition: z.object({ x: z.number(), y: z.number() }).optional(),
   metadata: z.record(z.string(), z.any()).optional().describe('Optional metadata like move target'),
+  perceiverContextList: z
+    .array(PerceiverContextSchema)
+    .optional()
+    .describe('Context for each agent determined by simulation to be a potential viewer'),
 });
 export type AgentMovedSimulationStatePayload = z.infer<
   typeof AgentMovedSimulationStatePayloadSchema

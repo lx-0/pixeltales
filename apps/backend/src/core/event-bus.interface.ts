@@ -29,10 +29,10 @@ export interface IEventBus {
    * @param options Optional filtering criteria (might filter on event properties).
    * @returns A subscription object to manage the subscription.
    */
-  subscribe<E extends DomainEvent>( // Keep generic for handler type
-    eventType: DomainEvent['type'], // Use the full union type directly here
-    handler: EventHandler<E>,
-    options?: { filter?: (event: E) => boolean }, // Filter still uses generic E
+  subscribe<T extends DomainEvent['type']>( // Keep generic for handler type
+    eventType: T, // Use the full union type directly here
+    handler: EventHandler<Extract<DomainEvent, { type: T }>>,
+    options?: { filter?: (event: Extract<DomainEvent, { type: T }>) => boolean }, // Filter still uses generic E
   ): ISubscription;
 
   /**
@@ -40,7 +40,9 @@ export interface IEventBus {
    * @param eventType The literal event type string to observe.
    * @returns An RxJS Observable emitting matching, typed events.
    */
-  observe<E extends DomainEvent>(eventType: DomainEvent['type']): Observable<E>; // Use the full union type here too
+  observe<T extends DomainEvent['type']>(
+    eventType: T,
+  ): Observable<Extract<DomainEvent, { type: T }>>; // Use the full union type here too
 
   /**
    * Retrieves a history of recent events.

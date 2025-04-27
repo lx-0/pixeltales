@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { DbModule } from '../../db/db.module';
 import { EpisodicMemoryService } from './episodic-memory.service';
 import { MEMORY_INTERFACE } from './memory.interface';
 import { MemoryService } from './memory.service';
 import { SemanticMemoryService } from './semantic-memory.service';
 
 @Module({
+  imports: [DbModule],
   providers: [
     EpisodicMemoryService, // Provide concrete implementations
     SemanticMemoryService,

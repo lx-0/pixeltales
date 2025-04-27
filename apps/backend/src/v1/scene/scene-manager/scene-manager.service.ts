@@ -6,9 +6,9 @@ import { toBoolean } from '@pixeltales/utils';
 import { PinoLogger } from 'nestjs-pino';
 import assert from 'node:assert';
 import { LOGGER_CONTEXT_SHORTEN } from '../../../common/logger/logger.const';
-import { EventsGateway } from '../../../events/events.gateway'; // To emit updates
 import { CharactersService } from '../../characters/characters.service';
 import { ConversationOrchestratorService } from '../../conversation/conversation-orchestrator/conversation-orchestrator.service';
+import { EventsV1Gateway } from '../../events/events.gateway';
 import { ScenesService } from '../../scenes/scenes.service'; // Assuming DB access logic is here
 import { SceneStateService } from '../scene-state/scene-state.service';
 import { ScenesDbService } from '../scenes-db/scenes-db.service';
@@ -30,7 +30,7 @@ export class SceneManagerService implements OnModuleInit {
 
   // Reference to the gateway to emit events
   // This is often better handled via events/observables, but direct ref is simpler for now
-  private gateway: EventsGateway | null = null;
+  private gateway: EventsV1Gateway | null = null;
 
   constructor(
     private readonly configService: ConfigService,
@@ -51,7 +51,7 @@ export class SceneManagerService implements OnModuleInit {
   }
 
   // Method for the gateway to register itself (alternative to DI if cyclic)
-  registerGateway(gatewayInstance: EventsGateway) {
+  registerGateway(gatewayInstance: EventsV1Gateway) {
     this.gateway = gatewayInstance;
     this.logger.info('EventsGateway registered with SceneManagerService.');
   }

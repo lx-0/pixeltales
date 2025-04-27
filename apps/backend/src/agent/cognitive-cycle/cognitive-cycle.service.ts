@@ -4,6 +4,7 @@ import {
   AgentAction,
   AgentDynamicState,
   AgentPerceptionEvent,
+  AgentRewardCalculatedPayload,
   AgentState,
   Fact,
   Observation,
@@ -21,7 +22,6 @@ import {
   IInternalToolsInterface,
   INTERNAL_TOOLS_INTERFACE,
 } from '../internal-tools/internal-tools.interface';
-import { ILearningInterface, LEARNING_INTERFACE } from '../learning/learning.interface';
 import { IRewardFunction, REWARD_FUNCTION } from '../learning/reward.function.interface';
 import { AGENT_LLM_SERVICE, IAgentLlmService } from '../llm/agent-llm.interface';
 import { IMemoryInterface, MEMORY_INTERFACE } from '../memory/memory.interface';
@@ -49,7 +49,6 @@ export class CognitiveCycleService {
     @Inject(ACTION_SERVICE) private readonly actionService: IActionService,
     @Inject(INTERNAL_TOOLS_INTERFACE) private readonly internalTools: IInternalToolsInterface,
     @Inject(AGENT_LLM_SERVICE) private readonly agentLlmService: IAgentLlmService,
-    @Inject(LEARNING_INTERFACE) private readonly learningInterface: ILearningInterface,
     @Inject(REWARD_FUNCTION) private readonly rewardFunction: IRewardFunction,
     @Inject(REFLECTION_SERVICE) private readonly reflectionService: IReflectionService,
   ) {}
@@ -212,8 +211,32 @@ export class CognitiveCycleService {
 
       // Compute reward
       const rewardScore = this.rewardFunction.compute(rewardInput);
-      // Record reward using LearningInterface
-      await this.learningInterface.recordReward(agent, action, rewardScore);
+
+      // Publish reward calculated event
+      try {
+        const payload: AgentRewardCalculatedPayload = {
+          agentId: agent.agentId,
+          stateSnapshot: {
+            // Construct basic AgentState
+            agentId: agent.agentId,
+            config: agent.config,
+            dynamicState: currentDynamicState,
+          },
+          actionTaken: action,
+          rewardScore: rewardScore,
+        };
+        const rewardEvent = EventBusService.createEvent(
+          CognitiveCycleService.name,
+          'agent.reward.calculated',
+          payload,
+        );
+        this.eventBus.publish(rewardEvent);
+        this.logger.log(
+          `[${agentId}] Published agent.reward.calculated event (Reward: ${rewardScore})`,
+        );
+      } catch (error) {
+        this.logger.error(`[${agentId}] Failed to publish agent.reward.calculated event`, error);
+      }
       this.logger.log(`[${agentId}] Recorded reward ${rewardScore} for action ${action.type}`);
       // --- End State Update & Reward --- //
 

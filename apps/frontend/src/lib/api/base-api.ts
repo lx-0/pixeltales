@@ -30,7 +30,7 @@ export class BaseApiService {
 
         // Dynamically access the authService singleton *inside* the interceptor
         // IMPORTANT: This assumes authService from '@/services/auth' is initialized before the first API call.
-        const authServiceInstance = (await import('@/services/auth')).authService;
+        const authServiceInstance = (await import('@/lib/auth')).authService; // TODO REFACTOR decouple
 
         // Get the current token from AuthService
         const token = authServiceInstance.getCurrentAccessToken();

@@ -1,13 +1,15 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import {
+  AgentDestroyedEvent,
   AgentMovedSimulationStatePayloadSchema,
   AgentPerceptionEvent,
+  AgentSpawnedEvent,
+  PerceiverContext,
   RawSimulationEvent,
   SimulationAgentActionEvent,
   SpeechOccurredSimulationEventPayloadSchema,
 } from '@pixeltales/contracts';
 import { z } from 'zod';
-import { AgentService } from '../agent/agent.service';
 import { EVENT_BUS, IEventBus } from '../core/event-bus.interface';
 import { EventBusService } from '../core/event-bus.service';
 import { ISimulationService } from './simulation.interface';
@@ -26,25 +28,42 @@ export class SimulationService implements ISimulationService {
   private readonly logger = new Logger(SimulationService.name);
   // Placeholder for simulation state - Replace with actual state management
   private agentPositions = new Map<string, AgentPosition>();
+  private activeAgentIds = new Set<string>();
 
-  constructor(
-    @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
-    @Inject(AgentService) private readonly agentService: AgentService,
-  ) {
-    // Subscribe to specific known simulation event types
-    const eventTypesToHandle: SimulationAgentActionEvent['type'][] = [
+  constructor(@Inject(EVENT_BUS) private readonly eventBus: IEventBus) {
+    // Subscribe to agent action events
+    const actionEventTypes: SimulationAgentActionEvent['type'][] = [
       'simulation.agent.speak',
       'simulation.agent.move',
-      // Add other types here as they are defined
     ];
-    eventTypesToHandle.forEach((eventType) => {
+    actionEventTypes.forEach((eventType) => {
       this.eventBus.subscribe(eventType, (event: SimulationAgentActionEvent) =>
         this.handleAgentAction(event),
       );
     });
-    this.logger.log(
-      `SimulationService Initialized - Listening for: ${eventTypesToHandle.join(', ')}`,
-    );
+    this.logger.log(`Subscribed to agent actions: ${actionEventTypes.join(', ')}`);
+
+    // Subscribe to agent lifecycle events
+    this.eventBus.subscribe('agent.lifecycle.spawned', (event: AgentSpawnedEvent) => {
+      const agentId = event?.payload?.agentId;
+      if (agentId && typeof agentId === 'string') {
+        this.activeAgentIds.add(agentId);
+        this.logger.log(`Agent ${agentId} added to simulation active list.`);
+        // Initialize position if needed
+        if (!this.agentPositions.has(agentId)) {
+          this.agentPositions.set(agentId, { x: Math.random() * 100, y: Math.random() * 100 }); // Example init
+        }
+      }
+    });
+    this.eventBus.subscribe('agent.lifecycle.destroyed', (event: AgentDestroyedEvent) => {
+      const agentId = event?.payload?.agentId;
+      if (agentId && typeof agentId === 'string') {
+        this.activeAgentIds.delete(agentId);
+        this.agentPositions.delete(agentId); // Clean up position too
+        this.logger.log(`Agent ${agentId} removed from simulation active list.`);
+      }
+    });
+    this.logger.log(`Subscribed to agent lifecycle events (spawned, destroyed)`);
   }
 
   /**
@@ -66,16 +85,18 @@ export class SimulationService implements ISimulationService {
       this.logger.verbose(`[${actingAgentId}] Position updated.`);
     }
 
-    // Determine perceiving agents (placeholder logic)
-    const allAgentIds = this.agentService.listActiveAgents();
-    const perceivingAgentIds = this.determinePerceivingAgents(
+    // Determine perceiving agents AND their context
+    const allAgentIds = Array.from(this.activeAgentIds);
+    const perceiverContextList = this.determinePerceiverContext(
       actingAgentId,
       allAgentIds,
       event.type,
       event.payload,
     );
 
-    if (perceivingAgentIds.length === 0) return;
+    // Note: We still publish the raw event even if no perceivers are calculated by the sim,
+    // in case other systems (like a global observer) care about the raw event itself.
+    // The perceiver list might be empty.
 
     // Publish RAW simulation state/event info for Perception Extensions to process
     let rawEventToPublish: RawSimulationEvent | null = null;
@@ -88,6 +109,7 @@ export class SimulationService implements ISimulationService {
           content: simPayload.content ?? '',
           tone: simPayload.tone,
           position: this.agentPositions.get(actingAgentId),
+          perceiverContextList: perceiverContextList,
         };
         rawEventToPublish = EventBusService.createEvent(
           SimulationService.name,
@@ -103,6 +125,7 @@ export class SimulationService implements ISimulationService {
           newPosition: this.agentPositions.get(actingAgentId)!,
           previousPosition: undefined,
           metadata: { target: simPayload.target },
+          perceiverContextList: perceiverContextList,
         };
         rawEventToPublish = EventBusService.createEvent(
           SimulationService.name,
@@ -123,7 +146,7 @@ export class SimulationService implements ISimulationService {
     if (rawEventToPublish) {
       this.eventBus.publish(rawEventToPublish);
       this.logger.debug(
-        `Published raw simulation event ${rawEventToPublish.type} from ${actingAgentId}`,
+        `Published raw simulation event ${rawEventToPublish.type} from ${actingAgentId} (Perceiver Contexts: ${perceiverContextList.length})`,
       );
     } else {
       this.logger.warn(`No raw simulation event generated for action: ${event.type}`);
@@ -131,32 +154,57 @@ export class SimulationService implements ISimulationService {
   }
 
   /**
-   * Determines which agents should perceive an event based on simple rules.
+   * Determines which agents should perceive an event and calculates context for each.
    * TODO: Replace with actual simulation logic (proximity, line-of-sight etc.)
    */
-  private determinePerceivingAgents(
+  private determinePerceiverContext<T extends SimulationAgentActionEvent['type']>(
     actingAgentId: string,
     allAgentIds: string[],
-    simulationEventType: SimulationAgentActionEvent['type'],
-    payload: any,
-  ): string[] {
+    simulationEventType: T,
+    _payload: Extract<SimulationAgentActionEvent, { type: T }>['payload'], // Payload might be needed for more complex rules later
+  ): PerceiverContext[] {
+    const perceivers: PerceiverContext[] = [];
     const others = allAgentIds.filter((id) => id !== actingAgentId);
-    if (simulationEventType === 'simulation.agent.speak') {
-      const actingPos = this.agentPositions.get(actingAgentId) ?? { x: 0, y: 0 };
-      const hearingRange = 50;
-      return others.filter((id) => {
-        const targetPos = this.agentPositions.get(id) ?? { x: 1000, y: 1000 };
-        const dx = actingPos.x - targetPos.x;
-        const dy = actingPos.y - targetPos.y;
-        return dx * dx + dy * dy < hearingRange * hearingRange;
-      });
-    } else if (simulationEventType === 'simulation.agent.move') {
-      return others;
+    const actingPos = this.agentPositions.get(actingAgentId) ?? { x: 0, y: 0 };
+
+    for (const potentialPerceiverId of others) {
+      const targetPos = this.agentPositions.get(potentialPerceiverId) ?? { x: 1000, y: 1000 };
+      const dx = actingPos.x - targetPos.x;
+      const dy = actingPos.y - targetPos.y;
+      const distSq = dx * dx + dy * dy;
+
+      // Example Rules based on type
+      let canPerceive = false;
+      let distance: number | undefined = undefined;
+
+      if (simulationEventType === 'simulation.agent.speak') {
+        const hearingRangeSq = 50 * 50;
+        if (distSq < hearingRangeSq) {
+          canPerceive = true;
+          distance = Math.sqrt(distSq);
+        }
+      } else if (simulationEventType === 'simulation.agent.move') {
+        const visualRangeSq = 100 * 100;
+        if (distSq < visualRangeSq) {
+          canPerceive = true;
+          distance = Math.sqrt(distSq);
+          // TODO: Add line-of-sight check here
+        }
+      } else {
+        this.logger.warn(
+          `Unhandled simulation event type in determinePerceiverContext: ${simulationEventType as string}`,
+        );
+      }
+
+      if (canPerceive) {
+        perceivers.push({
+          perceiverAgentId: potentialPerceiverId,
+          distance: distance, // Add calculated distance
+          // Add other context here if needed
+        });
+      }
     }
-    this.logger.warn(
-      `Unhandled simulation event type in determinePerceivingAgents: ${simulationEventType as string}`,
-    );
-    return [];
+    return perceivers;
   }
 
   /**

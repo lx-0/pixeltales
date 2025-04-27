@@ -890,3 +890,62 @@ Notifications are styled to match the game's pixel art aesthetic, with:
 - **Agent State Visualization**: Highlights affected knowledge areas
 
 By making cognitive development visible through **gamified frontend alerts** triggered by specific **learning events** and awarding calculated **XP**, the system creates a more engaging experience where users can observe and appreciate the emergent intelligence of agents as they explore, learn, and evolve.
+
+## 3.7 In-Game Agent Mind Visualization
+
+*(New Section)*
+
+**Purpose and Goals:**
+
+- Provide users with a real-time, visual representation of the agent's internal cognitive architecture and activity, directly integrated into the game's UI (inspired by the provided reference image).
+- Enhance user understanding and engagement by making the agent's "thinking" process more tangible.
+- Offer a high-level overview of which subsystems are currently active or processing information.
+
+**Visualization Interface (Based on Inspiration Image):**
+
+```diagram/text
++--------------------------------+
+|     AGENT'S MIND (In-Game)     |
+|--------------------------------|
+|  +-----------+  +------------+ |
+|  | System    |  | Perceptual | |
+|  | Systems   |->| System     | |
+|  +-----+-----+  +------▲-----+ |
+|        |             |         |
+|        ▼ Activity    | Data    |
+|  +-----------+  +----▼-----+   |
+|  | Reasoning |  | Goal &   |   |
+|  | Systems   |->| Utility  |   |
+|  | (Cycle)   |  | Systems  |   |
+|  +-----+-----+  +-------+--+   |
+|        |                 |      |
+|        ▼ Memory/Learning |      |
+|  +-----------+  +------▼-----+ |
+|  | Memory    |<-| Learning | |
+|  | Systems   |->| System   | |
+|  +-----+-----+  +----------+ |
+|        |                      |
+|        ▼ Environment Link     |
+|  +------------------------+  |
+|  | Environment            |  |
+|  | Representation         |  |
+|  +------------------------+  |
++--------------------------------+
+```
+
+- **Core Visual:** A pixel-art representation (e.g., stylized head/brain).
+- **Subsystem Regions:** Clearly demarcated areas corresponding to major subsystems (Perception, Reasoning, Memory, Learning, Goals, System).
+- **Activity Indicators:** Visual cues within regions (pulsing, glowing) based on real-time event data.
+- **Connections:** Optional lines indicating primary data flow during processing.
+- **Environment Link:** Connects internal state to external representation.
+
+**Implementation Details:**
+
+- Requires a frontend component (e.g., `AgentMindVizComponent`).
+- Needs real-time data stream (via WebSocket from `DebugGateway` or `StateBroadcastService`) containing information about active subsystems or phases (e.g., derived from `agent.cognitive.cycle.phase_completed` events).
+- Mapping logic to translate backend events into visual activity indicators.
+
+**Integration Points:**
+
+- **← Event Bus / WebSocket Gateway:** Subscribes to agent activity events.
+- **→ Frontend UI:** Renders the visualization.

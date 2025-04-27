@@ -1,57 +1,36 @@
-import type { SceneStateSnapshot } from '@pixeltales/contracts';
-import ConversationHistory from '../ConversationHistory';
-import SceneInfo from '../SceneInfo';
+import type { AgentDebugEventBroadcast } from '@pixeltales/contracts';
+import { AgentMindViz } from '../debug/AgentMindViz';
 
 interface AppMainContentProps {
-  sceneState: SceneStateSnapshot | null;
   isSideView: boolean;
   setIsModalOpen: (isOpen: boolean) => void;
+  lastAgentEvent?: AgentDebugEventBroadcast | null;
 }
 
-export function AppMainContent({ sceneState, isSideView, setIsModalOpen }: AppMainContentProps) {
+export function AppMainContent({
+  isSideView,
+  setIsModalOpen,
+  lastAgentEvent,
+}: AppMainContentProps) {
   return (
     <main className="p-2 sm:p-4 space-y-3 sm:space-y-6">
-      {/* AppControls are rendered directly in App.tsx now */}
-
-      {/* Flexible Layout Container */}
-      <div
-        className={`grid gap-2 sm:gap-4 mx-auto h-auto sm:grid-cols-1 ${
-          isSideView ? `lg:grid-cols-[1fr_400px]` : 'grid-cols-1'
-        }`}
-      >
-        {/* Game Container */}
-        <div
-          className="aspect-[4/3] overflow-hidden bg-gray-800 rounded-lg shadow-lg border border-gray-700"
-          id="game-container"
-        />
-
-        {/* Conversation History (Side View Only) */}
-        {sceneState && isSideView && (
-          <ConversationHistory
-            scene={sceneState}
-            isSideView={isSideView}
-            setIsModalOpen={setIsModalOpen}
+      {/* Layout Container */}
+      {
+        // --- Frankenstein MVP Layout ---
+        <div className={`grid gap-2 sm:gap-4 mx-auto h-auto grid-cols-1 lg:grid-cols-[1fr_300px]`}>
+          <div
+            className="aspect-[4/3] overflow-hidden bg-gray-800 rounded-lg shadow-lg border border-gray-700"
+            id="game-container"
           />
-        )}
-      </div>
-
-      {/* Scene Info and Characters */}
-      {sceneState && (
-        <div className="mx-auto w-full">
-          <SceneInfo scene={sceneState} setIsModalOpen={setIsModalOpen} />
+          {/* Agent Mind Viz Panel */}
+          <div className="h-full">
+            <AgentMindViz
+              lastEventType={lastAgentEvent?.type}
+              lastPayload={lastAgentEvent?.payload}
+            />
+          </div>
         </div>
-      )}
-
-      {/* Conversation History (Bottom View Only) */}
-      {sceneState && !isSideView && (
-        <div className="mx-auto w-full">
-          <ConversationHistory
-            scene={sceneState}
-            isSideView={isSideView}
-            setIsModalOpen={setIsModalOpen}
-          />
-        </div>
-      )}
+      }
 
       <div className="bg-gray-800 rounded-lg p-2 sm:p-4 mx-auto w-full border border-gray-700">
         <h2 className="text-lg sm:text-xl font-bold mb-2">About</h2>

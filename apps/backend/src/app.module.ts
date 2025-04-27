@@ -1,31 +1,35 @@
 import {
+  Logger,
   MiddlewareConsumer,
   Module,
   NestModule,
+  OnModuleInit,
   RequestMethod,
   ValidationPipe,
 } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_PIPE } from '@nestjs/core'; // Import APP_FILTER token
+import { APP_FILTER, APP_PIPE } from '@nestjs/core';
 import { EventEmitterModule } from '@nestjs/event-emitter';
+import { AgentConfig } from '@pixeltales/contracts';
 import { LoggerModule } from 'nestjs-pino';
-import { IncomingMessage, ServerResponse } from 'node:http'; // Import types for customLogLevel
-import { AppConfigModule } from './app-config/app-config.module'; // Import renamed module
+import { IncomingMessage, ServerResponse } from 'node:http';
+import { AgentModule } from './agent/agent.module';
+import { AgentService } from './agent/agent.service';
+import { AppConfigModule } from './app-config/app-config.module';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
-import { AllExceptionsFilter } from './common/filters/all-exceptions.filter'; // Import the filter
+import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { ANSI_BOLD, ANSI_NORMAL } from './common/logger/logger.const';
+import { CoreModule } from './core/core.module';
 import { DbModule } from './db/db.module';
+import { DebugModule } from './debug/debug.module';
 import { EventsModule } from './events/events.module';
 import { RequestLoggerMiddleware } from './middleware/request-logger.middleware';
 import { SpritesheetModule } from './spritesheet/spritesheet.module';
 import { MeModule } from './users/me.module';
 import { UserModule } from './users/user.module';
 import { UsersModule } from './users/users.module';
-
-import { CharactersModule } from './v1/characters/characters.module';
-import { ScenesModule } from './v1/scenes/scenes.module';
 
 // Type definitions for pino serializers
 interface PinoRequest extends IncomingMessage {
@@ -58,12 +62,12 @@ interface PinoError {
 @Module({
   imports: [
     ConfigModule.forRoot({
-      // Load .env file (by default)
-      isGlobal: true, // Make ConfigService available globally
+      isGlobal: true,
+      envFilePath: '.env',
     }),
     // Configure Pino Logger
     LoggerModule.forRootAsync({
-      imports: [ConfigModule], // Import ConfigModule to use ConfigService
+      imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => {
         const isProduction = configService.get<string>('NODE_ENV') === 'production';
@@ -128,7 +132,7 @@ interface PinoError {
             },
             // Completely disable automatic request logging in favor of our custom logs
             autoLogging: {
-              ignore: (req) => {
+              ignore: (req: IncomingMessage) => {
                 // Log 404s and 500s only at debug level, handled by exception filter
                 const path = req.url || '';
                 // Skip auto-logging for common static files and health checks
@@ -183,26 +187,24 @@ interface PinoError {
     }),
     DbModule,
     AppConfigModule,
-    EventsModule, // TODO: Decouple from V1
+    EventsModule,
+    EventEmitterModule.forRoot(),
     // ScheduleModule.forRoot(), // not used at the moment
     AuthModule,
     UsersModule,
     UserModule,
     MeModule,
     SpritesheetModule,
-    EventEmitterModule.forRoot(),
-    ScenesModule, // PixelTales V1
-    CharactersModule, // PixelTales V1
+    // PixeltalesV1Module, // PixelTales V1
+    // Feature Modules (New Agentic System)
+    CoreModule,
+    AgentModule,
+    DebugModule,
   ],
   controllers: [AppController],
   providers: [
     AppService,
-    // Provide the filter globally using the APP_FILTER token
-    {
-      provide: APP_FILTER,
-      useClass: AllExceptionsFilter,
-    },
-    // PinoLogger wird durch LoggerModule bereitgestellt, kein expliziter Provider nötig
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
     {
       provide: APP_PIPE,
       useValue: new ValidationPipe({
@@ -215,8 +217,32 @@ interface PinoError {
     },
   ],
 })
-export class AppModule implements NestModule {
+export class AppModule implements NestModule, OnModuleInit {
+  private readonly logger = new Logger(AppModule.name);
+
+  constructor(private readonly agentService: AgentService) {}
+
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(RequestLoggerMiddleware).forRoutes({ path: '*all', method: RequestMethod.ALL }); // named wildcard
+  }
+
+  async onModuleInit() {
+    this.logger.log('AppModule initialized, spawning Frankenstein agent...');
+
+    const frankensteinConfig: AgentConfig = {
+      personalityCore:
+        'You are Frankenstein, a curious but slightly confused agent exploring your existence.',
+      visualDescription: 'A tall figure assembled from various parts, wearing simple clothes.',
+      llmConfig: { model: 'gpt-4o' },
+      initialGoals: ['Understand my surroundings', 'Figure out who I am'],
+      allowedTools: [],
+    };
+
+    try {
+      const agentId = await this.agentService.spawnAgent(frankensteinConfig, 'frankenstein-01');
+      this.logger.log(`Successfully spawned agent: ${agentId}`);
+    } catch (error) {
+      this.logger.error('Failed to spawn initial Frankenstein agent:', error);
+    }
   }
 }

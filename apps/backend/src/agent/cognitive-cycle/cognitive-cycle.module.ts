@@ -1,6 +1,9 @@
 import { Module } from '@nestjs/common';
-import { CoreModule } from '../../core/core.module'; // Assuming EventBus is here
+import { CoreModule } from '../../core/core.module';
 import { ActionModule } from '../action/action.module';
+import { InternalToolsModule } from '../internal-tools/internal-tools.module';
+import { LearningModule } from '../learning/learning.module';
+import { AgentLlmModule } from '../llm/agent-llm.module';
 import { MemoryModule } from '../memory/memory.module';
 import { PlannerModule } from '../planner/planner.module';
 import { ReflectionModule } from '../reflection/reflection.module';
@@ -13,10 +16,11 @@ import { CognitiveCycleService } from './cognitive-cycle.service';
     MemoryModule, // For IMemoryInterface
     PlannerModule, // For IPlannerService
     ActionModule, // For IActionService
-    ReflectionModule,
+    InternalToolsModule, // For IInternalToolsInterface
+    AgentLlmModule, // For IAgentLlmService
+    LearningModule, // For IRewardFunction
+    ReflectionModule, // For IReflectionService
     // PerceptionModule,
-    // ActionModule,
-    // LlmModule,
     // CuriosityModule,
     // SelfModelingModule,
     // TODO: Import other dependencies like LlmModule, AgentStateModule?

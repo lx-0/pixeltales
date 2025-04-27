@@ -1,5 +1,6 @@
 import { z } from 'zod';
-import { AgentDynamicStateSchema } from './AgentState'; // Import dependent state schema
+import { AgentActionSchema } from './AgentAction'; // Import AgentAction schema
+import { AgentDynamicStateSchema, AgentStateSchema } from './AgentState'; // Import AgentState schema
 import { BaseEventSchema } from './EventBase'; // Import Base
 
 // --- Payload Schemas ---
@@ -65,6 +66,27 @@ export const AgentDynamicStateUpdatedPayloadSchema = z.object({
   // previousStateSample: z.record(z.any()).optional().describe('Optional: Snapshot of key previous state fields'),
 });
 export type AgentDynamicStateUpdatedPayload = z.infer<typeof AgentDynamicStateUpdatedPayloadSchema>;
+
+// Agent Lifecycle Payloads
+export const AgentSpawnedEventPayloadSchema = z.object({
+  agentId: z.string().uuid(),
+});
+export type AgentSpawnedEventPayload = z.infer<typeof AgentSpawnedEventPayloadSchema>;
+
+export const AgentDestroyedEventPayloadSchema = z.object({
+  agentId: z.string().uuid(),
+  reason: z.string().optional(),
+});
+export type AgentDestroyedEventPayload = z.infer<typeof AgentDestroyedEventPayloadSchema>;
+
+// Reward Calculated Payload
+export const AgentRewardCalculatedPayloadSchema = z.object({
+  agentId: z.string().uuid(),
+  stateSnapshot: AgentStateSchema, // Use the AgentState schema
+  actionTaken: AgentActionSchema, // Use the AgentAction schema
+  rewardScore: z.number(),
+});
+export type AgentRewardCalculatedPayload = z.infer<typeof AgentRewardCalculatedPayloadSchema>;
 
 // --- Specific Event Schemas (Extending Base) ---
 
@@ -138,6 +160,26 @@ export const AgentReflectionCompletedEventSchema = BaseEventSchema.extend({
 });
 export type AgentReflectionCompletedEvent = z.infer<typeof AgentReflectionCompletedEventSchema>;
 
+// Reward Calculated Event
+export const AgentRewardCalculatedEventSchema = BaseEventSchema.extend({
+  type: z.literal('agent.reward.calculated'),
+  payload: AgentRewardCalculatedPayloadSchema,
+});
+export type AgentRewardCalculatedEvent = z.infer<typeof AgentRewardCalculatedEventSchema>;
+
+// Agent Lifecycle Events
+export const AgentSpawnedEventSchema = BaseEventSchema.extend({
+  type: z.literal('agent.lifecycle.spawned'),
+  payload: AgentSpawnedEventPayloadSchema,
+});
+export type AgentSpawnedEvent = z.infer<typeof AgentSpawnedEventSchema>;
+
+export const AgentDestroyedEventSchema = BaseEventSchema.extend({
+  type: z.literal('agent.lifecycle.destroyed'),
+  payload: AgentDestroyedEventPayloadSchema,
+});
+export type AgentDestroyedEvent = z.infer<typeof AgentDestroyedEventSchema>;
+
 // --- Discriminated Union Schema for Agent Internal Events ---
 
 export const AgentInternalEventSchema = z.discriminatedUnion('type', [
@@ -150,6 +192,9 @@ export const AgentInternalEventSchema = z.discriminatedUnion('type', [
   SystemNotificationDispatchedEventSchema,
   AgentDynamicStateUpdatedEventSchema,
   AgentReflectionCompletedEventSchema,
+  AgentSpawnedEventSchema,
+  AgentDestroyedEventSchema,
+  AgentRewardCalculatedEventSchema,
   // Add other internal schemas here
 ]);
 

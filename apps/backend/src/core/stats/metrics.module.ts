@@ -1,4 +1,5 @@
 import { Module, Provider } from '@nestjs/common';
+import { DbModule } from '../../db/db.module';
 import { IMetricsAdapter, METRICS_ADAPTER } from './adapters/metrics.adapter.interface';
 import { OlapAdapter } from './adapters/olap.adapter';
 import { TimeSeriesAdapter } from './adapters/time-series.adapter';
@@ -19,6 +20,7 @@ const metricsAdapterProviders: Provider[] = [
 
 @Module({
   // imports: [CoreModule], // Uncomment if EventBusModule is separate and needed
+  imports: [DbModule],
   providers: [
     StatsCollectorService,
     {

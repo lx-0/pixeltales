@@ -1,11 +1,10 @@
 import { Module } from '@nestjs/common';
+import { CoreModule } from '../../core/core.module';
+import { AuditoryPerceptionExtension } from './auditory-perception.extension';
 import { CAPABILITY_EXTENSION, ICapabilityExtension } from './capability.extension.interface';
 import { MotionControlExtension } from './motion-control.extension';
 import { SpeechOutputExtension } from './speech-output.extension';
-// Import Perception Extensions
-import { AuditoryPerceptionExtension } from './auditory-perception.extension';
 import { VisualPerceptionExtension } from './visual-perception.extension';
-// TODO: Import other extensions as they are created
 
 // List ACTION extension classes here
 const capabilityProviders = [
@@ -22,6 +21,7 @@ const perceptionProviders = [
 ];
 
 @Module({
+  imports: [CoreModule],
   providers: [
     // Provide all extensions so NestJS manages their lifecycle
     ...capabilityProviders,

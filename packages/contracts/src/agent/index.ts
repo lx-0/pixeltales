@@ -17,4 +17,5 @@ export * from './PlanSchemas';
 export * from './ReflectionSchemas';
 export * from './SensoryEvents';
 
+export * from './DebugEvents';
 export * from './SimulationEvents';

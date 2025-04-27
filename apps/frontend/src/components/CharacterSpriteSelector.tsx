@@ -18,7 +18,7 @@ import {
 import { addPathPrefix, getFrameStyle } from '@/lib/spritesheet';
 import { SPRITESHEETS, SPRITESHEET_STRUCTURES } from '@pixeltales/contracts';
 import { useState } from 'react';
-import { CharacterGenerationDialog } from './CharacterGenerationDialog';
+import { CharacterGenerationDialog } from './character-generator/CharacterGenerationDialog';
 
 // Simple presets for display
 const PREVIEW_SCALE = 0.5; // Scale down by half for the preview

@@ -84,6 +84,7 @@
         - 3.6.3 Implementation Details
         - 3.6.4 Notification Appearance
         - 3.6.5 Integration Points
+    - **3.7 In-Game Agent Mind Visualization**
 
 - **4. [Integration, Architecture & Performance](docs/agent-architecture/04-integration-architecture-performance.md)**
     - **4.1 Integration Layer**

@@ -39,7 +39,7 @@ export class StatsCollectorService implements OnModuleInit, OnModuleDestroy {
 
     metricEventTypes.forEach((eventType) => {
       try {
-        const sub = this.eventBus.subscribe<DomainEvent>(eventType, this.handleEvent.bind(this));
+        const sub = this.eventBus.subscribe(eventType, this.handleEvent.bind(this));
         this.subscriptions.push(sub);
         this.logger.log(`Subscribed to '${eventType}' events.`);
       } catch (error) {

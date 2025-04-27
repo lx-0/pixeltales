@@ -1,13 +1,16 @@
 import { API_BASE_URL, DEBUG_WEBSOCKET } from '@/config';
 import { LOGGER_CONTEXT_SHORTEN } from '@/lib/logger';
 import { Logger } from '@/utils/logger';
-import { SceneStateSnapshotSchema, type SceneStateSnapshot } from '@pixeltales/contracts';
+import { AgentDebugEventBroadcast } from '@pixeltales/contracts';
 import { io, Socket } from 'socket.io-client';
 
-type EventData = {
-  scene_state: SceneStateSnapshot;
+// EventData type for the Debug Gateway
+type DebugEventData = {
+  agent_event: AgentDebugEventBroadcast; // Use contract type
+  connection_ack: { message: string }; // Ack from gateway
+  messageAck: { received: unknown }; // Ack for messages sent TO gateway
   connect: void;
-  disconnect: void;
+  disconnect: string; // Disconnect reason is a string
   connect_error: Error;
 };
 
@@ -33,13 +36,13 @@ declare global {
 class SocketService {
   private static instance: SocketService;
   private socket: Socket | null = null;
-  private listeners: Map<keyof EventData, Set<(data: unknown) => void>> = new Map();
+  private listeners: Map<keyof DebugEventData, Set<(data: unknown) => void>> = new Map();
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
-  private readonly RECONNECT_DELAY = 2000; // 2 seconds
+  private readonly RECONNECT_DELAY = 3000; // Increase slightly
   private isConnecting = false;
-  private lastReceivedData: SceneStateSnapshot | null = null; // Store last received data for debugging
-  private loggerContext = LOGGER_CONTEXT_SHORTEN ? '📡' : this.constructor.name;
+  private lastReceivedData: AgentDebugEventBroadcast | null = null; // Use contract type
+  private loggerContext = LOGGER_CONTEXT_SHORTEN ? '📡-D' : 'DebugSocketService'; // Use correct name
 
   private constructor() {
     // Private constructor to enforce singleton
@@ -54,22 +57,20 @@ class SocketService {
 
   connect(): void {
     if (this.socket?.connected || this.isConnecting) {
-      Logger.info(
-        this.loggerContext,
-        'Socket already connected or connecting, skipping connection attempt',
-      );
+      Logger.info(this.loggerContext, 'Debug socket already connected/connecting');
       return;
     }
-
     this.isConnecting = true;
-    Logger.info(this.loggerContext, 'Attempting to connect to socket server...');
+    Logger.info(this.loggerContext, 'Attempting debug socket connection...');
 
     // In production, use relative path to ensure connection goes through nginx
     const url = process.env.NODE_ENV === 'production' ? undefined : API_BASE_URL;
+    const debugNamespaceUrl = `${url}/debug`; // Connect to the /debug namespace
+    Logger.info(this.loggerContext, `Connecting to: ${debugNamespaceUrl}`);
 
-    this.socket = io(url, {
-      path: '/socket.io',
-      transports: ['polling', 'websocket'],
+    this.socket = io(debugNamespaceUrl, {
+      path: '/socket.io', // Standard path
+      transports: ['websocket'], // Prefer websocket
       autoConnect: true,
       reconnection: true,
       reconnectionAttempts: this.MAX_RECONNECT_ATTEMPTS,
@@ -77,31 +78,22 @@ class SocketService {
       timeout: 10000,
     });
 
-    // Debug all socket events
-    this.setupDebugListeners();
+    // Remove existing listeners before adding new ones to prevent duplicates on reconnect
+    this.socket.off();
+    this.setupDebugListeners(); // Re-setup base listeners
 
+    // --- Standard Connection Listeners ---
     this.socket.on('connect', () => {
-      // Internal listener: Handles raw connect event from Socket.IO
-      // Updates internal state and notifies application listeners.
-      Logger.info(this.loggerContext, `Connected to server with ID: ${this.socket?.id}`);
-      Logger.info(this.loggerContext, '🟢 SOCKET CONNECTED:', { sid: this.socket?.id });
-
+      Logger.info(this.loggerContext, `🟢 Connected to Debug Gateway with ID: ${this.socket?.id}`);
       this.reconnectAttempts = 0;
       this.isConnecting = false;
-      this.notifyListeners('connect', undefined);
+      // Don't notify general 'connect' listeners, use 'connection_ack' instead
     });
 
     this.socket.on('connect_error', (error) => {
-      // Internal listener: Handles raw connection error from Socket.IO
-      // Manages reconnect attempts and notifies application listeners.
-      Logger.error(this.loggerContext, `Connection error: ${error.message}`);
-      Logger.error(this.loggerContext, '🔴 SOCKET CONNECTION ERROR:', {
-        message: error.message,
-      });
-
+      Logger.error(this.loggerContext, `🔴 Debug Connection error: ${error.message}`);
       this.reconnectAttempts++;
       this.notifyListeners('connect_error', error);
-
       if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {
         Logger.error(
           this.loggerContext,
@@ -117,13 +109,9 @@ class SocketService {
     });
 
     this.socket.on('disconnect', (reason) => {
-      // Internal listener: Handles raw disconnect event from Socket.IO
-      // Updates internal state and notifies application listeners.
-      Logger.info(this.loggerContext, `Disconnected from server. Reason: ${reason}`);
-      Logger.warn(this.loggerContext, '🔴 SOCKET DISCONNECTED:', { reason });
-
+      Logger.info(this.loggerContext, `🔴 Disconnected from Debug Gateway. Reason: ${reason}`);
       this.isConnecting = false;
-      this.notifyListeners('disconnect', undefined);
+      this.notifyListeners('disconnect', reason); // Pass reason string
       if (reason === 'io server disconnect') {
         Logger.info(
           this.constructor.name,
@@ -134,46 +122,26 @@ class SocketService {
     });
 
     this.socket.on('error', (error) => {
-      // Internal listener: Handles generic socket errors.
-      Logger.error(this.loggerContext, `Socket error: ${error}`);
-      Logger.error(this.loggerContext, '🔴 SOCKET ERROR:', error);
+      Logger.error(this.loggerContext, `🔴 Debug Socket error: ${error}`);
       this.isConnecting = false;
     });
 
-    this.socket.on('scene_state', (stateUnparsed: SceneStateSnapshot) => {
-      const result = SceneStateSnapshotSchema.safeParse(stateUnparsed);
-      if (!result.success) {
-        Logger.error(this.loggerContext, '🔴 SOCKET ERROR:', result.error);
-        return;
-      }
-      const state = result.data;
+    // --- Custom Event Listeners for Debug Gateway ---
+    this.socket.on('connection_ack', (data: { message: string }) => {
+      Logger.info(this.loggerContext, `🟢 Received connection ack: ${data.message}`);
+      this.notifyListeners('connection_ack', data);
+    });
 
-      // Internal listener: Handles raw 'scene_state' event from Socket.IO server.
-      // Caches the data and notifies application listeners.
-      Logger.info(this.loggerContext, '📥 Received scene state update');
-      Logger.info(this.loggerContext, 'RECEIVED SCENE STATE:', {
-        valid: state ? 'Valid data' : 'Empty data',
-      });
-      Logger.info(this.loggerContext, 'SCENE STATE CHARACTERS:', {
-        count: state?.characters ? Object.keys(state.characters).length : 0,
-      });
-      if (state?.characters) {
-        Logger.info(this.loggerContext, 'SCENE STATE CHARACTERS:', {
-          count: Object.keys(state.characters).length,
-        });
-        Logger.info(this.loggerContext, 'SCENE STATE CHARACTERS TABLE:', {
-          characters: Object.keys(state.characters).map((id) => ({
-            id,
-            name: state.characters[id]?.name,
-            direction: state.characters[id]?.direction,
-            action: state.characters[id]?.action,
-            position: JSON.stringify(state.characters[id]?.position),
-          })),
-        });
-      }
+    this.socket.on('agent_event', (data: AgentDebugEventBroadcast) => {
+      // TODO: Add proper validation using a Zod schema if contracts define one
+      Logger.info(this.loggerContext, `📥 Received agent event: ${data.type}`);
+      this.lastReceivedData = data; // Store last received data
+      this.notifyListeners('agent_event', data);
+    });
 
-      this.lastReceivedData = state;
-      this.notifyListeners('scene_state', state);
+    this.socket.on('messageAck', (data: { received: unknown }) => {
+      Logger.info(this.loggerContext, `Received message ack:`, data);
+      this.notifyListeners('messageAck', data);
     });
   }
 
@@ -225,7 +193,7 @@ class SocketService {
   checkSocketHealth(): {
     connected: boolean;
     socketId: string | null;
-    lastData: SceneStateSnapshot | null;
+    lastData: AgentDebugEventBroadcast | null;
     listeners: Record<string, number>;
   } {
     const listenerCounts: Record<string, number> = {};
@@ -240,7 +208,7 @@ class SocketService {
       listeners: listenerCounts,
     };
 
-    Logger.info(this.loggerContext, '🔍 SOCKET HEALTH CHECK:', health);
+    Logger.info(this.loggerContext, '🔍 DEBUG SOCKET HEALTH CHECK:', health);
     return health;
   }
 
@@ -252,7 +220,10 @@ class SocketService {
     }
   }
 
-  addListener<K extends keyof EventData>(event: K, callback: (data: EventData[K]) => void): void {
+  addListener<K extends keyof DebugEventData>(
+    event: K,
+    callback: (data: DebugEventData[K]) => void,
+  ): void {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
@@ -265,9 +236,9 @@ class SocketService {
     }
   }
 
-  removeListener<K extends keyof EventData>(
+  removeListener<K extends keyof DebugEventData>(
     event: K,
-    callback: (data: EventData[K]) => void,
+    callback: (data: DebugEventData[K]) => void,
   ): void {
     this.listeners.get(event)?.delete(callback as (data: unknown) => void);
     if (DEBUG_WEBSOCKET) {
@@ -278,7 +249,7 @@ class SocketService {
     }
   }
 
-  private notifyListeners<K extends keyof EventData>(event: K, data: EventData[K]): void {
+  private notifyListeners<K extends keyof DebugEventData>(event: K, data: DebugEventData[K]): void {
     if (DEBUG_WEBSOCKET) {
       const count = this.listeners.get(event)?.size ?? 0;
       Logger.info(
@@ -290,6 +261,16 @@ class SocketService {
     this.listeners.get(event)?.forEach((callback) => callback(data));
   }
 
+  // Method to send data TO the debug gateway (if needed)
+  sendMessageToServer(eventName: string, payload: unknown): void {
+    if (!this.socket || !this.socket.connected) {
+      Logger.warn(this.loggerContext, 'Cannot send message, socket not connected.');
+      return;
+    }
+    Logger.info(this.loggerContext, `📤 Sending [${eventName}] to server:`, { payload });
+    this.socket.emit(eventName, payload);
+  }
+
   // Debug method to force reconnection
   forceReconnect(): void {
     Logger.warn(this.loggerContext, '🔄 FORCE RECONNECTING SOCKET');
@@ -299,17 +280,17 @@ class SocketService {
 }
 
 // Export a singleton instance
-export const socketService = SocketService.getInstance();
+export const debugSocketService = SocketService.getInstance();
 
 // Add global debug access
 if (typeof window !== 'undefined') {
   window.debugSocket = {
-    checkHealth: () => socketService.checkSocketHealth(),
-    forceReconnect: () => socketService.forceReconnect(),
-    instance: socketService,
+    checkHealth: () => debugSocketService.checkSocketHealth(),
+    forceReconnect: () => debugSocketService.forceReconnect(),
+    instance: debugSocketService,
   };
   Logger.info(
-    LOGGER_CONTEXT_SHORTEN ? '📡' : SocketService.name,
-    '🛠️ Socket debugger available as window.debugSocket',
+    LOGGER_CONTEXT_SHORTEN ? '📡-D' : 'DebugSocketService',
+    '🛠️ Debug socket debugger available as window.debugSocket',
   );
 }

@@ -12,6 +12,7 @@ import { MemoryModule } from './memory/memory.module';
 import { OntologyModule } from './ontology/ontology.module';
 import { PlannerModule } from './planner/planner.module';
 import { SelfModelingModule } from './self-modeling/self-modeling.module';
+import { ReflectionModule } from './reflection/reflection.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SelfModelingModule } from './self-modeling/self-modeling.module';
     CognitiveCycleModule,
     ActionModule,
     SimulationModule,
+    ReflectionModule,
     // CoreModule might be imported here if AgentService/Factory need core services directly,
     // but often CoreModule is imported at the AppModule level.
   ],

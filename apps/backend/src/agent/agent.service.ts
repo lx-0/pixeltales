@@ -1,9 +1,11 @@
 import { Inject, Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import {
   AgentConfig,
+  AgentDestroyedEventPayload,
   AgentDynamicState,
   AgentDynamicStateUpdatedPayload,
   AgentPerceptionEvent,
+  AgentSpawnedEventPayload,
   AgentState,
 } from '@pixeltales/contracts';
 import { setInterval } from 'timers';
@@ -118,6 +120,22 @@ export class AgentService implements OnModuleInit {
     this.logger.log(`Spawning agent ${id}...`);
     // Store the runtime state
     this.activeAgents.set(id, initialAgentState);
+
+    // Publish agent spawned event
+    try {
+      const payload: AgentSpawnedEventPayload = {
+        agentId: id,
+      };
+      const event = EventBusService.createEvent(
+        AgentService.name,
+        'agent.lifecycle.spawned',
+        payload,
+      );
+      this.eventBus.publish(event);
+      this.logger.verbose(`[${id}] Published agent.lifecycle.spawned`);
+    } catch (error) {
+      this.logger.error(`[${id}] Failed to publish agent.lifecycle.spawned event`, error);
+    }
 
     // Start the agent's background processing loop
     this.startAgentBackgroundLoop(id);
@@ -273,6 +291,22 @@ export class AgentService implements OnModuleInit {
 
       // TODO: Perform any final cleanup (e.g., save final state to DB?)
       this.activeAgents.delete(agentId);
+      // Publish agent destroyed event
+      try {
+        const payload: AgentDestroyedEventPayload = {
+          agentId: agentId,
+          reason: 'despawned',
+        };
+        const event = EventBusService.createEvent(
+          AgentService.name,
+          'agent.lifecycle.destroyed',
+          payload,
+        );
+        this.eventBus.publish(event);
+        this.logger.verbose(`[${agentId}] Published agent.lifecycle.destroyed`);
+      } catch (error) {
+        this.logger.error(`[${agentId}] Failed to publish agent.lifecycle.destroyed event`, error);
+      }
       this.logger.log(`Agent ${agentId} despawned and removed from active pool.`);
     } else {
       this.logger.warn(`Agent with ID ${agentId} not found for despawning.`);

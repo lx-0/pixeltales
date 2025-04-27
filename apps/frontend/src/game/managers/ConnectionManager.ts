@@ -1,4 +1,4 @@
-import { socketService } from '@/services/socket';
+import { debugSocketService } from '@/services/socket';
 import { Scene } from 'phaser';
 
 export class ConnectionManager {
@@ -25,7 +25,7 @@ export class ConnectionManager {
     this.setupEventListeners();
 
     // Check initial connection status immediately after listeners are set up
-    const health = socketService.checkSocketHealth();
+    const health = debugSocketService.checkSocketHealth();
     this.isConnected = health.connected;
     this.reconnectAttempt = 0; // Reset attempts on initial check
     this.updateConnectionStatus(); // Update UI based on current health
@@ -34,9 +34,9 @@ export class ConnectionManager {
   private setupEventListeners(): void {
     // Listen for connection events
     // Purpose: Update the UI connection status indicator based on socket lifecycle.
-    socketService.addListener('connect', this.onConnect);
-    socketService.addListener('disconnect', this.onDisconnect);
-    socketService.addListener('connect_error', this.onConnectError);
+    debugSocketService.addListener('connect', this.onConnect);
+    debugSocketService.addListener('disconnect', this.onDisconnect);
+    debugSocketService.addListener('connect_error', this.onConnectError);
   }
 
   private readonly onConnect = () => {
@@ -88,9 +88,9 @@ export class ConnectionManager {
   }
 
   destroy(): void {
-    socketService.removeListener('connect', this.onConnect);
-    socketService.removeListener('disconnect', this.onDisconnect);
-    socketService.removeListener('connect_error', this.onConnectError);
+    debugSocketService.removeListener('connect', this.onConnect);
+    debugSocketService.removeListener('disconnect', this.onDisconnect);
+    debugSocketService.removeListener('connect_error', this.onConnectError);
     this.connectionStatus.destroy();
   }
 }

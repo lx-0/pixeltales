@@ -2,9 +2,10 @@ import { Module } from '@nestjs/common';
 import { AgentLlmModule } from '../llm/agent-llm.module';
 import { HtnPlannerService } from './htn-planner.service';
 import { PLANNER_SERVICE } from './planner.interface';
+import { MemoryModule } from '../memory/memory.module';
 
 @Module({
-  imports: [AgentLlmModule],
+  imports: [AgentLlmModule, MemoryModule],
   providers: [
     HtnPlannerService, // Concrete implementation
     // Provide the interface

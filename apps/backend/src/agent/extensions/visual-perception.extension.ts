@@ -1,32 +1,15 @@
 import { Inject, Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import {
-  AgentMovedPayload, // Import specific payload type
-  AgentMovedSimulationState,
-} from '@pixeltales/contracts';
-import { AgentService } from '../../agent/agent.service';
+import { AgentMovedPayload, AgentMovedSimulationState } from '@pixeltales/contracts';
 import { EVENT_BUS, IEventBus } from '../../core/event-bus.interface';
 import { EventBusService } from '../../core/event-bus.service';
 import { IPerceptionExtension } from './perception.extension.interface';
-
-// Temporary placeholders
-type VisualData = any; // Define based on simulation output (e.g., scene graph, object list)
-
-// Placeholder type for position
-type AgentPosition = { x: number; y: number };
 
 @Injectable()
 export class VisualPerceptionExtension implements IPerceptionExtension, OnModuleInit {
   private readonly logger = new Logger(VisualPerceptionExtension.name);
   readonly perceptionType = 'visual';
 
-  // Placeholder for agent positions/visibility state
-  private agentPositions = new Map<string, AgentPosition>();
-  private readonly VISUAL_RANGE_SQUARED = 100 * 100; // Example visual range
-
-  constructor(
-    @Inject(EVENT_BUS) private readonly eventBus: IEventBus,
-    private readonly agentService: AgentService, // To get agent list/positions
-  ) {}
+  constructor(@Inject(EVENT_BUS) private readonly eventBus: IEventBus) {}
 
   onModuleInit() {
     this.logger.log(
@@ -46,41 +29,43 @@ export class VisualPerceptionExtension implements IPerceptionExtension, OnModule
     const movedAgentId = event.payload.agentId;
     const newPosition = event.payload.newPosition;
 
-    // Update internal state
-    this.agentPositions.set(movedAgentId, newPosition);
-    this.logger.debug(
-      `Processing raw move event for ${movedAgentId} to (${newPosition.x}, ${newPosition.y})`,
-    );
+    // Get potential viewers FROM THE EVENT PAYLOAD
+    const perceiverContextList = event.payload.perceiverContextList ?? [];
 
-    const activeAgents = this.agentService.listActiveAgents();
-    const potentialViewers = activeAgents.filter((id) => id !== movedAgentId);
+    if (perceiverContextList.length === 0) {
+      this.logger.verbose('No potential viewers provided in move event payload.');
+      return; // Nothing to do if no potential viewers
+    }
 
-    for (const viewerAgentId of potentialViewers) {
-      const viewerPosition = this.agentPositions.get(viewerAgentId) ?? { x: -1000, y: -1000 };
+    // Process each potential viewer provided by the simulation
+    for (const context of perceiverContextList) {
+      const viewerAgentId = context.perceiverAgentId;
+      const distance = context.distance; // Available if needed
 
-      // Simple distance check for visibility (placeholder)
-      const dx = newPosition.x - viewerPosition.x;
-      const dy = newPosition.y - viewerPosition.y;
-      const distSq = dx * dx + dy * dy;
+      // Skip if viewer is the one who moved (shouldn't happen if sim excludes)
+      if (viewerAgentId === movedAgentId) continue;
 
-      if (distSq <= this.VISUAL_RANGE_SQUARED) {
-        this.logger.verbose(`Agent ${viewerAgentId} is within visual range of ${movedAgentId}`);
-        // Construct the specific perception payload
-        const perceptionPayload: AgentMovedPayload = {
-          sourceVisualId: movedAgentId, // Agent causing the perception (the one who moved)
-          visualId: movedAgentId, // Agent who actually moved
-          newPosition: newPosition,
-          metadata: event.payload.metadata, // Pass original metadata
-        };
-        // Generate the targeted perception event
-        const perceptionEvent = EventBusService.createEvent(
-          this.constructor.name,
-          'perception.agent_moved',
-          perceptionPayload,
-          `agent.${viewerAgentId}.perception`,
-        );
-        this.eventBus.publish(perceptionEvent);
-      }
+      this.logger.verbose(
+        `Agent ${viewerAgentId} can potentially see ${movedAgentId} (Distance: ${distance?.toFixed(1) ?? 'N/A'})`,
+      );
+
+      // Construct the specific perception payload
+      const perceptionPayload: AgentMovedPayload = {
+        sourceVisualId: movedAgentId, // Agent causing the perception (the one who moved)
+        visualId: movedAgentId, // Agent who actually moved
+        newPosition: newPosition,
+        // Pass original metadata + distance from context
+        metadata: { ...(event.payload.metadata ?? {}), distance: distance },
+      };
+
+      // Generate the targeted perception event
+      const perceptionEvent = EventBusService.createEvent(
+        this.constructor.name,
+        'perception.agent_moved', // Correct perception event type
+        perceptionPayload,
+        `agent.${viewerAgentId}.perception`, // Topic for targeted delivery
+      );
+      this.eventBus.publish(perceptionEvent);
     }
   }
 
