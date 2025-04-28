@@ -3,7 +3,7 @@ import { VoidApiResponse } from '@yesterday-ai/api-contracts';
 import { JwtUser, SupabaseSession, SupabaseUser } from '@yesterday-ai/auth-contracts';
 import { Logger } from '@yesterday-ai/logger-frontend';
 import { User } from '@yesterday-ai/user-contracts';
-import { AuthApiService, UserApiService } from '../api';
+import { AuthApiService, userApi } from '../api';
 import { initializeSupabaseAuth, supabaseAuth, SupabaseAuthConfig } from './supabase-auth';
 
 // Helper to identify the specific Supabase "no session" error
@@ -102,6 +102,9 @@ export class AuthService {
       Logger.info('AuthService', `Auth state changed: ${event}, user: ${!!session?.user}`);
       this.currentSessionToken = session?.access_token ?? null;
       this.currentSupabaseUser = session?.user ?? null;
+      if (this.authApiInstance) {
+        this.authApiInstance.authHeaderToken = this.currentSessionToken;
+      }
 
       if (session?.user) {
         // Only sync if the user wasn't already logged in or the ID changed
@@ -241,7 +244,7 @@ export class AuthService {
       );
 
       // Use the dedicated API service
-      const syncedUser = await new UserApiService(this.getApi().getOptions()).syncProfile(userData);
+      const syncedUser = await userApi.syncProfile(userData);
 
       this.currentUser = syncedUser;
       Logger.info(

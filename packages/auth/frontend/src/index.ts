@@ -1,3 +1,6 @@
+// Import shadcn-ui styles
+import '@yesterday-ai/shadcn-ui/styles.css';
+
 export * from './api';
 export { default as LoginButton } from './components/LoginButton';
 export { default as UserAvatar } from './components/UserAvatar';

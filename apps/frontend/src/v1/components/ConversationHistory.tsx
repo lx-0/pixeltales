@@ -3,6 +3,7 @@ import type { SceneStateSnapshot } from '@pixeltales/contracts';
 import { Button } from '@yesterday-ai/shadcn-ui';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import styles from './ConversationHistory.module.css';
 import { SceneProposalForm } from './SceneProposalForm';
 
 interface ConversationHistoryProps {
@@ -86,7 +87,7 @@ export default function ConversationHistory({
       {isExpanded && (
         <div
           ref={conversationRef}
-          className="flex-grow p-2 sm:p-4 space-y-2 sm:space-y-3 overflow-y-auto overflow-x-hidden w-full min-w-0 conversation-history-container"
+          className={`flex-grow p-2 sm:p-4 space-y-2 sm:space-y-3 w-full min-w-0 ${styles.container}`}
           style={{ height: '400px', maxHeight: '100%' }} // Respect parent height
         >
           {scene.messages.map((message, index) => {

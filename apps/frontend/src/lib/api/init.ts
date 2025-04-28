@@ -21,6 +21,7 @@ export const initApiServices = () => {
   Logger.info('initApiServices', 'Initializing API services...', { supabaseConfig });
   scenesApi.options = apiOptions;
   configApi.options = apiOptions;
+  userApi.options = apiOptions;
 
   const authApiOptions: IBaseApiServiceOptions = {
     ...apiOptions,

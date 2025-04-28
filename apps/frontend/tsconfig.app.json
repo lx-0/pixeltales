@@ -26,6 +26,10 @@
     /* Other Options */
     "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo"
   },
-  "include": ["src", "../../packages/spritesheet/frontend/src/api/spritesheet-api.ts"],
+  "include": [
+    "src",
+    "../../packages/supabase-storage/frontend/src/services",
+    "../../packages/supabase-storage/frontend/src/components"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

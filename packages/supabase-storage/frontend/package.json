@@ -1,5 +1,5 @@
 {
-  "name": "@yesterday-ai/auth-frontend",
+  "name": "@yesterday-ai/supabase-storage-frontend",
   "version": "0.0.1",
   "private": true,
   "type": "module",
@@ -13,19 +13,11 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
-    "@pixeltales/contracts": "workspace:^",
-    "@supabase/auth-helpers-react": "^0.5.0",
-    "@supabase/auth-ui-react": "^0.4.7",
-    "@supabase/auth-ui-shared": "^0.1.8",
-    "@supabase/supabase-js": "^2.49.4",
-    "@yesterday-ai/api-contracts": "workspace:^",
     "@yesterday-ai/api-frontend": "workspace:^",
-    "@yesterday-ai/auth-contracts": "workspace:^",
+    "@yesterday-ai/auth-frontend": "workspace:^",
     "@yesterday-ai/logger-frontend": "workspace:^",
     "@yesterday-ai/shadcn-ui": "workspace:^",
-    "@yesterday-ai/spritesheet-contracts": "workspace:^",
-    "@yesterday-ai/spritesheet-frontend": "workspace:^",
-    "@yesterday-ai/user-contracts": "workspace:^",
+    "@yesterday-ai/utils-shared": "workspace:^",
     "lucide-react": "^0.469.0",
     "react": "^19.0.0",
     "zod": "^3.24.2"

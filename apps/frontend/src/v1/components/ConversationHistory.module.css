@@ -1,0 +1,36 @@
+/* Conversation history scrollbar styles */
+.container {
+  height: 400px;
+  max-height: 100%;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0.5rem 1rem;
+}
+
+.container::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.container::-webkit-scrollbar-track {
+  background: #111827; /* gray-900 */
+  border-radius: 4px;
+  margin: 4px;
+}
+
+.container::-webkit-scrollbar-thumb {
+  background: #374151; /* gray-700 */
+  border-radius: 4px;
+  border: 1px solid #111827; /* border color matches track */
+}
+
+.container::-webkit-scrollbar-thumb:hover {
+  background: #4b5563; /* gray-600 */
+}
+
+/* Firefox */
+.container {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 #111827; /* thumb track */
+  padding-right: 4px; /* Add some padding for the scrollbar */
+}

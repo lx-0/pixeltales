@@ -1,4 +1,5 @@
-import { authService } from '@yesterday-ai/auth-frontend';
+import { authApi } from '@yesterday-ai/auth-frontend';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Skeleton } from '@yesterday-ai/shadcn-ui';
 import { toBoolean } from '@yesterday-ai/utils-shared';
 import { ImageIcon } from 'lucide-react';
@@ -40,7 +41,9 @@ const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
 
     const loadImage = async () => {
       if (toBoolean(import.meta.env.VITE_DEBUG_DASHBOARD_IMAGE)) {
-        console.log(`[DEBUG:${AuthenticatedImage.name}] Loading image:`, src);
+        Logger.debug(AuthenticatedImage.name, `[DEBUG:${AuthenticatedImage.name}] Loading image:`, {
+          src,
+        });
       }
       if (!src) {
         setLoading(false);
@@ -51,7 +54,9 @@ const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
 
       if (src.startsWith('data:')) {
         if (toBoolean(import.meta.env.VITE_DEBUG_DASHBOARD_IMAGE)) {
-          console.log(`[DEBUG:${AuthenticatedImage.name}] Data URL:`, src);
+          Logger.debug(AuthenticatedImage.name, `[DEBUG:${AuthenticatedImage.name}] Data URL:`, {
+            src,
+          });
         }
         setImageUrl(src);
       } else {
@@ -65,16 +70,15 @@ const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         setError(false);
 
         if (toBoolean(import.meta.env.VITE_DEBUG_DASHBOARD_IMAGE)) {
-          console.log(
+          Logger.debug(
+            AuthenticatedImage.name,
             `[DEBUG:${AuthenticatedImage.name}] Fetching remote image with authentication:`,
-            src,
+            { src },
           );
         }
 
         // Make authenticated request
-        const response = await new SupabaseStorageApi(authService.getApi().getOptions()).getFile(
-          src,
-        );
+        const response = await new SupabaseStorageApi(authApi.getOptions()).getFile(src);
 
         // Create a blob URL from the response
         if (isMounted && response) {
@@ -83,7 +87,7 @@ const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
           setLoading(false);
         }
       } catch (err) {
-        console.error('Error fetching authenticated image:', err);
+        Logger.error(AuthenticatedImage.name, 'Error fetching authenticated image:', err);
         if (isMounted) {
           setError(true);
           setLoading(false);

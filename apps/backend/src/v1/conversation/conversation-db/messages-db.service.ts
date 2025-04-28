@@ -1,6 +1,5 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { DbMessage, messagesTable, NewDbMessage } from '@pixeltales/database';
-import { randomUUID } from 'crypto';
+import { DbMessage, messagesTable, NewDbMessage, uuid } from '@pixeltales/database';
 import { eq } from 'drizzle-orm';
 import { PinoLogger } from 'nestjs-pino';
 import { DatabaseSchema, DRIZZLE_INSTANCE } from '../../../db/drizzle.provider';
@@ -20,7 +19,7 @@ export class MessagesDbService {
   async create(messageData: Omit<NewDbMessage, 'id'>): Promise<DbMessage> {
     const [insertedMessage] = await this.db
       .insert(messagesTable)
-      .values({ ...messageData, id: randomUUID() })
+      .values({ ...messageData, id: uuid() })
       .returning();
 
     if (!insertedMessage) {

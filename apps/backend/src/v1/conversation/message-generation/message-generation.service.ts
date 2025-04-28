@@ -8,9 +8,9 @@ import {
   NewMessageV2,
   SceneConfig,
   SceneStateSnapshot,
+  uuid,
 } from '@pixeltales/contracts';
 import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
-import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
 import { ConversationSystemMessageVars, LlmService } from '../../llm/llm.service';
 import { SceneStateService } from '../../scene/scene-state/scene-state.service';
@@ -71,7 +71,7 @@ export class MessageGenerationService {
     }
 
     // Generate a trace ID for this message generation
-    const traceId = randomUUID().split('-')[0];
+    const traceId = uuid().split('-')[0];
     let lastError: Error | null = null;
     let retryCount = 0;
     const maxRetries = 3;

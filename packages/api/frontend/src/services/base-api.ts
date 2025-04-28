@@ -4,7 +4,7 @@ import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { z } from 'zod';
 
 export interface IBaseApiServiceOptions {
-  baseURL: string;
+  baseURL?: string;
   authHeaderToken?: string;
   onAuthHeaderTokenChange?: (token: string | null) => void;
 }
@@ -16,16 +16,15 @@ export interface IBaseApiServiceOptions {
 export class BaseApiService {
   protected readonly api: AxiosInstance;
   protected readonly context: string;
-  protected _baseURL: string;
+  protected _baseURL: string | undefined;
 
   // Auth header token
   private _authHeaderToken: string | null = null;
-  private authHeaderTokenRequestInterceptorId: number | null = null;
   private onAuthHeaderTokenChangeCallback: ((token: string | null) => void) | null = null;
 
   constructor(context: string, options?: IBaseApiServiceOptions) {
     this.context = context;
-    this._baseURL = options?.baseURL ?? '';
+    this._baseURL = options?.baseURL;
     this._authHeaderToken = options?.authHeaderToken ?? null;
     this.onAuthHeaderTokenChangeCallback = options?.onAuthHeaderTokenChange ?? null;
     this.api = axios.create({
@@ -50,11 +49,10 @@ export class BaseApiService {
     );
   }
 
-  set baseURL(baseURL: string) {
+  set baseURL(baseURL: string | undefined) {
     this._baseURL = baseURL;
     this.api.defaults.baseURL = baseURL;
     Logger.debug(this.context, `🔄 Base URL set to: ${baseURL}`);
-    // this.api.options. = baseURL;
   }
 
   set options(options: IBaseApiServiceOptions) {
@@ -75,31 +73,15 @@ export class BaseApiService {
     if (token === this._authHeaderToken) {
       return;
     }
-    Logger.debug(
-      this.context,
-      `Setting authHeaderToken to: ${token} (was: ${this._authHeaderToken})`,
-    );
+    Logger.debug(this.context, `🔑 Setting header auth token`);
     this._authHeaderToken = token;
 
     if (this._authHeaderToken) {
-      this.authHeaderTokenRequestInterceptorId = this.api.interceptors.request.use(
-        async (config) => {
-          config.headers.Authorization = `Bearer ${this._authHeaderToken}`;
-          Logger.info(this.context, '🔑 Auth interceptor ACTIVATED: Injected header auth token.');
-          return config;
-        },
-        (error) => {
-          Logger.error(this.context, '❌ Auth Request Interceptor Error:', error);
-          return Promise.reject(error);
-        },
-      );
-      Logger.info(this.context, '✅ Auth interceptor ENABLED.');
+      this.api.defaults.headers.common.Authorization = `Bearer ${this._authHeaderToken}`;
+      Logger.info(this.context, `🔑 Auth header token set to: ${this._authHeaderToken}`);
     } else {
-      if (this.authHeaderTokenRequestInterceptorId) {
-        this.api.interceptors.request.eject(this.authHeaderTokenRequestInterceptorId);
-        this.authHeaderTokenRequestInterceptorId = null;
-      }
-      Logger.info(this.context, '⭕️ Auth interceptor DISABLED.');
+      this.api.defaults.headers.common.Authorization = undefined;
+      Logger.info(this.context, '⭕️ Auth header token removed.');
     }
 
     // Call the callback if it exists
