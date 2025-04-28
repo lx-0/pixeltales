@@ -14,20 +14,32 @@ export function MvpAppInitializer({ onEvent, children }: MvpAppInitializerProps)
   const socketInitializedRef = useRef(false);
 
   useEffect(() => {
+    let isMounted = true; // Track mount status for async operations
+    Logger.debug('MvpAppInitializer', 'useEffect - Running setup...');
+
     if (!socketInitializedRef.current) {
       Logger.debug('MvpAppInitializer', 'Initializing debug socket connection...');
       debugSocketService.connect();
       socketInitializedRef.current = true;
     }
 
+    // Define the handler within the effect scope
     const handleAgentEvent = (event: AgentDebugEventBroadcast) => {
-      onEvent(event);
+      if (isMounted) {
+        // Ensure component is still mounted when event arrives
+        Logger.info('MvpAppInitializer', 'Received agent_event', { type: event.type });
+        onEvent(event);
+      }
     };
 
+    Logger.debug('MvpAppInitializer', 'Adding listener for agent_event');
     debugSocketService.addListener('agent_event', handleAgentEvent);
 
+    // Cleanup function
     return () => {
+      isMounted = false;
       debugSocketService.removeListener('agent_event', handleAgentEvent);
+      // We don't necessarily disconnect the shared socket service here
       Logger.info('MvpAppInitializer', 'Cleaned up MVP listeners.');
     };
   }, [onEvent]);

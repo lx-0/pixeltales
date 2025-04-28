@@ -1,0 +1,37 @@
+{
+  "name": "@yesterday-ai/spritesheet-backend",
+  "version": "0.0.1",
+  "private": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "lint": "eslint .",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "@yesterday-ai/api-contracts": "workspace:^",
+    "@yesterday-ai/auth-backend": "workspace:^",
+    "@yesterday-ai/images-backend": "workspace:^",
+    "@yesterday-ai/llm-backend": "workspace:^",
+    "@yesterday-ai/spritesheet-contracts": "workspace:^",
+    "@yesterday-ai/utils-shared": "workspace:^",
+    "@nestjs/common": "^11.0.1",
+    "@nestjs/swagger": "^11.1.4"
+  },
+  "devDependencies": {
+    "eslint": "^9.24.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.2.3",
+    "typescript": "^5.5.4"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  }
+}

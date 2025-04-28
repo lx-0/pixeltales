@@ -77,7 +77,7 @@ export class NpcManager {
     Logger.info(NpcManager.name, `NPC ${npcId} created.`);
   }
 
-  update(time: number, delta: number): void {
+  update(_time: number, _delta: number): void {
     // NPC update logic (e.g., simple patrol, idle animations)
   }
 

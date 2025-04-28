@@ -9,7 +9,7 @@ interface AgentMindVizProps {
  * Inspired by blueprint Section 3.7.
  * MVP: Just shows static layout and maybe last received event type.
  */
-export function AgentMindViz({ lastEventType, lastPayload }: AgentMindVizProps) {
+export function AgentMindViz({ lastEventType, lastPayload: _lastPayload }: AgentMindVizProps) {
   // Define subsystem areas (could be more complex later with positioning/styling)
   const subsystems = [
     'Perceptual System',

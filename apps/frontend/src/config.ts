@@ -4,6 +4,7 @@
 
 // API base URL from environment variable with fallback
 export const API_BASE_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
+export const API_BASE_HOST = import.meta.env.VITE_BACKEND_HOST || 'http://localhost:3000';
 
 // Supabase configuration
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;

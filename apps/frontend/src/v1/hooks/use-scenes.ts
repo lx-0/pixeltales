@@ -1,10 +1,14 @@
-import { scenesApi } from '@/lib/api';
+import { ScenesApiService } from '@/v1/lib/api';
 import { NewSceneConfig, SceneConfig } from '@pixeltales/contracts';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Logger } from '@yesterday-ai/logger-frontend';
 import { useCallback, useEffect, useState } from 'react';
 
 const VOTED_PROPOSALS_KEY = 'pixeltales:voted_proposals';
+
+const scenesApi = new ScenesApiService({
+  baseURL: import.meta.env.VITE_BACKEND_URL,
+});
 
 // Helper functions for vote persistence
 function getVotedProposals(): Set<SceneConfig['id']> {

@@ -22,6 +22,7 @@
       "@yesterday-ai/llm-backend": ["../../packages/llm/backend/dist/index.d.ts"],
       "@yesterday-ai/llm-contracts": ["../../packages/llm/contracts/dist/index.d.ts"],
       "@yesterday-ai/llm-shared": ["../../packages/llm/shared/dist/index.d.ts"],
+      "@yesterday-ai/spritesheet-backend": ["../../packages/spritesheet/backend/dist/index.d.ts"],
       "@yesterday-ai/user-contracts": ["../../packages/user/contracts/dist/index.d.ts"],
       "@yesterday-ai/user-database": ["../../packages/user/database/dist/index.d.ts"],
       "@yesterday-ai/utils-backend-nestjs": ["../../packages/utils/backend/nestjs/dist/index.d.ts"],

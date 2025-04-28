@@ -3,7 +3,6 @@ import 'reflect-metadata';
 // Export our own contracts
 export * from './agent';
 export * from './config';
-export * from './spritesheets';
 export * from './user';
 export * from './v1';
 

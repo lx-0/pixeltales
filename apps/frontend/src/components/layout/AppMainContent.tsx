@@ -8,8 +8,8 @@ interface AppMainContentProps {
 }
 
 export function AppMainContent({
-  isSideView,
-  setIsModalOpen,
+  isSideView: _isSideView,
+  setIsModalOpen: _setIsModalOpen,
   lastAgentEvent,
 }: AppMainContentProps) {
   return (

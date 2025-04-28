@@ -1,6 +1,6 @@
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
-import { Button } from '@/lib/shadcn-ui/button';
 import type { SceneStateSnapshot } from '@pixeltales/contracts';
+import { Button } from '@yesterday-ai/shadcn-ui';
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { SceneProposalForm } from './SceneProposalForm';

@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader } from '@/lib/shadcn-ui/card';
 import { SceneStateSnapshot } from '@pixeltales/contracts';
+import { Card, CardContent, CardHeader } from '@yesterday-ai/shadcn-ui';
 import { formatTime } from '@yesterday-ai/utils-shared';
 import { MessageSquare } from 'lucide-react';
 import { useMemo } from 'react';

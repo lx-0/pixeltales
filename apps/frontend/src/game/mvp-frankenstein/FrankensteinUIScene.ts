@@ -96,7 +96,7 @@ export class FrankensteinUIScene extends Scene {
     this.debugText?.destroy();
   }
 
-  override update(time: number, delta: number): void {
+  override update(_time: number, _delta: number): void {
     // UI update logic if needed
   }
 }

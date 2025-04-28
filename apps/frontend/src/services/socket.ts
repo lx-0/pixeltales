@@ -1,4 +1,4 @@
-import { API_BASE_URL, DEBUG_WEBSOCKET } from '@/config';
+import { API_BASE_HOST, DEBUG_WEBSOCKET } from '@/config';
 import { LOGGER_CONTEXT_SHORTEN } from '@/lib/logger';
 import { AgentDebugEventBroadcast } from '@pixeltales/contracts';
 import { Logger } from '@yesterday-ai/logger-frontend';
@@ -64,10 +64,11 @@ class SocketService {
     Logger.info(this.loggerContext, 'Attempting debug socket connection...');
 
     // In production, use relative path to ensure connection goes through nginx
-    const url = process.env.NODE_ENV === 'production' ? undefined : API_BASE_URL;
+    const url = process.env.NODE_ENV === 'production' ? undefined : API_BASE_HOST;
     const debugNamespaceUrl = `${url}/debug`; // Connect to the /debug namespace
     Logger.info(this.loggerContext, `Connecting to: ${debugNamespaceUrl}`);
 
+    // Connect directly to the namespace URL
     this.socket = io(debugNamespaceUrl, {
       path: '/socket.io', // Standard path
       transports: ['websocket'], // Prefer websocket
@@ -91,7 +92,7 @@ class SocketService {
     });
 
     this.socket.on('connect_error', (error) => {
-      Logger.error(this.loggerContext, `🔴 Debug Connection error: ${error.message}`);
+      Logger.error(this.loggerContext, `🔴 Debug Connection error: ${error.message}`, { error });
       this.reconnectAttempts++;
       this.notifyListeners('connect_error', error);
       if (this.reconnectAttempts >= this.MAX_RECONNECT_ATTEMPTS) {

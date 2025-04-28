@@ -68,7 +68,7 @@ export class AgentManager {
     Logger.info(AgentManager.name, `Agent sprite ${agentId} created.`);
   }
 
-  update(time: number, delta: number): void {
+  update(_time: number, _delta: number): void {
     // Agent sprite updates based on state (e.g., position, animation)
     // This will be driven by `updateAgentState` calls later
   }

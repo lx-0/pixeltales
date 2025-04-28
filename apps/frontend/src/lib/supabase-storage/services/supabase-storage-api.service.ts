@@ -1,11 +1,11 @@
-import { BaseApiService } from '@/lib/api/base-api';
+import { BaseApiService, IBaseApiServiceOptions } from '@yesterday-ai/api-frontend';
 
 /**
  * Service for scene-related API requests
  */
 export class SupabaseStorageApi extends BaseApiService {
-  constructor() {
-    super(SupabaseStorageApi.constructor.name);
+  constructor(options: IBaseApiServiceOptions) {
+    super(SupabaseStorageApi.constructor.name, options);
   }
 
   async getFile(url: string): Promise<Blob> {
@@ -14,6 +14,3 @@ export class SupabaseStorageApi extends BaseApiService {
     });
   }
 }
-
-// Export singleton instance
-export const supabaseStorageApi = new SupabaseStorageApi();

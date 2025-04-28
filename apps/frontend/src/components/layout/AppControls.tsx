@@ -1,5 +1,5 @@
-import { LoginButton, UserAvatar } from '@/lib/auth';
-import { Button } from '@/lib/shadcn-ui/button';
+import { LoginButton, UserAvatar } from '@yesterday-ai/auth-frontend';
+import { Button } from '@yesterday-ai/shadcn-ui';
 import { User } from '@yesterday-ai/user-contracts';
 import { Layout, Volume2, VolumeX } from 'lucide-react';
 

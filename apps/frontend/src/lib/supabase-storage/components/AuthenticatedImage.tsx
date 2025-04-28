@@ -1,8 +1,9 @@
-import { Skeleton } from '@/lib/shadcn-ui/skeleton';
+import { authService } from '@yesterday-ai/auth-frontend';
+import { Skeleton } from '@yesterday-ai/shadcn-ui';
 import { toBoolean } from '@yesterday-ai/utils-shared';
 import { ImageIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-import { supabaseStorageApi } from '../services/supabase-storage-api.service';
+import { SupabaseStorageApi } from '../services/supabase-storage-api.service';
 
 interface AuthenticatedImageProps {
   /**
@@ -71,7 +72,9 @@ const AuthenticatedImage: React.FC<AuthenticatedImageProps> = ({
         }
 
         // Make authenticated request
-        const response = await supabaseStorageApi.getFile(src);
+        const response = await new SupabaseStorageApi(authService.getApi().getOptions()).getFile(
+          src,
+        );
 
         // Create a blob URL from the response
         if (isMounted && response) {

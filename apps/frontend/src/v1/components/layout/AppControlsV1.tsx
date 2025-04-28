@@ -1,4 +1,4 @@
-import { Button } from '@/lib/shadcn-ui/button';
+import { Button } from '@yesterday-ai/shadcn-ui';
 import { SceneProposalForm } from '../SceneProposalForm';
 
 interface AppControlsV1Props {

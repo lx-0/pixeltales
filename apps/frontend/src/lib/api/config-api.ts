@@ -1,13 +1,13 @@
 import { ConfigOptions, ConfigOptionsSchema } from '@pixeltales/contracts';
+import { BaseApiService, IBaseApiServiceOptions } from '@yesterday-ai/api-frontend';
 import { Logger } from '@yesterday-ai/logger-frontend';
-import { BaseApiService } from './base-api';
 
 /**
  * Service for configuration-related API requests
  */
 export class ConfigApiService extends BaseApiService {
-  constructor() {
-    super('ConfigApi');
+  constructor(options?: IBaseApiServiceOptions) {
+    super('ConfigApi', options);
   }
 
   /**

@@ -1,0 +1,33 @@
+{
+  "name": "@yesterday-ai/api-frontend",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsup src/index.ts --format esm --dts",
+    "dev": "tsup src/index.ts --format esm --dts --watch",
+    "lint": "eslint .",
+    "clean": "rimraf dist .turbo"
+  },
+  "dependencies": {
+    "@yesterday-ai/api-contracts": "workspace:^",
+    "@yesterday-ai/logger-frontend": "workspace:^",
+    "axios": "^1.8.4",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "eslint": "^9.24.0",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.2.3",
+    "typescript": "^5.5.4",
+    "vite": "^6.2.0"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}

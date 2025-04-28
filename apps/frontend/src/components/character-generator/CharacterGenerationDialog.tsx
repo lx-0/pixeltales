@@ -1,16 +1,16 @@
-import { spritesheetApi } from '@/lib/api';
-import { Button } from '@/lib/shadcn-ui/button';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/lib/shadcn-ui/dialog';
-import { SpriteCoordinate, SPRITESHEET_STRUCTURES } from '@pixeltales/contracts';
-import { Logger } from '@yesterday-ai/logger-frontend';
+} from '@yesterday-ai/shadcn-ui';
+import { SpriteCoordinate, SPRITESHEET_STRUCTURES } from '@yesterday-ai/spritesheet-contracts';
 import { useEffect, useState } from 'react';
+import { spritesheetApi } from '../../../../../packages/spritesheet/frontend/src/api/spritesheet-api';
 import { AnimationSheetPreviewStep } from './generation-steps/AnimationSheetPreviewStep';
 import { CoordinatePreviewStep } from './generation-steps/CoordinatePreviewStep';
 import { FinalPreviewStep } from './generation-steps/FinalPreviewStep';

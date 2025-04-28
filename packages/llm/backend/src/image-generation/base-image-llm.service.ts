@@ -1,4 +1,4 @@
-import { SpriteCoordinate } from '@pixeltales/contracts';
+import { SpriteCoordinate } from '@yesterday-ai/spritesheet-contracts';
 import { PinoLogger } from 'nestjs-pino';
 /**
  * Options for image generation

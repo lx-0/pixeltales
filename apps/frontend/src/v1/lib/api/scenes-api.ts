@@ -1,4 +1,3 @@
-import { BaseApiService } from '@/lib/api';
 import {
   CommentPayload,
   CreateSceneConfigDTO,
@@ -13,6 +12,7 @@ import {
   VoidApiResponse,
   VoidApiResponseSchema,
 } from '@yesterday-ai/api-contracts';
+import { BaseApiService, IBaseApiServiceOptions } from '@yesterday-ai/api-frontend';
 import { Logger } from '@yesterday-ai/logger-frontend';
 import { z } from 'zod';
 
@@ -20,8 +20,8 @@ import { z } from 'zod';
  * Service for scene-related API requests
  */
 export class ScenesApiService extends BaseApiService {
-  constructor() {
-    super('ScenesApi');
+  constructor(options?: IBaseApiServiceOptions) {
+    super('ScenesApi', options);
   }
 
   /**

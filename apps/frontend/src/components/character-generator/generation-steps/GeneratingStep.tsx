@@ -1,4 +1,4 @@
-import { Label } from '@/lib/shadcn-ui/label';
+import { Label } from '@yesterday-ai/shadcn-ui';
 import { Loader2 } from 'lucide-react';
 
 interface GeneratingStepProps {

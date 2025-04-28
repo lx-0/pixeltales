@@ -1,12 +1,14 @@
-import { configApi } from '@/lib/api/config-api';
-import { ConfigOptions, LlmProvider } from '@pixeltales/contracts';
+import { ConfigApiService } from '@/lib/api/config-api';
+import { ConfigOptions } from '@pixeltales/contracts';
 import { useQuery } from '@tanstack/react-query';
+import { authService } from '@yesterday-ai/auth-frontend';
+import { LlmProvider } from '@yesterday-ai/llm-contracts';
 
 export function useConfig() {
   return useQuery<ConfigOptions>({
     queryKey: ['config'],
     queryFn: async () => {
-      return configApi.getConfig();
+      return new ConfigApiService(authService.getApi().getOptions()).getConfig();
     },
     staleTime: Infinity, // Cache forever as this rarely changes
   });

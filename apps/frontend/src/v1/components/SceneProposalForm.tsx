@@ -2,14 +2,17 @@ import { CharacterSpriteSelector } from '@/components/CharacterSpriteSelector';
 import { ColorPalette } from '@/components/ColorPalette';
 import { TILE_SIZE } from '@/game/mvp-frankenstein/config';
 import { getModelOptions, useConfig } from '@/hooks/use-config';
+import { useSceneProposal } from '@/v1/hooks/use-scenes';
+import { zodResolver } from '@hookform/resolvers/zod';
+import type { CharacterConfig, NewSceneConfig } from '@pixeltales/contracts';
+import { LlmConfig } from '@yesterday-ai/llm-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from '@/lib/shadcn-ui/accordion';
-import { Button } from '@/lib/shadcn-ui/button';
-import {
+  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -17,8 +20,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/lib/shadcn-ui/dialog';
-import {
   Form,
   FormControl,
   FormDescription,
@@ -26,9 +27,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/lib/shadcn-ui/form';
-import { Input } from '@/lib/shadcn-ui/input';
-import {
+  Input,
   Select,
   SelectContent,
   SelectGroup,
@@ -36,13 +35,9 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@/lib/shadcn-ui/select';
-import { Slider } from '@/lib/shadcn-ui/slider';
-import { Textarea } from '@/lib/shadcn-ui/textarea';
-import { useSceneProposal } from '@/v1/hooks/use-scenes';
-import { zodResolver } from '@hookform/resolvers/zod';
-import type { CharacterConfig, LlmConfig, NewSceneConfig } from '@pixeltales/contracts';
-import { Logger } from '@yesterday-ai/logger-frontend';
+  Slider,
+  Textarea,
+} from '@yesterday-ai/shadcn-ui';
 import { kebabCase } from '@yesterday-ai/utils-shared';
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';

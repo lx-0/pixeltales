@@ -1,11 +1,7 @@
 /**
  * API Services index file
- * Exports all API service instances and types
+ * Exports all API service instances
  */
 
-// Base API
-export { BaseApiService } from './base-api';
-
-// API services
-export { scenesApi, ScenesApiService } from '../../v1/lib/api/scenes-api';
-export { spritesheetApi, SpritesheetApiService } from './spritesheet-api';
+export * from './config-api';
+export * from './init';

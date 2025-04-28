@@ -1,7 +1,6 @@
-import { Label } from '@/lib/shadcn-ui/label';
-import { Textarea } from '@/lib/shadcn-ui/textarea';
-import { addPathPrefix, getFrameStyle } from '@/lib/spritesheet';
-import { SPRITESHEET_STRUCTURES, SPRITESHEETS } from '@pixeltales/contracts';
+import { Label, Textarea } from '@yesterday-ai/shadcn-ui';
+import { SPRITESHEET_STRUCTURES, SPRITESHEETS } from '@yesterday-ai/spritesheet-contracts';
+import { addPathPrefix, getFrameStyle } from '@yesterday-ai/spritesheet-frontend';
 import { Loader2 } from 'lucide-react';
 
 interface PromptStepProps {

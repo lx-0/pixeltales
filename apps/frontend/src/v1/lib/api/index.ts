@@ -4,4 +4,4 @@
  */
 
 // API services
-export { scenesApi, ScenesApiService } from './scenes-api';
+export { ScenesApiService } from './scenes-api';

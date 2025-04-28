@@ -1,5 +1,4 @@
-import { Input } from '@/lib/shadcn-ui/input';
-import { Label } from '@/lib/shadcn-ui/label';
+import { Input, Label } from '@yesterday-ai/shadcn-ui';
 import { Loader2 } from 'lucide-react';
 
 // TODO: Define this structure properly based on backend response and target format

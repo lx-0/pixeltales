@@ -1,4 +1,4 @@
-import { Button } from '@/lib/shadcn-ui/button';
+import { Button } from '@yesterday-ai/shadcn-ui';
 import {
   Dialog,
   DialogContent,
@@ -6,10 +6,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from '@/lib/shadcn-ui/dialog';
-import { useToast } from '@/lib/shadcn-ui/hooks/use-toast';
-import { ScrollArea } from '@/lib/shadcn-ui/scroll-area';
-import { Separator } from '@/lib/shadcn-ui/separator';
+} from '@yesterday-ai/shadcn-ui';
+import { useToast } from '@yesterday-ai/shadcn-ui';
+import { ScrollArea } from '@yesterday-ai/shadcn-ui';
+import { Separator } from '@yesterday-ai/shadcn-ui';
 import { useProposedScenes, useSceneVote, useVotedProposals } from '@/v1/hooks/use-scenes';
 import { SceneConfig } from '@pixeltales/contracts';
 import { ThumbsDown, ThumbsUp } from 'lucide-react';

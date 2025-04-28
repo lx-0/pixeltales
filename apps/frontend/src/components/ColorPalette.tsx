@@ -1,6 +1,4 @@
-import { Button } from '@/lib/shadcn-ui/button';
-import { Popover, PopoverContent, PopoverTrigger } from '@/lib/shadcn-ui/popover';
-import { cn } from '@/lib/utils';
+import { Button, Popover, PopoverContent, PopoverTrigger, cn } from '@yesterday-ai/shadcn-ui';
 import { Check, ChevronDown } from 'lucide-react';
 import { useState } from 'react';
 

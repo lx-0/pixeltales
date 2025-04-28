@@ -1,12 +1,10 @@
-import { Button } from '@/lib/shadcn-ui/button';
 import {
+  Button,
   FormControl,
   FormDescription,
   FormItem,
   FormLabel,
   FormMessage,
-} from '@/lib/shadcn-ui/form';
-import {
   Select,
   SelectContent,
   SelectGroup,
@@ -14,9 +12,9 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from '@/lib/shadcn-ui/select';
-import { addPathPrefix, getFrameStyle } from '@/lib/spritesheet';
-import { SPRITESHEETS, SPRITESHEET_STRUCTURES } from '@pixeltales/contracts';
+} from '@yesterday-ai/shadcn-ui';
+import { SPRITESHEETS, SPRITESHEET_STRUCTURES } from '@yesterday-ai/spritesheet-contracts';
+import { addPathPrefix, getFrameStyle } from '@yesterday-ai/spritesheet-frontend';
 import { useState } from 'react';
 import { CharacterGenerationDialog } from './character-generator/CharacterGenerationDialog';
 

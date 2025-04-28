@@ -1,6 +1,6 @@
-import { useAuth } from '@/lib/auth';
 import type { AgentDebugEventBroadcast, SceneStateSnapshot } from '@pixeltales/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useAuth } from '@yesterday-ai/auth-frontend';
 import { Logger } from '@yesterday-ai/logger-frontend';
 import { useEffect, useRef, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
@@ -12,8 +12,12 @@ import { AppHeader } from './components/layout/AppHeader';
 import { AppMainContent } from './components/layout/AppMainContent';
 import { useSound } from './hooks/use-sound';
 import { useViewMode } from './hooks/use-view-mode';
+import { initApiServices } from './lib/api';
 import { AppControlsV1 } from './v1/components/layout/AppControlsV1';
 import { AppMainContentV1 } from './v1/components/layout/AppMainContentV1';
+
+// --- Initialize API Services ---
+initApiServices();
 
 const queryClient = new QueryClient({
   defaultOptions: {
