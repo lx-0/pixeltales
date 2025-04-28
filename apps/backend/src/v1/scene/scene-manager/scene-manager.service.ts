@@ -2,10 +2,10 @@ import { Injectable, InternalServerErrorException, OnModuleInit } from '@nestjs/
 import { ConfigService } from '@nestjs/config';
 import { EventEmitter2, OnEvent } from '@nestjs/event-emitter';
 import { SceneConfig, SceneStateSnapshot, SceneStateSnapshotSchema } from '@pixeltales/database';
-import { toBoolean } from '@pixeltales/utils';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
+import { toBoolean } from '@yesterday-ai/utils-shared';
 import { PinoLogger } from 'nestjs-pino';
 import assert from 'node:assert';
-import { LOGGER_CONTEXT_SHORTEN } from '../../../common/logger/logger.const';
 import { CharactersService } from '../../characters/characters.service';
 import { ConversationOrchestratorService } from '../../conversation/conversation-orchestrator/conversation-orchestrator.service';
 import { EventsV1Gateway } from '../../events/events.gateway';

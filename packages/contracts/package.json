@@ -12,6 +12,8 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
+    "@yesterday-ai/llm-contracts": "workspace:^",
+    "@yesterday-ai/user-contracts": "workspace:^",
     "@supabase/supabase-js": "^2.49.4",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",

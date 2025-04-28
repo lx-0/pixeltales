@@ -1,5 +1,5 @@
-import { Logger } from '@/utils/logger';
 import { TILE_SIZE } from '@/v1/game/config';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 import { ConnectionManager } from './managers/ConnectionManager';
 import { HistoryManager } from './managers/HistoryManager';

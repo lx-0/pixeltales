@@ -1,4 +1,4 @@
-import { Logger } from '@/utils/logger';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Game } from 'phaser';
 import React, { useEffect, useRef } from 'react';
 

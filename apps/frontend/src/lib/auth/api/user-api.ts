@@ -1,6 +1,8 @@
 import { BaseApiService } from '@/lib/api';
-import { Logger } from '@/utils/logger';
-import { ApiResponseSchema, CreateUserDTO, User, UserSchema } from '@pixeltales/contracts';
+import { CreateUserDTO } from '@pixeltales/contracts';
+import { ApiResponseSchema } from '@yesterday-ai/api-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
+import { User, UserSchema } from '@yesterday-ai/user-contracts';
 
 /**
  * Service for user-related API requests

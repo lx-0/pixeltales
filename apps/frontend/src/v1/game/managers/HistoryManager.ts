@@ -1,5 +1,5 @@
-import { Logger } from '@/utils/logger';
 import type { SceneStateSnapshot } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 import { UIControlsManager } from './UIControlsManager';
 

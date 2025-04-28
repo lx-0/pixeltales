@@ -8,15 +8,14 @@ import { ConfigService } from '@nestjs/config';
 import {
   CharacterStructuredResponse,
   CharacterStructuredResponseSchema,
-  LlmConfig,
-  LlmProviderId,
   SceneConfig,
 } from '@pixeltales/contracts';
-import { getMessageFromUnknownError } from '@pixeltales/utils';
+import { stripUnsupportedZod } from '@yesterday-ai/llm-shared';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
+import { getMessageFromUnknownError } from '@yesterday-ai/utils-shared';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { LOGGER_CONTEXT_SHORTEN } from '../../common/logger/logger.const';
-import { stripUnsupportedZod } from '../../llm/strip-unsupported-zod.func';
+import { LlmConfig, LlmProviderId } from '@yesterday-ai/llm-contracts';
 
 // Define supported task types
 export type TaskType = 'conversation' | 'image_generation' | 'image_recognition';

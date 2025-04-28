@@ -1,5 +1,5 @@
-import { Logger } from '@/utils/logger';
 import { ConfigOptions, ConfigOptionsSchema } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { BaseApiService } from './base-api';
 
 /**

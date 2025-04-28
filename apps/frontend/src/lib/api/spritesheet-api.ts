@@ -1,7 +1,4 @@
-import { Logger } from '@/utils/logger';
 import {
-  ApiResponse,
-  ApiResponseSchema,
   CoordinatesResponse,
   CoordinatesResponseSchema,
   ExtractCoordinatesDto,
@@ -17,6 +14,8 @@ import {
   SpriteCoordinateDto,
   SpriteReference,
 } from '@pixeltales/contracts';
+import { ApiResponse, ApiResponseSchema } from '@yesterday-ai/api-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { BaseApiService } from './base-api';
 
 /**

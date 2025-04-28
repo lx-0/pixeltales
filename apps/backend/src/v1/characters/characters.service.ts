@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { SceneConfig } from '@pixeltales/database';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
 import { PinoLogger } from 'nestjs-pino';
-import { LOGGER_CONTEXT_SHORTEN } from '../../common/logger/logger.const';
 import { CharactersDbService } from './characters-db/characters-db.service';
 
 @Injectable()

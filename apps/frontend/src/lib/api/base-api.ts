@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@/config';
-import { Logger } from '@/utils/logger';
-import { ApiResponse } from '@pixeltales/contracts';
+import { ApiResponse } from '@yesterday-ai/api-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import axios, { AxiosError, AxiosInstance, AxiosRequestConfig } from 'axios';
 import { z } from 'zod';
 

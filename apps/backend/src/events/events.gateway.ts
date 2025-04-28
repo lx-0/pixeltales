@@ -6,8 +6,8 @@ import {
   WebSocketGateway,
   WebSocketServer,
 } from '@nestjs/websockets';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
 import { Server, Socket } from 'socket.io';
-import { LOGGER_CONTEXT_SHORTEN } from '../common/logger/logger.const';
 
 // Configure gateway options (e.g., CORS)
 @WebSocketGateway({

@@ -12,7 +12,6 @@ import {
   semanticFacts,
   semanticRelations,
 } from './schema';
-import { usersTable } from './schema/user';
 import {
   charactersTable,
   messagesTable,
@@ -23,8 +22,6 @@ import {
 
 // Combine all schemas into one object for the provider
 export const schema = {
-  // Existing base schemas
-  usersTable,
   // V1
   sceneConfigsTable,
   scenesTable,

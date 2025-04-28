@@ -9,9 +9,9 @@ import {
   SceneConfig,
   SceneStateSnapshot,
 } from '@pixeltales/contracts';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
 import { randomUUID } from 'crypto';
 import { PinoLogger } from 'nestjs-pino';
-import { LOGGER_CONTEXT_SHORTEN } from '../../../common/logger/logger.const';
 import { ConversationSystemMessageVars, LlmService } from '../../llm/llm.service';
 import { SceneStateService } from '../../scene/scene-state/scene-state.service';
 import { MessagesDbService } from '../conversation-db/messages-db.service';

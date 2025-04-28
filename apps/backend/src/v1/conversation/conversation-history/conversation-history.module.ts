@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { LlmModule } from '../../../llm/llm.module';
+import { LlmModule } from '../../llm/llm.module';
 import { ConversationHistoryService } from './conversation-history.service';
 
 @Module({

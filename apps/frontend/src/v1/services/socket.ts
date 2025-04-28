@@ -1,7 +1,7 @@
 import { API_BASE_URL, DEBUG_WEBSOCKET } from '@/config';
 import { LOGGER_CONTEXT_SHORTEN } from '@/lib/logger';
-import { Logger } from '@/utils/logger';
 import { SceneStateSnapshotSchema, type SceneStateSnapshot } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { io, Socket } from 'socket.io-client';
 
 type EventData = {

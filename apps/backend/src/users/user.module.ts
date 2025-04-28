@@ -1,9 +1,10 @@
 import { Module } from '@nestjs/common';
+import { UsersDbModule } from '@yesterday-ai/user-database';
+import { DbModule } from 'src/db/db.module';
 import { UserService } from './user.service';
-import { UsersDbModule } from './users-db.module';
 
 @Module({
-  imports: [UsersDbModule],
+  imports: [DbModule, UsersDbModule],
   providers: [UserService],
   exports: [UserService],
 })

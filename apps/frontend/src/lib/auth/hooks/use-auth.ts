@@ -1,6 +1,6 @@
-import { Logger } from '@/utils/logger';
-import { User } from '@pixeltales/contracts';
 import { User as SupabaseUser } from '@supabase/supabase-js';
+import { Logger } from '@yesterday-ai/logger-frontend';
+import { User } from '@yesterday-ai/user-contracts';
 import { useEffect, useState } from 'react';
 import { authService } from '../services/auth';
 

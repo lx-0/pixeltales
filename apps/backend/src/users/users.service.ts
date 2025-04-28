@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { CreateUserDTO } from '@pixeltales/contracts';
-import { NewUser, User } from '@pixeltales/database';
+import { NewUser, User } from '@yesterday-ai/user-contracts';
+import { UsersDbService } from '@yesterday-ai/user-database';
 import { PinoLogger } from 'nestjs-pino';
-import { UsersDbService } from './users-db.service';
 
 /**
  * Service for managing users

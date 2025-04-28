@@ -1,17 +1,19 @@
 import { BaseApiService } from '@/lib/api';
-import { Logger } from '@/utils/logger';
 import {
-  ApiResponse,
-  ApiResponseSchema,
   CommentPayload,
   CreateSceneConfigDTO,
   NewSceneConfig,
   SceneConfig,
   SceneConfigSchema,
-  VoidApiResponse,
-  VoidApiResponseSchema,
   VotePayload,
 } from '@pixeltales/contracts';
+import {
+  ApiResponse,
+  ApiResponseSchema,
+  VoidApiResponse,
+  VoidApiResponseSchema,
+} from '@yesterday-ai/api-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { z } from 'zod';
 
 /**

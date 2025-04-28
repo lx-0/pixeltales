@@ -1,7 +1,6 @@
 import { Body, Controller, Logger, Post } from '@nestjs/common';
 import { ApiOperation as OpenApiOperation, ApiTags as OpenApiTags } from '@nestjs/swagger';
 import {
-  ApiResponse,
   CoordinatesResponse,
   ExtractCoordinatesDto,
   FilenameResponse,
@@ -11,9 +10,10 @@ import {
   ImageResponse,
   RegenerateSpriteDto,
 } from '@pixeltales/contracts';
-import { getMessageFromUnknownError } from '@pixeltales/utils';
-import { Public } from '../auth/decorators/public.decorator';
+import { Public } from '@yesterday-ai/auth-backend';
+import { getMessageFromUnknownError } from '@yesterday-ai/utils-shared';
 import { SpritesheetService } from './spritesheet.service';
+import { ApiResponse } from '@yesterday-ai/api-contracts';
 
 @OpenApiTags('spritesheet')
 @Public() // TODO: Remove this in production, only logged in users can generate spritesheets

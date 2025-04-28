@@ -8,8 +8,8 @@ import {
   WebSocketServer,
 } from '@nestjs/websockets';
 import { SceneStateSnapshot, SceneStateSnapshotSchema } from '@pixeltales/contracts';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
 import { Server, Socket } from 'socket.io';
-import { LOGGER_CONTEXT_SHORTEN } from '../../common/logger/logger.const';
 
 // TODO: Decouple from V1
 import { SceneManagerService } from '../scene/scene-manager/scene-manager.service';

@@ -1,5 +1,5 @@
 import { Controller, Get, HttpException, HttpStatus, Param } from '@nestjs/common';
-import { User } from '@pixeltales/contracts';
+import { User } from '@yesterday-ai/user-contracts';
 import { PinoLogger } from 'nestjs-pino';
 import { UsersService } from './users.service';
 

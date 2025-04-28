@@ -1,7 +1,7 @@
 import { gameConfig } from '@/game/mvp-frankenstein/config';
 import { debugSocketService } from '@/services/socket';
-import { Logger } from '@/utils/logger';
 import type { AgentDebugEventBroadcast } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import React, { useEffect, useRef } from 'react';
 import { GameInitializer } from './GameInitializer';
 

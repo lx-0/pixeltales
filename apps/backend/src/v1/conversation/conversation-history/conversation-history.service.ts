@@ -1,8 +1,9 @@
 import { AIMessage, HumanMessage } from '@langchain/core/messages';
 import { Injectable } from '@nestjs/common';
-import { LlmProviderId, Message, SceneConfig, SceneStateSnapshot } from '@pixeltales/contracts';
+import { Message, SceneConfig, SceneStateSnapshot } from '@pixeltales/contracts';
+import { TokenCounter } from '@yesterday-ai/llm-backend';
+import { LlmProviderId } from '@yesterday-ai/llm-contracts';
 import { PinoLogger } from 'nestjs-pino';
-import { TokenCounter } from '../../../llm/token-counter';
 
 @Injectable()
 export class ConversationHistoryService {

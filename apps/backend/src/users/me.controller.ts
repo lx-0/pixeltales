@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Logger, Post, UseGuards } from '@nestjs/common';
-import { ApiResponse, CreateUserDTO, SuccessApiResponse, User } from '@pixeltales/contracts';
-import { SupabaseAuthGuard } from '../auth/auth.guard';
-import { JwtUser } from '../auth/decorators/jwt-user.decorator';
+import { CreateUserDTO } from '@pixeltales/contracts';
+import { ApiResponse, SuccessApiResponse } from '@yesterday-ai/api-contracts';
+import { JwtUser, SupabaseAuthGuard } from '@yesterday-ai/auth-backend';
+import { User } from '@yesterday-ai/user-contracts';
 import { UsersService } from '../users/users.service';
 
 /**

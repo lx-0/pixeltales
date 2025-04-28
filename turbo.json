@@ -14,19 +14,26 @@
       "dependsOn": [
         "@pixeltales/database#build",
         "@pixeltales/contracts#build",
-        "@pixeltales/utils#build"
+        "@yesterday-ai/auth-backend#build",
+        "@yesterday-ai/logger-backend#build",
+        "@yesterday-ai/utils-backend-nestjs#build",
+        "@yesterday-ai/utils-shared#build"
       ],
       "outputs": ["dist/**"]
     },
     "frontend#build": {
-      "dependsOn": ["@pixeltales/contracts#build", "@pixeltales/utils#build"],
+      "dependsOn": [
+        "@pixeltales/contracts#build",
+        "@yesterday-ai/logger-frontend#build",
+        "@yesterday-ai/utils-shared#build"
+      ],
       "outputs": ["dist/**"]
     },
     "dev": {
       "dependsOn": [
         "@pixeltales/contracts#build",
         "@pixeltales/database#build",
-        "@pixeltales/utils#build"
+        "@yesterday-ai/utils-shared#build"
       ],
       "cache": false,
       "persistent": true
@@ -35,18 +42,18 @@
       "dependsOn": [
         "@pixeltales/contracts#build",
         "@pixeltales/database#build",
-        "@pixeltales/utils#build"
+        "@yesterday-ai/utils-shared#build"
       ],
       "cache": false,
       "persistent": true
     },
     "frontend#dev": {
-      "dependsOn": ["@pixeltales/contracts#build", "@pixeltales/utils#build"],
+      "dependsOn": ["@pixeltales/contracts#build", "@yesterday-ai/utils-shared#build"],
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["@pixeltales/contracts#build", "@pixeltales/utils#build"]
+      "dependsOn": ["@pixeltales/contracts#build", "@yesterday-ai/utils-shared#build"]
     },
     "clean": {
       "cache": false

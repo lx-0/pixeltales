@@ -1,6 +1,6 @@
 import { DEBUG_SPEECH_BUBBLES } from '@/config';
-import { Logger } from '@/utils/logger';
 import type { Message, SceneStateSnapshot } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 import { CharacterManager } from './CharacterManager';
 

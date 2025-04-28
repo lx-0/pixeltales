@@ -9,8 +9,6 @@ import {
   SceneStateSnapshot,
   SceneUtils,
 } from '@pixeltales/contracts';
-import { OptionalSome, toBoolean } from '@pixeltales/utils';
-import { PinoLogger } from 'nestjs-pino';
 import {
   ANSI_BACKGROUND_RED,
   ANSI_BOLD,
@@ -18,7 +16,9 @@ import {
   ANSI_RESET,
   hexToAnsi,
   LOGGER_CONTEXT_SHORTEN,
-} from '../../../common/logger/logger.const';
+} from '@yesterday-ai/logger-backend';
+import { OptionalSome, toBoolean } from '@yesterday-ai/utils-shared';
+import { PinoLogger } from 'nestjs-pino';
 import { ScenesDbService } from '../scenes-db/scenes-db.service';
 
 type UnsavedSceneStateSnapshot = OptionalSome<SceneStateSnapshot, 'id' | 'timestamp'>;

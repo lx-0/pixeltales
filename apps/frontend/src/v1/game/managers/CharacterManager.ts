@@ -1,6 +1,6 @@
-import { Logger } from '@/utils/logger';
 import { TILE_SIZE } from '@/v1/game/config';
 import type { CharacterAction, CharacterState, SceneStateSnapshot } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 
 // Temporary type augmentation until contracts are updated

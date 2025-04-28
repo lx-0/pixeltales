@@ -1,7 +1,6 @@
 import { LoginButton, UserAvatar } from '@/lib/auth';
 import { Button } from '@/lib/shadcn-ui/button';
-import { SceneProposalForm } from '@/v1/components/SceneProposalForm';
-import { User } from '@pixeltales/contracts';
+import { User } from '@yesterday-ai/user-contracts';
 import { Layout, Volume2, VolumeX } from 'lucide-react';
 
 interface AppControlsProps {
@@ -10,7 +9,7 @@ interface AppControlsProps {
   isSoundEnabled: boolean;
   handleSoundToggle: () => void;
   toggleViewMode: () => void;
-  setIsModalOpen: (isOpen: boolean) => void;
+  children?: React.ReactNode;
 }
 
 export function AppControls({
@@ -19,23 +18,11 @@ export function AppControls({
   isSoundEnabled,
   handleSoundToggle,
   toggleViewMode,
-  setIsModalOpen,
+  children,
 }: AppControlsProps) {
   return (
     <div className="fixed top-2 right-2 sm:top-6 sm:right-4 z-50 flex gap-2">
-      {/* Scene Proposal Button */}
-      <SceneProposalForm
-        trigger={
-          <Button
-            className="text-white bg-gray-700 hover:bg-gray-600 w-full sm:w-auto"
-            variant="secondary"
-            size="sm"
-          >
-            Propose Next Scene
-          </Button>
-        }
-        setIsModalOpen={setIsModalOpen}
-      />
+      {children}
 
       {/* User Avatar / Login Button */}
       <div className="flex items-center gap-2 z-10">

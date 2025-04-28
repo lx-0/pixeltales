@@ -12,6 +12,8 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
+    "@yesterday-ai/auth-contracts": "workspace:^",
+    "@yesterday-ai/llm-contracts": "workspace:^",
     "nanoid": "^3.0.1",
     "drizzle-zod": "^0.7.1",
     "drizzle-orm": "^0.42.0",

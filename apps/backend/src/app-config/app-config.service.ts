@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigOptions } from '@pixeltales/contracts';
-import { LLM_PROVIDERS } from '../llm/llm.const';
+import { LLM_PROVIDERS } from '@yesterday-ai/llm-shared';
 
 import { CHARACTER_COLORS } from '../v1/characters/character.const';
 

@@ -1,4 +1,4 @@
-import { Logger } from '@/utils/logger';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 import { CharacterManager } from './managers/CharacterManager';
 import { EventManager } from './managers/EventManager';

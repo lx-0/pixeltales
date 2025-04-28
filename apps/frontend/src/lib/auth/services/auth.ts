@@ -1,13 +1,9 @@
 import { SUPABASE_ANON_KEY, SUPABASE_URL } from '@/config';
-import { Logger } from '@/utils/logger';
-import {
-  CreateUserDTO,
-  JwtUser,
-  SupabaseSession,
-  SupabaseUser,
-  User,
-  VoidApiResponse,
-} from '@pixeltales/contracts';
+import { CreateUserDTO } from '@pixeltales/contracts';
+import { VoidApiResponse } from '@yesterday-ai/api-contracts';
+import { JwtUser, SupabaseSession, SupabaseUser } from '@yesterday-ai/auth-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
+import { User } from '@yesterday-ai/user-contracts';
 import { authApi, userApi } from '../api';
 import { supabaseAuth } from './supabase-auth';
 
@@ -330,7 +326,7 @@ export class AuthService {
       Logger.info('AuthService', 'Checking if registration is enabled');
       const result = await authApi.isRegistrationEnabled();
       this.isRegistrationEnabledCache = result.data?.enabled || false;
-      return this.isRegistrationEnabledCache;
+      return this.isRegistrationEnabledCache ?? false;
     } catch (error) {
       const errorData = error instanceof Error ? error : new Error('Unknown error');
       Logger.warn('AuthService', '🔴 Error checking registration status, defaulting to disabled', {

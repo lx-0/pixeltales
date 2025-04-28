@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ImageLlmModule } from '../llm/image-generation/image-llm.module';
-import { LlmModule } from '../llm/llm.module';
+import { ImageLlmModule, LlmModule } from '@yesterday-ai/llm-backend';
 import { ImageEditorModule } from '../image-editor/image-editor.module';
 import { SpritesheetController } from './spritesheet.controller';
 import { SpritesheetService } from './spritesheet.service';

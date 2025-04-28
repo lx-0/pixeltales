@@ -1,5 +1,5 @@
 import { TILE_SIZE } from '@/game/mvp-frankenstein/config';
-import { Logger } from '@/utils/logger';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 
 // TODO: Import AgentState from contracts when needed

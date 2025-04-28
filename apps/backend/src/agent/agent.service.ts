@@ -126,6 +126,7 @@ export class AgentService implements OnModuleInit {
       const payload: AgentSpawnedEventPayload = {
         agentId: id,
       };
+      this.logger.debug(`[${id}] Attempting to publish agent.lifecycle.spawned...`);
       const event = EventBusService.createEvent(
         AgentService.name,
         'agent.lifecycle.spawned',

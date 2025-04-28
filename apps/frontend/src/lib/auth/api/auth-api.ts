@@ -1,8 +1,12 @@
 import { BaseApiService } from '@/lib/api';
-import { Logger } from '@/utils/logger';
 import {
   ApiResponse,
   ApiResponseSchema,
+  SuccessApiResponse,
+  VoidApiResponse,
+  VoidApiResponseSchema,
+} from '@yesterday-ai/api-contracts';
+import {
   JwtUser,
   JwtUserSchema,
   Login,
@@ -11,14 +15,11 @@ import {
   Register,
   RegistrationEnabled,
   RegistrationEnabledSchema,
-  SuccessApiResponse,
   SupabaseUserSessionResponse,
   SupabaseUserSessionResponseSchema,
-  User,
-  UserSchema,
-  VoidApiResponse,
-  VoidApiResponseSchema,
-} from '@pixeltales/contracts';
+} from '@yesterday-ai/auth-contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
+import { User, UserSchema } from '@yesterday-ai/user-contracts';
 
 /**
  * Service for authentication-related API requests

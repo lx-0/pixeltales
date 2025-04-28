@@ -1,6 +1,6 @@
 import { Injectable, Logger, NestMiddleware } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { toBoolean } from '@pixeltales/utils';
+import { toBoolean } from '@yesterday-ai/utils-shared';
 import { NextFunction, Request, Response } from 'express';
 
 /**

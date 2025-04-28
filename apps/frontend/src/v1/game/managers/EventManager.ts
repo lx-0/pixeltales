@@ -1,6 +1,6 @@
-import { Logger } from '@/utils/logger';
 import { socketV1Service } from '@/v1/services/socket';
 import { type SceneStateSnapshot } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { Scene } from 'phaser';
 import { StateManager } from './StateManager';
 

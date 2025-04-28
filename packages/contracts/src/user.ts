@@ -1,4 +1,4 @@
-import { UserRoleEnum } from '@pixeltales/database';
+import { UserRoleEnum } from '@yesterday-ai/user-contracts';
 import { z } from 'zod';
 
 // DTO for creating a new user

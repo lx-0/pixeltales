@@ -1,6 +1,6 @@
 import { Button } from '@/lib/shadcn-ui/button';
-import { formatDuration, formatTime } from '@/utils/format';
 import type { SceneStateSnapshot } from '@pixeltales/contracts';
+import { formatDuration, formatTime } from '@yesterday-ai/utils-shared';
 import { Brain, Clock, MessageSquare, Users2 } from 'lucide-react';
 import ConversationStatsChart from './ConversationStatsChart';
 import { SceneProposalForm } from './SceneProposalForm';

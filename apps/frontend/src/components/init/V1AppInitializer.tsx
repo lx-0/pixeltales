@@ -1,7 +1,7 @@
-import { Logger } from '@/utils/logger';
 import { gameConfigV1 } from '@/v1/game/config';
 import { socketV1Service } from '@/v1/services/socket';
 import type { SceneStateSnapshot } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import React, { useEffect, useRef } from 'react';
 import { GameInitializer } from './GameInitializer';
 

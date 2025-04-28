@@ -2,7 +2,7 @@ import { relations } from 'drizzle-orm';
 import { index, integer, real, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 import { sqlNow } from '../../sql';
 import { uuid } from '../../uuid';
-import { Comment } from '../user';
+import { Comment } from '../user-comment';
 import { CharacterConfig, CharacterState } from './character';
 import { Message } from './conversation';
 import { SceneConfigCustom } from './scene-config';

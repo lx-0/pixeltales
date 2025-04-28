@@ -1,6 +1,7 @@
 import { useAuth } from '@/lib/auth';
 import type { AgentDebugEventBroadcast, SceneStateSnapshot } from '@pixeltales/contracts';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { useEffect, useRef, useState } from 'react';
 import { Route, Routes } from 'react-router-dom';
 import { MvpAppInitializer } from './components/init/MvpAppInitializer';
@@ -11,7 +12,7 @@ import { AppHeader } from './components/layout/AppHeader';
 import { AppMainContent } from './components/layout/AppMainContent';
 import { useSound } from './hooks/use-sound';
 import { useViewMode } from './hooks/use-view-mode';
-import { Logger } from './utils/logger';
+import { AppControlsV1 } from './v1/components/layout/AppControlsV1';
 import { AppMainContentV1 } from './v1/components/layout/AppMainContentV1';
 
 const queryClient = new QueryClient({
@@ -80,7 +81,6 @@ export default function App() {
                         isSoundEnabled={isSoundEnabled}
                         handleSoundToggle={handleSoundToggle}
                         toggleViewMode={toggleViewMode}
-                        setIsModalOpen={setIsModalOpen}
                       />
                       <AppMainContent
                         isSideView={isSideView}
@@ -107,8 +107,9 @@ export default function App() {
                         isSoundEnabled={isSoundEnabled}
                         handleSoundToggle={handleSoundToggle}
                         toggleViewMode={toggleViewMode}
-                        setIsModalOpen={setIsModalOpen}
-                      />
+                      >
+                        <AppControlsV1 setIsModalOpen={setIsModalOpen} />
+                      </AppControls>
                       <AppMainContentV1
                         sceneState={sceneState}
                         isSideView={isSideView}

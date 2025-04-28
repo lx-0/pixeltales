@@ -1,5 +1,5 @@
 import { Skeleton } from '@/lib/shadcn-ui/skeleton';
-import { toBoolean } from '@pixeltales/utils';
+import { toBoolean } from '@yesterday-ai/utils-shared';
 import { ImageIcon } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 import { supabaseStorageApi } from '../services/supabase-storage-api.service';

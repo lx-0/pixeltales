@@ -17,9 +17,9 @@ import {
   SceneConfigSchema,
   VotePayload,
 } from '@pixeltales/contracts';
+import { Public } from '@yesterday-ai/auth-backend';
 import { PinoLogger } from 'nestjs-pino';
 import { z } from 'zod';
-import { Public } from '../../auth/decorators/public.decorator';
 import { ScenesService } from './scenes.service';
 
 @Controller('scenes')

@@ -15,21 +15,22 @@ PixelTales codebase into the planned agent-centric architecture.
 *(Added: 2025-04-26)*
 
 - [ ] **[P1] Implement Perception Event Routing:** Resolve the `FIXME` in `AgentService.handleIncomingPerception`. Decide on and implement a strategy (e.g., event topics `agent.<id>.perception.*`, or standardized `targetAgentId` in payload) so perception events reliably reach the intended agent's buffer.
-- [ ] **[P1] Refine Simulation Event Publishing:** Ensure `SimulationService` publishes raw `simulation.*` events (`speech_occurred`, `agent_moved`, etc.) with necessary context (like position) for Perception Extensions.
-- [ ] **[P1] Refine Perception Extension Logic:** Update `AuditoryPerceptionExtension` and `VisualPerceptionExtension` to use data from raw simulation events (e.g., positions) for their filtering logic (distance/visibility checks) before publishing the final `perception.*` event.
-- [ ] **[P1] Verify Core Cognitive Cycle Flow:** Ensure an incoming perception event successfully triggers the full Observe->Orient->Decide->Act sequence in `CognitiveCycleService`, including basic System-1/System-2 differentiation and action dispatch via `ActionService`.
-- [ ] **[P1] Verify Core Memory Integration:** Ensure `CognitiveCycleService` can successfully call essential `IMemoryInterface` methods used in placeholders: `addObservation`, `retrieveObservations`, `retrieveFacts`, `getSelfConcept`.
-- [ ] **[P1] Verify Event Bus & Basic Instrumentation:** Confirm core events (`agent.cognitive.cycle.phase_completed`, `agent.state.dynamic.updated`, `agent.action.intent`, `simulation.*`, `perception.*`) are being published correctly via the `EventBusService`.
-- [ ] **[P2] Implement Basic Observability & UI Prototype:**
+- [X] **[P1] Refine Simulation Event Publishing:** Ensure `SimulationService` publishes raw `simulation.*` events (`speech_occurred`, `agent_moved`, etc.) with necessary context (like position) for Perception Extensions.
+- [X] **[P1] Refine Perception Extension Logic:** Update `AuditoryPerceptionExtension` and `VisualPerceptionExtension` to use data from raw simulation events (e.g., positions) for their filtering logic (distance/visibility checks) before publishing the final `perception.*` event.
+- [X] **[P1] Verify Core Cognitive Cycle Flow:** Ensure an incoming perception event successfully triggers the full Observe->Orient->Decide->Act sequence in `CognitiveCycleService`, including basic System-1/System-2 differentiation and action dispatch via `ActionService`.
+- [X] **[P1] Verify Core Memory Integration:** Ensure `CognitiveCycleService` can successfully call essential `IMemoryInterface` methods used in placeholders: `addObservation`, `retrieveObservations`, `retrieveFacts`, `getSelfConcept`.
+- [X] **[P1] Verify Event Bus & Basic Instrumentation:** Confirm core events (`agent.cognitive.cycle.phase_completed`, `agent.state.dynamic.updated`, `agent.action.intent`, `simulation.*`, `perception.*`) are being published correctly via the `EventBusService`.
+- [X] **[P2] Implement Basic Observability & UI Prototype:**
     - [X] **Backend:** Create & configure `DebugGateway` (WebSocket).
     - [X] **Frontend:** Create `FrankensteinScene` & `FrankensteinUIScene`.
     - [X] **Frontend:** Add scenes to Phaser config & `App.tsx` routing.
+    - [X] **Frontend:** Fix Phaser scene initialization/loading within React.
     - [X] **Frontend:** Refactor `socket.ts` for debug connection (`debugSocketService`).
     - [X] **Frontend:** Use `debugSocketService` & `ConnectionManager` in `FrankensteinUIScene`.
     - [X] **Frontend:** Create placeholder `AgentMindViz` component.
     - [X] **Frontend:** Refactor `AppMainContent` for conditional MVP layout & basic `AgentMindViz` display.
     - [X] **Frontend:** Pass `lastAgentEvent` state from `App.tsx` to `AppMainContent`.
-- [ ] **[P1] Agent Spawning Confirmation:** Verify the `AppModule.onModuleInit` successfully spawns the 'frankenstein-01' agent on startup.
+- [X] **[P1] Agent Spawning Confirmation:** Verify the `AppModule.onModuleInit` successfully spawns the 'frankenstein-01' agent on startup.
 
 **Explicitly NOT Required for Frankenstein MVP:**
 

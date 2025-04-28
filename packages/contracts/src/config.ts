@@ -1,4 +1,4 @@
-import { LlmProviderSchema } from '@pixeltales/database';
+import { LlmProviderSchema } from '@yesterday-ai/llm-contracts';
 import z from 'zod';
 
 // --- Config Option Schemas (for /config API) ---

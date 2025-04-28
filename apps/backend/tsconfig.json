@@ -15,7 +15,17 @@
     "paths": {
       "@pixeltales/database/schema": ["../../packages/database/dist/schema.d.ts"],
       "@pixeltales/database": ["../../packages/database/dist/index.d.ts"],
-      "@pixeltales/utils": ["../../packages/utils/dist/index.d.ts"]
+      "@yesterday-ai/api-contracts": ["../../packages/api/contracts/dist/index.d.ts"],
+      "@yesterday-ai/auth-backend": ["../../packages/auth/backend/dist/index.d.ts"],
+      "@yesterday-ai/auth-contracts": ["../../packages/auth/contracts/dist/index.d.ts"],
+      "@yesterday-ai/logger-backend": ["../../packages/logger/backend/dist/index.d.ts"],
+      "@yesterday-ai/llm-backend": ["../../packages/llm/backend/dist/index.d.ts"],
+      "@yesterday-ai/llm-contracts": ["../../packages/llm/contracts/dist/index.d.ts"],
+      "@yesterday-ai/llm-shared": ["../../packages/llm/shared/dist/index.d.ts"],
+      "@yesterday-ai/user-contracts": ["../../packages/user/contracts/dist/index.d.ts"],
+      "@yesterday-ai/user-database": ["../../packages/user/database/dist/index.d.ts"],
+      "@yesterday-ai/utils-backend-nestjs": ["../../packages/utils/backend/nestjs/dist/index.d.ts"],
+      "@yesterday-ai/utils-shared": ["../../packages/utils/shared/dist/index.d.ts"]
     },
     "lib": ["es2022"],
     "skipLibCheck": true

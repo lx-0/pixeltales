@@ -39,11 +39,11 @@ import {
 } from '@/lib/shadcn-ui/select';
 import { Slider } from '@/lib/shadcn-ui/slider';
 import { Textarea } from '@/lib/shadcn-ui/textarea';
-import { kebabCase } from '@/utils/format';
-import { Logger } from '@/utils/logger';
 import { useSceneProposal } from '@/v1/hooks/use-scenes';
 import { zodResolver } from '@hookform/resolvers/zod';
 import type { CharacterConfig, LlmConfig, NewSceneConfig } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
+import { kebabCase } from '@yesterday-ai/utils-shared';
 import React, { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';

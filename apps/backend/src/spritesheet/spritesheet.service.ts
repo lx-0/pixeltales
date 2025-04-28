@@ -9,11 +9,8 @@ import {
   SpriteReference,
   SpritesheetType,
 } from '@pixeltales/contracts';
+import { BaseImageLlmService, IMAGE_LLM_SERVICE } from '@yesterday-ai/llm-backend';
 import { ImageEditorService } from '../image-editor/image-editor.service';
-import {
-  BaseImageLlmService,
-  IMAGE_LLM_SERVICE,
-} from '../llm/image-generation/base-image-llm.service';
 
 @Injectable()
 export class SpritesheetService {

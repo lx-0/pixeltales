@@ -1,23 +1,29 @@
-import { FactoryProvider, Logger } from '@nestjs/common';
+import { FactoryProvider } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { schema } from '@pixeltales/database';
-import { toBoolean } from '@pixeltales/utils';
+import { schema as pixelTalesSchema } from '@pixeltales/database';
+import { usersTable } from '@yesterday-ai/user-database';
+import { toBoolean } from '@yesterday-ai/utils-shared';
 import BetterSqlite3 from 'better-sqlite3';
 import { BetterSQLite3Database, drizzle } from 'drizzle-orm/better-sqlite3';
 import { symlinkPathRelativeToConfig } from 'drizzle.config';
 import * as fs from 'fs';
+import { PinoLogger } from 'nestjs-pino';
 import * as path from 'node:path';
 
 export const DRIZZLE_INSTANCE = 'DRIZZLE_INSTANCE';
 
-export type DatabaseSchema = BetterSQLite3Database<typeof schema>;
+export const dbSchema = { ...pixelTalesSchema, usersTable };
+
+export type DatabaseSchema = BetterSQLite3Database<typeof dbSchema>;
 
 export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
   provide: DRIZZLE_INSTANCE,
-  inject: [ConfigService, Logger],
-  useFactory: (configService: ConfigService, logger: Logger) => {
+  inject: [ConfigService, PinoLogger],
+  useFactory: (configService: ConfigService, logger: PinoLogger) => {
     // Default path using the symlink, relative to CWD (apps/backend)
     const dbPathSetting = configService.get<string>('DATABASE_URL', symlinkPathRelativeToConfig);
+
+    logger.setContext('DrizzleProvider');
 
     let dbPath: string;
     if (path.isAbsolute(dbPathSetting)) {
@@ -27,10 +33,7 @@ export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
       dbPath = path.resolve(process.cwd(), dbPathSetting);
     }
 
-    logger.log(
-      `Attempting to connect to SQLite database via symlink path: ${dbPath}`,
-      'DrizzleProvider',
-    );
+    logger.info(`Attempting to connect to SQLite database via symlink path: ${dbPath}`);
 
     // Check if the directory exists (for the symlink path)
     const dbDir = path.dirname(dbPath);
@@ -39,7 +42,6 @@ export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
       // but it's a basic sanity check for the path structure within turborepo
       logger.warn(
         `Symlink directory path does not seem to exist locally: ${dbDir}. Relying on symlink target.`,
-        'DrizzleProvider',
       );
       // We might not want to throw here, as the symlink target is what matters.
       // throw new Error(`Database directory not found: ${dbDir}`);
@@ -49,37 +51,34 @@ export const DrizzleProvider: FactoryProvider<DatabaseSchema> = {
     try {
       // better-sqlite3 should resolve the symlink
       const sqlite = new BetterSqlite3(dbPath);
-      logger.log('SQLite connection opened successfully', 'DrizzleProvider');
+      logger.info('SQLite connection opened successfully');
 
       sqlite.pragma('journal_mode = WAL');
-      logger.log('WAL mode enabled', 'DrizzleProvider');
+      logger.info('WAL mode enabled');
 
       // Benutzerdefinierter Logger für Drizzle, der NestJS-Logger verwendet
       const customLogger = {
         logQuery: (query: string, params: unknown[]) => {
           const formattedParams = params.map((p) => JSON.stringify(p)).join(', ');
-          logger.debug(`Query: ${query} -- params: [${formattedParams}]`, 'DrizzleORM');
+          logger.debug(`Query: ${query} -- params: [${formattedParams}]`);
         },
       };
 
       const db = drizzle(sqlite, {
-        schema: schema,
+        schema: dbSchema,
         logger: toBoolean(configService.get<boolean>('DB_DEBUG_LOGGING', false))
           ? customLogger
           : false,
       });
 
-      logger.log('Drizzle instance created successfully', 'DrizzleProvider');
+      logger.info('Drizzle instance created successfully');
       return db;
     } catch (error) {
-      logger.error(`Failed to connect to SQLite database at ${dbPath}`, error, 'DrizzleProvider');
+      logger.error(`Failed to connect to SQLite database at ${dbPath}`, error);
       if (error instanceof Error) {
-        logger.error(
-          `Error name: ${error.name}, message: ${error.message}, stack: ${error.stack}`,
-          'DrizzleProvider',
-        );
+        logger.error(`Error name: ${error.name}, message: ${error.message}, stack: ${error.stack}`);
       } else {
-        logger.error('Caught non-Error object:', error, 'DrizzleProvider');
+        logger.error('Caught non-Error object:', error);
       }
       throw error;
     }

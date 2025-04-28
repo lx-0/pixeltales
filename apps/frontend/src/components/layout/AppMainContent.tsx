@@ -35,8 +35,10 @@ export function AppMainContent({
       <div className="bg-gray-800 rounded-lg p-2 sm:p-4 mx-auto w-full border border-gray-700">
         <h2 className="text-lg sm:text-xl font-bold mb-2">About</h2>
         <p className="text-sm sm:text-base text-gray-400">
-          Watch as AI characters engage in endless conversations, each with their own unique
-          personality and story to tell.
+          This is a prototype for a cognitive simulation platform. Current Game Cartridge:
+          Frankenstein MVP - Single Agent, no Capabilities, very basic Perceiption, just core vital
+          Functions, Loop, Basic Agentic Architecture and Event Bus and Core Instrumentation
+          integration. Core Memories. Integration with UI, Reporting, Evaluations etc.
         </p>
       </div>
     </main>

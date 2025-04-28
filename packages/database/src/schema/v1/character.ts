@@ -1,6 +1,6 @@
+import { LlmConfigSchema } from '@yesterday-ai/llm-contracts';
 import z from 'zod';
-import { LlmConfigSchema } from '../llm';
-import { PositionSchema, DirectionEnum } from '../simulation';
+import { DirectionEnum, PositionSchema } from '../simulation';
 
 export const CharacterActionEnum = [
   'thinking',

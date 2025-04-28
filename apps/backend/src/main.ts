@@ -1,8 +1,8 @@
 import { NestFactory } from '@nestjs/core';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { LOGGER_CONTEXT_SHORTEN } from '@yesterday-ai/logger-backend';
 import { Logger as PinoLogger } from 'nestjs-pino';
 import { AppModule } from './app.module';
-import { LOGGER_CONTEXT_SHORTEN } from './common/logger/logger.const';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { bufferLogs: true });

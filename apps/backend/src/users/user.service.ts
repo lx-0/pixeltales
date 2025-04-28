@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
+import { UsersDbService } from '@yesterday-ai/user-database';
 import { PinoLogger } from 'nestjs-pino';
-import { UsersDbService } from './users-db.service';
 
 @Injectable()
 export class UserService {

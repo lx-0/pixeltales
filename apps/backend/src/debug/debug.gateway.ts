@@ -45,6 +45,8 @@ export class DebugGateway implements OnGatewayInit, OnGatewayConnection, OnGatew
   private subscribeToAgentEvents(): void {
     // Explicitly list all specific event literals we want to forward
     const specificEventTypesToForward: DomainEvent['type'][] = [
+      // Agent Lifecycle
+      'agent.lifecycle.spawned',
       // Cognitive Cycle
       'agent.cognitive.cycle.phase_completed',
       'agent.cognitive.cycle.error',

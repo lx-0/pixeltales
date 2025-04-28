@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ConfigOptions } from '@pixeltales/contracts';
-import { Public } from '../auth/decorators/public.decorator';
+import { Public } from '@yesterday-ai/auth-backend';
 import { AppConfigService } from './app-config.service';
 
 @Controller('config')

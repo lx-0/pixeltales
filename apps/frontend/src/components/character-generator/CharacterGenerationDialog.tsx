@@ -8,8 +8,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/lib/shadcn-ui/dialog';
-import { Logger } from '@/utils/logger';
 import { SpriteCoordinate, SPRITESHEET_STRUCTURES } from '@pixeltales/contracts';
+import { Logger } from '@yesterday-ai/logger-frontend';
 import { useEffect, useState } from 'react';
 import { AnimationSheetPreviewStep } from './generation-steps/AnimationSheetPreviewStep';
 import { CoordinatePreviewStep } from './generation-steps/CoordinatePreviewStep';

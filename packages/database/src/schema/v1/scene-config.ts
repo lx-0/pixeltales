@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import { uuid } from '../../uuid';
-import { CommentSchema } from '../user';
+import { CommentSchema } from '../user-comment';
 import { CharacterConfigSchema } from './character';
 
 export const SceneConfigStatusEnum = ['proposed', 'active', 'rejected'] as const;
