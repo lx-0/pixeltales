@@ -42,7 +42,7 @@ class SocketService {
   private readonly RECONNECT_DELAY = 3000; // Increase slightly
   private isConnecting = false;
   private lastReceivedData: AgentDebugEventBroadcast | null = null; // Use contract type
-  private loggerContext = LOGGER_CONTEXT_SHORTEN ? '📡-D' : 'DebugSocketService'; // Use correct name
+  private loggerContext = LOGGER_CONTEXT_SHORTEN ? '📡' : 'DebugSocketService'; // Use correct name
 
   private constructor() {
     // Private constructor to enforce singleton
@@ -291,7 +291,7 @@ if (typeof window !== 'undefined') {
     instance: debugSocketService,
   };
   Logger.info(
-    LOGGER_CONTEXT_SHORTEN ? '📡-D' : 'DebugSocketService',
+    LOGGER_CONTEXT_SHORTEN ? '📡' : 'DebugSocketService',
     '🛠️ Debug socket debugger available as window.debugSocket',
   );
 }

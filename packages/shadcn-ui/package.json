@@ -11,6 +11,15 @@
     "dist",
     "tailwind.preset.js"
   ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./styles.css": "./dist/styles.css",
+    "./tailwind.preset": "./tailwind.preset.js"
+  },
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts && npm run build:css",
     "build:css": "tailwindcss -i ./src/styles.css -o ./dist/styles.css",
@@ -55,14 +64,5 @@
     "tailwindcss-animate": "^1.0.7",
     "tsup": "^8.2.3",
     "typescript": "^5.5.4"
-  },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./styles.css": "./dist/styles.css",
-    "./tailwind.preset": "./tailwind.preset.js"
   }
 }

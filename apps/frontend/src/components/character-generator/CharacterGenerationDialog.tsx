@@ -9,8 +9,8 @@ import {
   DialogTitle,
 } from '@yesterday-ai/shadcn-ui';
 import { SpriteCoordinate, SPRITESHEET_STRUCTURES } from '@yesterday-ai/spritesheet-contracts';
+import { spritesheetApi } from '@yesterday-ai/spritesheet-frontend';
 import { useEffect, useState } from 'react';
-import { spritesheetApi } from '../../../../../packages/spritesheet/frontend/src/api/spritesheet-api';
 import { AnimationSheetPreviewStep } from './generation-steps/AnimationSheetPreviewStep';
 import { CoordinatePreviewStep } from './generation-steps/CoordinatePreviewStep';
 import { FinalPreviewStep } from './generation-steps/FinalPreviewStep';

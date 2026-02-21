@@ -1,4 +1,4 @@
-import { BaseApiService } from '@/lib/api/base-api';
+import { BaseApiService } from '@yesterday-ai/api-frontend';
 import { LlmFormsResponse, PromptSuggestionType } from '../llm-forms.types';
 
 /**
@@ -6,7 +6,7 @@ import { LlmFormsResponse, PromptSuggestionType } from '../llm-forms.types';
  */
 export class LlmFormsApi extends BaseApiService {
   constructor() {
-    super(LlmFormsApi.constructor.name, '/form-llm');
+    super(LlmFormsApi.constructor.name);
   }
 
   /**

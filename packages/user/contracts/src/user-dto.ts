@@ -1,5 +1,5 @@
-import { UserRoleEnum } from '@yesterday-ai/user-contracts';
 import { z } from 'zod';
+import { UserRoleEnum } from './user';
 
 // DTO for creating a new user
 export const CreateUserDTOSchema = z.object({

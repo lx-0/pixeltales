@@ -9,6 +9,6 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src", "../api/contracts/src/api-endpoint.type.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

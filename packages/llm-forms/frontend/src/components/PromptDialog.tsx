@@ -1,6 +1,11 @@
-import { Button } from '@/lib/shadcn-ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/lib/shadcn-ui/dialog';
-import { Input } from '@/lib/shadcn-ui/input';
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+} from '@yesterday-ai/shadcn-ui';
 import React, { useEffect, useState } from 'react';
 import { PromptSuggestionType } from '../llm-forms.types';
 import { llmFormsApi } from '../services/llm-forms-api.service';
@@ -68,7 +73,7 @@ export const PromptDialog: React.FC<PromptDialogProps> = ({
             <Input
               placeholder="Enter your prompt..."
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrompt(e.target.value)}
             />
             <div className="text-sm text-muted-foreground">Try these suggestions:</div>
             <div className="flex flex-wrap gap-2">

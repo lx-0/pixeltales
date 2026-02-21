@@ -1,8 +1,7 @@
-import { CreateUserDTO } from '@pixeltales/contracts';
 import { VoidApiResponse } from '@yesterday-ai/api-contracts';
 import { JwtUser, SupabaseSession, SupabaseUser } from '@yesterday-ai/auth-contracts';
 import { Logger } from '@yesterday-ai/logger-frontend';
-import { User } from '@yesterday-ai/user-contracts';
+import { CreateUserDTO, User } from '@yesterday-ai/user-contracts';
 import { AuthApiService, userApi } from '../api';
 import { initializeSupabaseAuth, supabaseAuth, SupabaseAuthConfig } from './supabase-auth';
 

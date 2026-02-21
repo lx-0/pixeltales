@@ -1,11 +1,19 @@
-import { Button } from '@/lib/shadcn-ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/lib/shadcn-ui/dialog';
-import { Input } from '@/lib/shadcn-ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/lib/shadcn-ui/tabs';
-import { cn } from '@/lib/utils';
+import {
+  Button,
+  cn,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  Input,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@yesterday-ai/shadcn-ui';
+import { AuthenticatedImage } from '@yesterday-ai/supabase-storage-frontend';
 import { ImageIcon, Loader2, RefreshCcw, Trash2 } from 'lucide-react';
 import React, { useState } from 'react';
-import AuthenticatedImage from '../../supabase-storage/components/AuthenticatedImage';
 import { PromptSuggestionType } from '../llm-forms.types';
 import { llmFormsApi } from '../services/llm-forms-api.service';
 

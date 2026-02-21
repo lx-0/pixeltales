@@ -7,6 +7,6 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src", "../contracts/src/llm.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

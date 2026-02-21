@@ -5,17 +5,17 @@
   "tsx": true,
   "tailwind": {
     "config": "tailwind.config.js",
-    "css": "src/index.css",
+    "css": "src/globals.css",
     "baseColor": "gray",
     "cssVariables": true,
     "prefix": ""
   },
   "aliases": {
-    "components": "@/components",
-    "utils": "@/lib/utils",
-    "ui": "@/components/ui",
-    "lib": "@/lib",
-    "hooks": "@/hooks"
+    "components": "@yesterday-ai/shadcn-ui",
+    "utils": "@yesterday-ai/shadcn-ui",
+    "ui": "@yesterday-ai/shadcn-ui",
+    "lib": "@yesterday-ai/shadcn-ui",
+    "hooks": "@yesterday-ai/shadcn-ui"
   },
   "iconLibrary": "lucide"
 }

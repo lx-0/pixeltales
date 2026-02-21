@@ -2,8 +2,9 @@
   "name": "@yesterday-ai/llm-forms-frontend",
   "version": "0.0.1",
   "private": true,
-  "main": "./dist/index.js",
-  "module": "./dist/index.mjs",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
@@ -12,19 +13,27 @@
     "clean": "rimraf dist .turbo"
   },
   "dependencies": {
+    "@yesterday-ai/api-frontend": "workspace:*",
+    "@yesterday-ai/shadcn-ui": "workspace:*",
+    "@yesterday-ai/supabase-storage-frontend": "workspace:*",
+    "lucide-react": "^0.469.0",
+    "react": "^19.0.0",
+    "react-simple-code-editor": "^0.14.1",
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@types/react": "^19.0.10",
     "eslint": "^9.24.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.2.3",
-    "typescript": "^5.5.4"
+    "typescript": "^5.5.4",
+    "vite": "^6.2.0"
   },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
     }
   }
 }

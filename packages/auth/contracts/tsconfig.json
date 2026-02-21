@@ -9,6 +9,6 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src", "../../user/contracts/src/user.ts"],
+  "include": ["src"],
   "exclude": ["node_modules", "dist"]
 }

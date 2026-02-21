@@ -13,7 +13,11 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
 import { authService } from '../services/auth';
 
-export default function LoginButton() {
+interface LoginButtonProps {
+  title?: string;
+}
+
+export default function LoginButton({ title }: LoginButtonProps) {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isAuthServiceReady, setIsAuthServiceReady] = useState(false);
   const { error: authError } = useAuth();
@@ -42,9 +46,9 @@ export default function LoginButton() {
       >
         <DialogContent className="sm:max-w-md bg-gray-900 border-gray-700">
           <DialogHeader>
-            <DialogTitle className="text-gray-200">Login to PixelTales</DialogTitle>
+            <DialogTitle className="text-gray-200">Login{title ? ` to ${title}` : ''}</DialogTitle>
             <DialogDescription className="text-gray-400">
-              Create an account or sign in to save your favorite scenes and characters
+              Create an account or sign in
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">

@@ -1,6 +1,4 @@
-import { Button } from '@/lib/shadcn-ui/button';
-import { Textarea, TextareaProps } from '@/lib/shadcn-ui/textarea';
-import { cn } from '@/lib/utils';
+import { Button, cn, Textarea, TextareaProps } from '@yesterday-ai/shadcn-ui';
 import { WandSparkles } from 'lucide-react';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { PromptSuggestionType } from '../llm-forms.types';
@@ -30,7 +28,7 @@ export const LLMTextarea = React.forwardRef<HTMLTextAreaElement, LLMTextareaProp
     const textareaRef = useRef<HTMLTextAreaElement | null>(null);
     const [currentValue, setCurrentValue] = useState<string | undefined>(value);
     const prevValueRef = useRef<string | null>(null);
-    const completionTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const completionTimerRef = useRef<number | null>(null);
 
     const mergedRef = (node: HTMLTextAreaElement) => {
       textareaRef.current = node;
