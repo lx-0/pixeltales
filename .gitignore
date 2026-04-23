@@ -15,6 +15,15 @@
 # Cache
 .cache/
 .mypy_cache/
+.turbo/
+
+dist/
+node_modules/
+
+# Agents
+.claude/settings.local.json
+.cursorrules
+.cursorignore
 
 # CUSTOM
 .notes/
@@ -22,5 +31,9 @@
 .project/
 data/
 
-.cursorrules
-.cursorignore
+# Private
+.private/
+
+# TMP
+~*.md
+~*/

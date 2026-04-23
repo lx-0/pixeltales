@@ -8,12 +8,13 @@ services:
       context: ./frontend
       target: development
     ports:
-      - '${FRONTEND_PORT:-5173}:5173'
+      - "${FRONTEND_PORT:-5173}:5173"
     volumes:
       # Development volumes for hot reloading
       - ./frontend:/app
       - frontend-node-modules:/app/node_modules
     environment:
+      - FRONTEND_PORT=${FRONTEND_PORT:-5173}
       - DOCKER_ENV=true
       - VITE_BACKEND_URL=http://localhost:${BACKEND_PORT:-8000}
     depends_on:
@@ -31,7 +32,7 @@ services:
       target: development
     working_dir: /workspace
     ports:
-      - '${BACKEND_PORT:-8000}:8000'
+      - "${BACKEND_PORT:-8000}:8000"
     volumes:
       # Development volumes for hot reloading
       - ./backend:/workspace
