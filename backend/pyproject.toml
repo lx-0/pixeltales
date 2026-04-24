@@ -65,9 +65,6 @@ ignore = [
   "B008",  # do not perform function call in argument defaults — common with FastAPI Depends
 ]
 
-[tool.ruff.lint.per-file-ignores]
-"app/services/scene_manager.py" = ["RUF006"]  # fix in Phase 3b LangGraph rewrite
-
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

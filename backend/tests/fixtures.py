@@ -1,4 +1,4 @@
-"""Shared object fixtures for SceneManager / ConversationManager tests.
+"""Shared object fixtures for Harness / ConversationManager tests.
 
 Hand-constructs a minimal valid Scene with two seed characters from the
 real library so tests exercise the same load path production uses.

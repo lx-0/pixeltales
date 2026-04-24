@@ -6,8 +6,8 @@ from pydantic import BaseModel, ValidationError
 from slowapi import Limiter  # type: ignore[import-untyped]
 from slowapi.util import get_remote_address  # type: ignore[import-untyped]
 
+from app.harness.scene_config_loader import SceneConfigService
 from app.models.scene import CreateSceneConfig, SceneConfig
-from app.services.scene_config_service import SceneConfigService
 from app.utils.error_handling import format_validation_errors
 
 logger = structlog.get_logger(__name__)

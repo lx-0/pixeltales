@@ -2,7 +2,7 @@
 
 import pytest
 
-from app.services.scene_config_service import SceneConfigService
+from app.harness.scene_config_loader import SceneConfigService
 
 
 @pytest.mark.usefixtures("session_factory")

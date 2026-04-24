@@ -11,8 +11,8 @@ from pydantic_ai.messages import (
 )
 
 from app.agent.llm import LLMManager
+from app.harness.conversation import ConversationManager
 from app.models.scene import Scene
-from app.services.conversation_manager import ConversationManager
 from tests.fixtures import make_message
 
 
