@@ -19,7 +19,7 @@ services:
       - VITE_BACKEND_URL=http://localhost:${BACKEND_PORT:-8000}
     depends_on:
       - backend
-    command: npm run dev -- --host
+    command: pnpm dev --host
     networks:
       - app-network
     env_file: .env.development

@@ -1,36 +1,22 @@
-# Build stage
-FROM node:18-alpine AS base
+# Base stage with pnpm via corepack
+FROM node:22-alpine AS base
+RUN corepack enable
 WORKDIR /app
 
 # Development stage
 FROM base AS development
-COPY package*.json ./
-RUN npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 EXPOSE 5173
-CMD ["npm", "run", "dev", "--", "--host"]
+CMD ["pnpm", "dev", "--host"]
 
 # Production build stage
 FROM base AS production
-COPY package*.json ./
-# Clear npm cache and ensure clean install
-RUN npm cache clean --force && \
-    npm ci
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile
 COPY . .
-# Debug: List files to verify structure
-RUN echo "Checking file structure:" && \
-    ls -la
-RUN echo "Checking src:" && \
-    ls -la src
-RUN echo "Checking src/lib:" && \
-    ls -la src/lib
-RUN echo "Node version:" && \
-    node --version
-RUN echo "NPM version:" && \
-    npm --version
-# First run TypeScript check separately to see errors clearly
-RUN npm run typecheck || true
-# Then run the build (which includes another TypeScript check)
-RUN npm run build
+RUN pnpm run typecheck
+RUN pnpm run build
 
 # Production runtime stage
 FROM nginx:alpine AS production-runtime
