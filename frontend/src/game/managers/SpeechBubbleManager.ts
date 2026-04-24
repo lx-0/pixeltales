@@ -48,11 +48,14 @@ export class SpeechBubbleManager {
     // Clear old bubbles first
     this.clearBubbles();
 
+    const sceneConfig = this.characterManager.getSceneConfig();
+
     // Create new bubble for current speaker
     for (const [key, value] of Object.entries(state.characters)) {
       if (value.action === 'speaking') {
         const character = this.characterManager.getCharacter(key);
         const message = state.messages.filter((m) => m.character === key).slice(-1)[0];
+        const characterName = sceneConfig?.characters_config[key]?.name ?? key;
         if (character && message.content) {
           Logger.info(
             this.constructor.name,
@@ -62,7 +65,7 @@ export class SpeechBubbleManager {
             character.sprite,
             message.content,
             key,
-            value.name,
+            characterName,
             message.calculated_speaking_time,
             message.mood,
             message.mood_emoji
@@ -238,12 +241,15 @@ export class SpeechBubbleManager {
 
     // Show bubble for the historical message
     const character = this.characterManager.getCharacter(message.character);
+    const sceneConfig = this.characterManager.getSceneConfig();
+    const characterName =
+      sceneConfig?.characters_config[message.character]?.name ?? message.character;
     if (character) {
       this.createSpeechBubble(
         character.sprite,
         message.content ?? '',
         message.character,
-        character.state.name,
+        characterName,
         undefined,
         message.mood,
         message.mood_emoji

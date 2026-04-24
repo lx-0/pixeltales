@@ -198,6 +198,8 @@ export class CharacterManager {
       let character = this.characters.get(id);
       const spriteId = this.resolveSpriteId(id);
       if (!spriteId) return;
+      // Identity (color, name) lives in the SceneConfig now, not in state.
+      const characterColor = this.sceneConfig?.characters_config[id]?.color;
 
       if (!character) {
         // Create new character if it doesn't exist
@@ -208,12 +210,11 @@ export class CharacterManager {
           sprite,
           activeTween: null,
           thinkingSprite: null,
-          color: charData.color, // Store character color from state
+          color: characterColor,
         };
         this.characters.set(id, character);
       } else {
-        // Update color in case it changed
-        character.color = charData.color;
+        character.color = characterColor;
       }
 
       // Update character position and animation
@@ -290,5 +291,9 @@ export class CharacterManager {
 
   getCharacter(id: string): Character | undefined {
     return this.characters.get(id);
+  }
+
+  getSceneConfig(): SceneConfig | null {
+    return this.sceneConfig;
   }
 }

@@ -230,7 +230,9 @@ export interface components {
         };
         /**
          * CharacterState
-         * @description A character in the scene.
+         * @description Runtime state for a character — the static identity (name, color, role,
+         *     visual, llm_config, sprite_id) lives in the matching CharacterConfig
+         *     inside SceneConfig. Frontend joins by character id.
          */
         CharacterState: {
             /**
@@ -242,13 +244,6 @@ export interface components {
             action_estimated_duration?: number | null;
             /** Action Started At */
             action_started_at: number;
-            /**
-             * Color
-             * @description Character's color in hex format (e.g., #FF0000)
-             * @example #FF0000
-             * @example #00FF00
-             */
-            color: string;
             /**
              * Current Mood
              * @default neutral
@@ -270,33 +265,12 @@ export interface components {
             end_conversation_requested_validity_duration?: number | null;
             /**
              * Id
-             * @description Unique identifier for the character
+             * @description Character id; matches a key in SceneConfig.characters_config
              * @example bob
              * @example alice
              */
             id: string;
-            /** @description Configuration for the character's language model */
-            llm_config: components["schemas"]["LLMConfig"];
-            /**
-             * Name
-             * @description Character's display name (2-50 characters)
-             * @example Bob
-             * @example Alice
-             */
-            name: string;
             position: components["schemas"]["Position"];
-            /**
-             * Role
-             * @description Character's role and personality description (10-5000 characters)
-             * @example A friendly shopkeeper who loves to tell stories...
-             */
-            role: string;
-            /**
-             * Visual
-             * @description Character's visual appearance description (10-500 characters)
-             * @example A tall person with short brown hair and glasses...
-             */
-            visual: string;
         };
         /**
          * ColorOption

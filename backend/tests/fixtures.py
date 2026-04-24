@@ -39,11 +39,6 @@ def _make_char_config(cid: str, name: str, color: str) -> CharacterConfig:
 def _make_char_state(cfg: CharacterConfig) -> CharacterState:
     return CharacterState(
         id=cfg.id,
-        name=cfg.name,
-        color=cfg.color,
-        role=cfg.role,
-        visual=cfg.visual,
-        llm_config=cfg.llm_config,
         position=cfg.initial_position,
         direction=cfg.initial_direction,
         current_mood=cfg.initial_mood,

@@ -2,11 +2,12 @@ import { ChevronDown, Layout } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
-import type { SceneState } from '@/types/scene';
+import type { SceneConfig, SceneState } from '@/types/scene';
 import { SceneProposalForm } from './SceneProposalForm';
 
 interface ConversationHistoryProps {
   scene: SceneState;
+  sceneConfig: SceneConfig;
   isSideView: boolean;
   setIsModalOpen: (isOpen: boolean) => void;
   onToggleViewMode: () => void;
@@ -26,10 +27,14 @@ const formatCountdown = (seconds: number): string => {
 
 export default function ConversationHistory({
   scene,
+  sceneConfig,
   isSideView,
   setIsModalOpen,
   onToggleViewMode,
 }: ConversationHistoryProps) {
+  // Static identity (name, color, llm_config) lives in sceneConfig.
+  // Per-character runtime state (action, end_conversation_*) lives in scene.
+  const characterConfigs = sceneConfig.characters_config;
   const [isExpanded, setIsExpanded] = useState(isSideView);
   const [countdown, setCountdown] = useState<number>(0);
   const conversationRef = useAutoScroll<HTMLDivElement>([scene.messages, scene.conversation_ended]);
@@ -109,11 +114,15 @@ export default function ConversationHistory({
         >
           {scene.messages.map((message, index) => {
             const character = scene.characters[message.character];
+            const characterConfig = characterConfigs[message.character];
             const isLastMessage = index === scene.messages.length - 1;
             const isSecondLastMessage = index === scene.messages.length - 2;
             const nextMessage = isLastMessage ? null : scene.messages[index + 1];
             const nextMessageCharacter = nextMessage
               ? scene.characters[nextMessage.character]
+              : null;
+            const nextMessageCharacterConfig = nextMessage
+              ? characterConfigs[nextMessage.character]
               : null;
             return (
               <div
@@ -123,33 +132,27 @@ export default function ConversationHistory({
                     ? 'animate-pulse'
                     : ''
                 }`}
-                style={{ borderLeft: `4px solid ${character.color}` }}
+                style={{ borderLeft: `4px solid ${characterConfig.color}` }}
               >
                 <div className="flex items-center justify-between gap-2 cursor-default absolute sm:top-1 -top-1 sm:right-3 right-2 text-[10px] sm:text-xs text-gray-500">
-                  {/* <span title="Model used for this character">
-                      {character.llm_config.model_name}
-                    </span>
-                    <span title="Temperature used for this character">
-                      {character.llm_config.temperature}
-                    </span> */}
                   <span title="Message number in the conversation">#{index + 1}</span>
                 </div>
 
                 <div className="flex items-center justify-between gap-2 cursor-default mb-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-bold" style={{ color: character.color }}>
-                      {character.name}
+                    <span className="font-bold" style={{ color: characterConfig.color }}>
+                      {characterConfig.name}
                     </span>
                     {message.mood && (
                       <span className="text-xs sm:text-sm text-gray-400 items-center">
-                        <span title={`Current mood of ${character.name}`}>
+                        <span title={`Current mood of ${characterConfig.name}`}>
                           {message.mood_emoji} {message.mood}
                         </span>
 
                         {message.conversation_rating !== null && (
                           <span
                             className="text-[10px] sm:text-xs"
-                            title={`${character.name}'s rating of the conversation so far`}
+                            title={`${characterConfig.name}'s rating of the conversation so far`}
                           >
                             {' '}
                             ({message.conversation_rating}/10)
@@ -185,18 +188,18 @@ export default function ConversationHistory({
                         (character.end_conversation_requested_validity_duration ?? 0)) *
                         1000 >
                       Date.now()
-                        ? { color: character.color }
+                        ? { color: characterConfig.color }
                         : {}
                     }
                   >
-                    {character.name} requested to end the conversation
+                    {characterConfig.name} requested to end the conversation
                   </div>
                 )}
 
                 {nextMessage?.reaction_on_previous_message !== undefined &&
                   nextMessage?.reaction_on_previous_message !== null && (
                     <span
-                      title={`Reaction of ${nextMessageCharacter?.name ?? 'unknown'}`}
+                      title={`Reaction of ${nextMessageCharacterConfig?.name ?? 'unknown'}`}
                       className={`absolute bottom-1 right-8 translate-y-1/2 translate-x-1/2 text-sm bg-gray-700 border border-gray-800 rounded-full px-2 py-0 shadow-lg cursor-default z-10 ${
                         isSecondLastMessage &&
                         nextMessageCharacter?.action === 'speaking' &&
@@ -213,19 +216,22 @@ export default function ConversationHistory({
           })}
           {Object.values(scene.characters)
             .filter((c) => c.action.startsWith('thinking'))
-            .map((c) => (
-              <div
-                key={c.name}
-                className="mx-4 p-1 px-2 sm:px-4 pr-4 sm:pr-6 rounded-lg bg-gray-700 animate-pulse w-fit relative text-sm sm:text-base italic"
-              >
-                <div className="flex items-center gap-1 cursor-default">
-                  <span className="font-bold" style={{ color: c.color }}>
-                    {c.name}
-                  </span>
-                  <span className="text-[10px] sm:text-xs text-gray-400">is thinking...</span>
+            .map((c) => {
+              const cfg = characterConfigs[c.id];
+              return (
+                <div
+                  key={c.id}
+                  className="mx-4 p-1 px-2 sm:px-4 pr-4 sm:pr-6 rounded-lg bg-gray-700 animate-pulse w-fit relative text-sm sm:text-base italic"
+                >
+                  <div className="flex items-center gap-1 cursor-default">
+                    <span className="font-bold" style={{ color: cfg?.color }}>
+                      {cfg?.name}
+                    </span>
+                    <span className="text-[10px] sm:text-xs text-gray-400">is thinking...</span>
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           {scene.conversation_ended && (
             <div className="p-3 rounded-lg bg-red-700/80 animate-pulse font-bold text-center flex flex-col gap-1 relative overflow-hidden">
               <div>Conversation ended</div>

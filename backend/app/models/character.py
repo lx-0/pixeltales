@@ -67,9 +67,18 @@ class CharacterConfig(CharacterBase):
     initial_mood: str
 
 
-class CharacterState(CharacterBase):
-    """A character in the scene."""
+class CharacterState(BaseModel):
+    """Runtime state for a character — the static identity (name, color, role,
+    visual, llm_config, sprite_id) lives in the matching CharacterConfig
+    inside SceneConfig. Frontend joins by character id.
+    """
 
+    id: str = Field(
+        min_length=1,
+        max_length=50,
+        description="Character id; matches a key in SceneConfig.characters_config",
+        json_schema_extra={"examples": ["bob", "alice"]},
+    )
     position: Position
     direction: Direction
     current_mood: str = "neutral"  # Free-form mood description

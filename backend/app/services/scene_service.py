@@ -19,15 +19,13 @@ class SceneService:
     def _initialize_characters_state(
         self, characters_config: dict[str, CharacterConfig], started_at: float
     ) -> dict[str, CharacterState]:
-        """Initialize characters from `characters` dict with more detailed context"""
+        """Initialize per-character runtime state (position, direction, mood,
+        action). Static identity (name/color/role/visual/llm_config/sprite_id)
+        stays in CharacterConfig and is not duplicated here.
+        """
         return {
             char_id: CharacterState(
                 id=char_config.id,
-                name=char_config.name,
-                color=char_config.color,
-                role=char_config.role,
-                visual=char_config.visual,
-                llm_config=char_config.llm_config,
                 position=char_config.initial_position,
                 direction=char_config.initial_direction,
                 action=char_config.initial_action,

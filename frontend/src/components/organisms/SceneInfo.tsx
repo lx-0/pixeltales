@@ -1,6 +1,6 @@
 import { Brain, Clock, MessageSquare, Users2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import type { SceneState } from '@/types/scene';
+import type { SceneConfig, SceneState } from '@/types/scene';
 import { formatDuration, formatTime } from '@/utils/format';
 import ConversationStatsChart from './ConversationStatsChart';
 import { SceneProposalForm } from './SceneProposalForm';
@@ -8,10 +8,14 @@ import { SceneProposalList } from './SceneProposalList';
 
 interface SceneInfoProps {
   scene: SceneState;
+  sceneConfig: SceneConfig;
   setIsModalOpen: (isOpen: boolean) => void;
 }
 
-export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
+export default function SceneInfo({ scene, sceneConfig, setIsModalOpen }: SceneInfoProps) {
+  // Static identity (name, color, role, visual, llm_config) lives in sceneConfig.
+  const characterConfigs = sceneConfig.characters_config;
+
   // Calculate active characters (those who have spoken)
   const activeCharacters = Object.values(scene.characters).filter((char) =>
     scene.messages.some((msg) => msg.character === char.id)
@@ -48,7 +52,8 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
   // Calculate total tokens used per model
   const modelUsage = scene.messages.reduce(
     (acc, msg) => {
-      const char = scene.characters[msg.character];
+      const char = characterConfigs[msg.character];
+      if (!char) return acc;
       const modelKey = `${char.llm_config.provider}:${char.llm_config.model_name}`;
       acc[modelKey] = (acc[modelKey] || 0) + 1;
       return acc;
@@ -239,6 +244,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
           {Object.entries(scene.characters).map(([id, char]) => {
+            const charCfg = characterConfigs[id];
             const messageCount = scene.messages.filter((msg) => msg.character === id).length;
             const lastMessage = [...scene.messages].reverse().find((msg) => msg.character === id);
 
@@ -270,22 +276,22 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
               <div
                 key={id}
                 className="p-2 sm:p-4 bg-gray-700 rounded-lg border-2 shadow-md transition-all duration-200 hover:shadow-lg"
-                style={{ borderColor: char.color }}
+                style={{ borderColor: charCfg?.color }}
               >
                 {/* Header with name and model */}
                 <div className="flex justify-between items-start mb-3">
-                  <h3 className="text-lg sm:text-xl font-bold" style={{ color: char.color }}>
-                    {char.name}
+                  <h3 className="text-lg sm:text-xl font-bold" style={{ color: charCfg?.color }}>
+                    {charCfg?.name}
                   </h3>
                   <div className="text-xs text-gray-400 bg-gray-800 px-2 py-1 rounded">
-                    {char.llm_config.model_name}
+                    {charCfg?.llm_config.model_name}
                   </div>
                 </div>
 
                 {/* Description */}
-                <p className="text-gray-300 text-xs sm:text-sm mb-3">{char.visual}</p>
+                <p className="text-gray-300 text-xs sm:text-sm mb-3">{charCfg?.visual}</p>
                 <p className="text-gray-400 text-xs sm:text-sm italic mb-3">
-                  {char.role.split('\n')[0]}
+                  {charCfg?.role.split('\n')[0]}
                 </p>
 
                 {/* Stats Grid */}
@@ -352,7 +358,7 @@ export default function SceneInfo({ scene, setIsModalOpen }: SceneInfoProps) {
       </div>
 
       {/* Conversation Stats Chart */}
-      <ConversationStatsChart scene={scene} />
+      <ConversationStatsChart scene={scene} sceneConfig={sceneConfig} />
     </div>
   );
 }

@@ -137,9 +137,10 @@ function AppShell() {
           />
 
           {/* Conversation History (Side View Only) */}
-          {sceneState && isSideView && (
+          {sceneState && activeSceneConfig && isSideView && (
             <ConversationHistory
               scene={sceneState}
+              sceneConfig={activeSceneConfig}
               isSideView={isSideView}
               setIsModalOpen={setIsModalOpen}
               onToggleViewMode={toggleViewMode}
@@ -148,17 +149,22 @@ function AppShell() {
         </div>
 
         {/* Scene Info and Characters */}
-        {sceneState && (
+        {sceneState && activeSceneConfig && (
           <div className="mx-auto w-full">
-            <SceneInfo scene={sceneState} setIsModalOpen={setIsModalOpen} />
+            <SceneInfo
+              scene={sceneState}
+              sceneConfig={activeSceneConfig}
+              setIsModalOpen={setIsModalOpen}
+            />
           </div>
         )}
 
         {/* Conversation History (Bottom View Only) */}
-        {sceneState && !isSideView && (
+        {sceneState && activeSceneConfig && !isSideView && (
           <div className="mx-auto w-full">
             <ConversationHistory
               scene={sceneState}
+              sceneConfig={activeSceneConfig}
               isSideView={isSideView}
               setIsModalOpen={setIsModalOpen}
               onToggleViewMode={toggleViewMode}

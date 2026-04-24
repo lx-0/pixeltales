@@ -120,7 +120,7 @@
         "type": "object"
       },
       "CharacterState": {
-        "description": "A character in the scene.",
+        "description": "Runtime state for a character \u2014 the static identity (name, color, role,\nvisual, llm_config, sprite_id) lives in the matching CharacterConfig\ninside SceneConfig. Frontend joins by character id.",
         "properties": {
           "action": {
             "enum": [
@@ -150,16 +150,6 @@
           "action_started_at": {
             "title": "Action Started At",
             "type": "number"
-          },
-          "color": {
-            "description": "Character's color in hex format (e.g., #FF0000)",
-            "examples": [
-              "#FF0000",
-              "#00FF00"
-            ],
-            "pattern": "^#[0-9a-fA-F]{6}$",
-            "title": "Color",
-            "type": "string"
           },
           "current_mood": {
             "default": "neutral",
@@ -204,7 +194,7 @@
             "title": "End Conversation Requested Validity Duration"
           },
           "id": {
-            "description": "Unique identifier for the character",
+            "description": "Character id; matches a key in SceneConfig.characters_config",
             "examples": [
               "bob",
               "alice"
@@ -214,52 +204,12 @@
             "title": "Id",
             "type": "string"
           },
-          "llm_config": {
-            "$ref": "#/components/schemas/LLMConfig",
-            "description": "Configuration for the character's language model"
-          },
-          "name": {
-            "description": "Character's display name (2-50 characters)",
-            "examples": [
-              "Bob",
-              "Alice"
-            ],
-            "maxLength": 50,
-            "minLength": 2,
-            "title": "Name",
-            "type": "string"
-          },
           "position": {
             "$ref": "#/components/schemas/Position"
-          },
-          "role": {
-            "description": "Character's role and personality description (10-5000 characters)",
-            "examples": [
-              "A friendly shopkeeper who loves to tell stories..."
-            ],
-            "maxLength": 5000,
-            "minLength": 10,
-            "title": "Role",
-            "type": "string"
-          },
-          "visual": {
-            "description": "Character's visual appearance description (10-500 characters)",
-            "examples": [
-              "A tall person with short brown hair and glasses..."
-            ],
-            "maxLength": 500,
-            "minLength": 10,
-            "title": "Visual",
-            "type": "string"
           }
         },
         "required": [
           "id",
-          "name",
-          "color",
-          "role",
-          "visual",
-          "llm_config",
           "position",
           "direction",
           "action",

@@ -12,11 +12,12 @@ import {
   YAxis,
 } from 'recharts';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import type { SceneState } from '@/types/scene';
+import type { SceneConfig, SceneState } from '@/types/scene';
 import { formatTime } from '@/utils/format';
 
 interface ConversationStatsChartProps {
   scene: SceneState;
+  sceneConfig: SceneConfig;
 }
 
 interface DotProps {
@@ -49,7 +50,11 @@ interface DataPointCharProps {
   hasRequestedEndConversation: boolean;
 }
 
-export default function ConversationStatsChart({ scene }: ConversationStatsChartProps) {
+export default function ConversationStatsChart({
+  scene,
+  sceneConfig,
+}: ConversationStatsChartProps) {
+  const characterConfigs = sceneConfig.characters_config;
   const characterDatasets: DataPoint[] = useMemo(
     () =>
       scene.messages
@@ -165,70 +170,73 @@ export default function ConversationStatsChart({ scene }: ConversationStatsChart
               <Legend verticalAlign="top" height={36} />
 
               {/* Render lines for each character */}
-              {Object.entries(scene.characters).map(([charId, character]) => (
-                <Line
-                  key={`line-${charId}`}
-                  type="monotone"
-                  dataKey={`chars.${charId}.rating`}
-                  name={character.name}
-                  connectNulls
-                  stroke={character.color}
-                  strokeWidth={2}
-                  // isAnimationActive={false}
-                  dot={(props: DotProps) => {
-                    if (!props || props.value === undefined) {
-                      // Return hidden dot if no value
+              {Object.entries(scene.characters).map(([charId, _character]) => {
+                const characterCfg = characterConfigs[charId];
+                return (
+                  <Line
+                    key={`line-${charId}`}
+                    type="monotone"
+                    dataKey={`chars.${charId}.rating`}
+                    name={characterCfg?.name}
+                    connectNulls
+                    stroke={characterCfg?.color}
+                    strokeWidth={2}
+                    // isAnimationActive={false}
+                    dot={(props: DotProps) => {
+                      if (!props || props.value === undefined) {
+                        // Return hidden dot if no value
+                        return (
+                          <g key={`${props.key}-${charId}`}>
+                            <circle cx={0} cy={0} r={0} fill="none" />
+                          </g>
+                        );
+                      }
+
+                      const cy = props.cy ?? 0;
+                      const charProps = props.payload.chars[charId];
+
                       return (
                         <g key={`${props.key}-${charId}`}>
-                          <circle cx={0} cy={0} r={0} fill="none" />
+                          <circle
+                            cx={props.cx}
+                            cy={cy}
+                            r={props.r}
+                            stroke={props.stroke}
+                            strokeWidth={props.strokeWidth}
+                            fill={characterCfg?.color}
+                          />
+                          {charProps.moodEmoji && (
+                            <text
+                              key={`mood-${props.key}`}
+                              x={props.cx}
+                              y={cy - 10}
+                              textAnchor="middle"
+                              fontSize="12"
+                              fill={characterCfg?.color}
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              {charProps.moodEmoji}
+                            </text>
+                          )}
+                          {charProps.hasRequestedEndConversation && (
+                            <text
+                              key={`end-conversation-${props.key}`}
+                              x={props.cx}
+                              y={cy + 18}
+                              textAnchor="middle"
+                              fontSize="12"
+                              fill={characterCfg?.color}
+                              style={{ pointerEvents: 'none' }}
+                            >
+                              ❌
+                            </text>
+                          )}
                         </g>
                       );
-                    }
-
-                    const cy = props.cy ?? 0;
-                    const charProps = props.payload.chars[charId];
-
-                    return (
-                      <g key={`${props.key}-${charId}`}>
-                        <circle
-                          cx={props.cx}
-                          cy={cy}
-                          r={props.r}
-                          stroke={props.stroke}
-                          strokeWidth={props.strokeWidth}
-                          fill={character.color}
-                        />
-                        {charProps.moodEmoji && (
-                          <text
-                            key={`mood-${props.key}`}
-                            x={props.cx}
-                            y={cy - 10}
-                            textAnchor="middle"
-                            fontSize="12"
-                            fill={character.color}
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            {charProps.moodEmoji}
-                          </text>
-                        )}
-                        {charProps.hasRequestedEndConversation && (
-                          <text
-                            key={`end-conversation-${props.key}`}
-                            x={props.cx}
-                            y={cy + 18}
-                            textAnchor="middle"
-                            fontSize="12"
-                            fill={character.color}
-                            style={{ pointerEvents: 'none' }}
-                          >
-                            ❌
-                          </text>
-                        )}
-                      </g>
-                    );
-                  }}
-                />
-              ))}
+                    }}
+                  />
+                );
+              })}
             </LineChart>
           </ResponsiveContainer>
         </div>

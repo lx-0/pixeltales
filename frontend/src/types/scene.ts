@@ -38,7 +38,8 @@ export type CharacterAction =
   | 'idle';
 
 interface CharacterBase {
-  // Base
+  // Static identity for a character — lives in CharacterConfig.
+  // Runtime state is in CharacterState below; consumers join by id.
   id: string;
   name: string;
   color: string; // hex color code
@@ -47,7 +48,8 @@ interface CharacterBase {
   llm_config: LLMConfig;
 }
 
-export interface CharacterState extends CharacterBase {
+export interface CharacterState {
+  id: string;
   position: Position;
   direction: Direction;
   current_mood: string; // Free-form mood description
@@ -89,13 +91,14 @@ export interface SceneConfig {
   system_prompt: string;
   status: 'proposed' | 'active' | 'rejected';
 
-  // Proposal-specific fields
-  proposer_name?: string;
-  proposed_at?: number; // Unix timestamp (Epoch time)
-  votes?: number;
+  // Proposal-specific fields. Backend OpenAPI emits these as nullable, so
+  // mirror that here to stay assignable from useScene()'s response shape.
+  proposer_name?: string | null;
+  proposed_at?: string | null; // ISO 8601
+  votes?: number | null;
   comments?: Array<{
     user: string;
     comment: string;
-    timestamp: number; // Unix timestamp (Epoch time)
-  }>;
+    timestamp: string; // ISO 8601
+  }> | null;
 }

@@ -59,12 +59,13 @@ class ConversationManager:
     ) -> SystemPromptTemplateVars:
         """Prepare the system message for the scene with character context."""
         characters_description = "\n".join(
-            [f"- {char.visual}" for char in scene.state.characters.values()]
+            [f"- {char.visual}" for char in scene.config.characters_config.values()]
         )
+        speaker = scene.config.characters_config[characterId]
         return {
-            "character_name": scene.state.characters[characterId].name,
-            "character_visual": scene.state.characters[characterId].visual,
-            "character_role": scene.state.characters[characterId].role,
+            "character_name": speaker.name,
+            "character_visual": speaker.visual,
+            "character_role": speaker.role,
             "message_recipient": message_recipient or "",
             "scene_description": self._prepare_scene_description(
                 scene.config.description, characters_description
