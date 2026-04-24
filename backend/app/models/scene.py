@@ -62,6 +62,11 @@ class SceneConfigBase(SceneBase):
     characters_config: dict[str, CharacterConfig] = Field(
         description="Configuration for each character in the scene, keyed by character ID"
     )
+    room_id: str = Field(
+        default="room",
+        description="ID of a room background from the backend asset catalog (GET /api/v1/config).",
+        json_schema_extra={"examples": ["room", "the-lab", "the-lab-w-docs"]},
+    )
     status: SceneConfigStatus = Field(
         default=SceneConfigStatus.PROPOSED,
         description="Current status of the scene configuration (proposed, active, or rejected)",

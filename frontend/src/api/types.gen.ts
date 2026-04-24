@@ -212,6 +212,16 @@ export interface components {
              */
             role: string;
             /**
+             * Sprite Id
+             * @description ID of a sprite from the backend asset catalog (GET /api/v1/config).
+             * @default bob
+             * @example bob
+             * @example cleaner_girl
+             * @example doctor_1
+             * @example zombie
+             */
+            sprite_id: string;
+            /**
              * Visual
              * @description Character's visual appearance description (10-500 characters)
              * @example A tall person with short brown hair and glasses...
@@ -323,6 +333,10 @@ export interface components {
             colors: components["schemas"]["ColorOption"][];
             /** Llm Providers */
             llm_providers: components["schemas"]["LLMProvider"][];
+            /** Rooms */
+            rooms: components["schemas"]["RoomOption"][];
+            /** Sprites */
+            sprites: components["schemas"]["SpriteOption"][];
         };
         /**
          * CreateSceneConfig
@@ -366,6 +380,15 @@ export interface components {
              * @example Jane Smith
              */
             proposer_name?: string | null;
+            /**
+             * Room Id
+             * @description ID of a room background from the backend asset catalog (GET /api/v1/config).
+             * @default room
+             * @example room
+             * @example the-lab
+             * @example the-lab-w-docs
+             */
+            room_id: string;
             /**
              * Start Character Id
              * @description ID of the character who starts the conversation
@@ -494,6 +517,18 @@ export interface components {
             y: number;
         };
         /**
+         * RoomOption
+         * @description Room background asset option.
+         */
+        RoomOption: {
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
+        };
+        /**
          * SceneConfig
          * @description Scene configuration.
          */
@@ -537,6 +572,15 @@ export interface components {
              * @example Jane Smith
              */
             proposer_name?: string | null;
+            /**
+             * Room Id
+             * @description ID of a room background from the backend asset catalog (GET /api/v1/config).
+             * @default room
+             * @example room
+             * @example the-lab
+             * @example the-lab-w-docs
+             */
+            room_id: string;
             /**
              * Start Character Id
              * @description ID of the character who starts the conversation
@@ -600,6 +644,20 @@ export interface components {
          */
         ServerToClientEvents: {
             scene_state: components["schemas"]["SceneState"];
+        };
+        /**
+         * SpriteOption
+         * @description Character sprite asset option.
+         */
+        SpriteOption: {
+            /** Has Idle Anim */
+            has_idle_anim: boolean;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+            /** Path */
+            path: string;
         };
         /** ValidationError */
         ValidationError: {

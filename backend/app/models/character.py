@@ -56,6 +56,11 @@ CharacterAction = Literal[
 class CharacterConfig(CharacterBase):
     """Configuration for a character."""
 
+    sprite_id: str = Field(
+        default="bob",
+        description="ID of a sprite from the backend asset catalog (GET /api/v1/config).",
+        json_schema_extra={"examples": ["bob", "cleaner_girl", "doctor_1", "zombie"]},
+    )
     initial_position: Position
     initial_direction: Direction
     initial_action: CharacterAction

@@ -1,4 +1,4 @@
-from app.models.config import ColorOption, LLMModel, LLMProvider
+from app.models.config import ColorOption, LLMModel, LLMProvider, RoomOption, SpriteOption
 from app.prompts import load as load_prompt
 
 # System prompt — externalized to app/prompts/system.md.
@@ -99,4 +99,51 @@ CHARACTER_COLORS: list[ColorOption] = [
     ColorOption(id="teal", name="Teal", hex="#14b8a6", group="nature"),
     ColorOption(id="cyan", name="Cyan", hex="#06b6d4", group="nature"),
     ColorOption(id="sky", name="Sky", hex="#0ea5e9", group="nature"),
+]
+
+# Asset catalog. IDs are stable; paths are served as-is to the Phaser loader.
+# `has_idle_anim` distinguishes 6-frame idle spritesheets (Bob, Cleaner_girl)
+# from single-frame stills (Doctor, Zombie) — frontend picks the load path.
+AVAILABLE_SPRITES: list[SpriteOption] = [
+    SpriteOption(
+        id="bob",
+        name="Bob",
+        path="/assets/characters/Bob_idle_anim_48x48.png",
+        has_idle_anim=True,
+    ),
+    SpriteOption(
+        id="cleaner_girl",
+        name="Cleaner Girl",
+        path="/assets/characters/Cleaner_girl_idle_anim_48x48.png",
+        has_idle_anim=True,
+    ),
+    SpriteOption(
+        id="doctor_1",
+        name="Doctor 1",
+        path="/assets/characters/Doctor_1_48x48.png",
+        has_idle_anim=False,
+    ),
+    SpriteOption(
+        id="doctor_2",
+        name="Doctor 2",
+        path="/assets/characters/Doctor_2_48x48.png",
+        has_idle_anim=False,
+    ),
+    SpriteOption(
+        id="zombie",
+        name="Zombie",
+        path="/assets/characters/Zombie_48x48.png",
+        has_idle_anim=False,
+    ),
+]
+
+AVAILABLE_ROOMS: list[RoomOption] = [
+    RoomOption(id="room", name="Ice Cream Shop", path="/assets/scenes/room.png"),
+    RoomOption(id="room2", name="Ice Cream Shop (alt)", path="/assets/scenes/room2.png"),
+    RoomOption(id="the-lab", name="The Lab", path="/assets/scenes/the-lab.room.png"),
+    RoomOption(
+        id="the-lab-w-docs",
+        name="The Lab (with Doctors)",
+        path="/assets/scenes/the-lab-w-docs.room.png",
+    ),
 ]

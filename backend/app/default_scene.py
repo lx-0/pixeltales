@@ -30,6 +30,7 @@ Key traits:
             temperature=0.7,
             max_tokens=4096,
         ),
+        sprite_id="bob",
         initial_position=Position(
             x=TILE_SIZE * 7.5,
             y=TILE_SIZE * 7.5,
@@ -58,6 +59,7 @@ Key traits:
             temperature=0.7,
             max_tokens=4096,
         ),
+        sprite_id="cleaner_girl",
         initial_position=Position(
             x=TILE_SIZE * 9.5,
             y=TILE_SIZE * 7.5,
@@ -74,6 +76,7 @@ default_scene_config = CreateSceneConfig(
     description="You are in an ice cream shop. You are having a conversation with another character.",
     start_character_id="bob",
     characters_config=characters,
+    room_id="room",
     status=SceneConfigStatus.ACTIVE,
     proposer_name=None,
     proposed_at=None,

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.config import CHARACTER_COLORS, LLM_PROVIDERS
+from app.config import AVAILABLE_ROOMS, AVAILABLE_SPRITES, CHARACTER_COLORS, LLM_PROVIDERS
 from app.models.config import ConfigOptions
 
 router = APIRouter()
@@ -12,4 +12,6 @@ async def get_config_options() -> ConfigOptions:
     return ConfigOptions(
         llm_providers=LLM_PROVIDERS,
         colors=CHARACTER_COLORS,
+        sprites=AVAILABLE_SPRITES,
+        rooms=AVAILABLE_ROOMS,
     )

@@ -30,8 +30,27 @@ class ColorOption(BaseModel):
     group: str  # e.g., "gray", "brand", "accent"
 
 
+class SpriteOption(BaseModel):
+    """Character sprite asset option."""
+
+    id: str
+    name: str
+    path: str  # public URL relative to frontend (e.g. /assets/characters/Bob_idle_anim_48x48.png)
+    has_idle_anim: bool  # true → 6-frame idle spritesheet; false → single 48x48 still
+
+
+class RoomOption(BaseModel):
+    """Room background asset option."""
+
+    id: str
+    name: str
+    path: str  # public URL relative to frontend (e.g. /assets/scenes/room.png)
+
+
 class ConfigOptions(BaseModel):
     """Available configuration options."""
 
     llm_providers: list[LLMProvider]
     colors: list[ColorOption]
+    sprites: list[SpriteOption]
+    rooms: list[RoomOption]

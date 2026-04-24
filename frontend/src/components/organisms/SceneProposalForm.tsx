@@ -164,6 +164,8 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
         votes: null,
         proposer_name: values.proposerName,
         start_character_id: kebabCase(values.characters[0].name),
+        // sprite_id / room_id stay at backend defaults until phase-3 dropdowns land.
+        room_id: 'room',
         characters_config: values.characters.reduce(
           (acc, char, index) => {
             // Find the color option to get the hex code
@@ -180,6 +182,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                 ...char.llm_config,
                 provider: char.llm_config.provider as LLMConfig['provider'],
               },
+              sprite_id: 'bob',
               // Add required initial state fields
               initial_position: {
                 x: TILE_SIZE * (7.5 + index), // Start at x=7.5 tiles, increment by 1 tile

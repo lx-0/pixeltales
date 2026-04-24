@@ -81,6 +81,18 @@
             "title": "Role",
             "type": "string"
           },
+          "sprite_id": {
+            "default": "bob",
+            "description": "ID of a sprite from the backend asset catalog (GET /api/v1/config).",
+            "examples": [
+              "bob",
+              "cleaner_girl",
+              "doctor_1",
+              "zombie"
+            ],
+            "title": "Sprite Id",
+            "type": "string"
+          },
           "visual": {
             "description": "Character's visual appearance description (10-500 characters)",
             "examples": [
@@ -325,11 +337,27 @@
             },
             "title": "Llm Providers",
             "type": "array"
+          },
+          "rooms": {
+            "items": {
+              "$ref": "#/components/schemas/RoomOption"
+            },
+            "title": "Rooms",
+            "type": "array"
+          },
+          "sprites": {
+            "items": {
+              "$ref": "#/components/schemas/SpriteOption"
+            },
+            "title": "Sprites",
+            "type": "array"
           }
         },
         "required": [
           "llm_providers",
-          "colors"
+          "colors",
+          "sprites",
+          "rooms"
         ],
         "title": "ConfigOptions",
         "type": "object"
@@ -410,6 +438,17 @@
               "Jane Smith"
             ],
             "title": "Proposer Name"
+          },
+          "room_id": {
+            "default": "room",
+            "description": "ID of a room background from the backend asset catalog (GET /api/v1/config).",
+            "examples": [
+              "room",
+              "the-lab",
+              "the-lab-w-docs"
+            ],
+            "title": "Room Id",
+            "type": "string"
           },
           "start_character_id": {
             "description": "ID of the character who starts the conversation",
@@ -685,6 +724,30 @@
         "title": "Position",
         "type": "object"
       },
+      "RoomOption": {
+        "description": "Room background asset option.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path"
+        ],
+        "title": "RoomOption",
+        "type": "object"
+      },
       "SceneConfig": {
         "description": "Scene configuration.",
         "properties": {
@@ -765,6 +828,17 @@
               "Jane Smith"
             ],
             "title": "Proposer Name"
+          },
+          "room_id": {
+            "default": "room",
+            "description": "ID of a room background from the backend asset catalog (GET /api/v1/config).",
+            "examples": [
+              "room",
+              "the-lab",
+              "the-lab-w-docs"
+            ],
+            "title": "Room Id",
+            "type": "string"
           },
           "start_character_id": {
             "description": "ID of the character who starts the conversation",
@@ -902,6 +976,35 @@
           "scene_state"
         ],
         "title": "ServerToClientEvents",
+        "type": "object"
+      },
+      "SpriteOption": {
+        "description": "Character sprite asset option.",
+        "properties": {
+          "has_idle_anim": {
+            "title": "Has Idle Anim",
+            "type": "boolean"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "path": {
+            "title": "Path",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path",
+          "has_idle_anim"
+        ],
+        "title": "SpriteOption",
         "type": "object"
       },
       "ValidationError": {
