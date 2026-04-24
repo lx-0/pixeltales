@@ -60,20 +60,23 @@ uv run alembic revision --autogenerate -m "..."          # new schema migration
 
 ## Architecture
 
+**Canonical: 4-layer Agent / Harness / World / Client.** See [`docs/architecture.md`](docs/architecture.md) for the full model, dependency rules, naming conventions, and refactor phases. Current code in `app/services/` mixes Harness + World + Client and is being progressively migrated.
+
 ### Runtime shape
 
-Browser ⇄ Socket.IO ⇄ FastAPI backend ⇄ LangChain (OpenAI/Anthropic) + SQLAlchemy (SQLite/PG).
+Browser ⇄ Socket.IO ⇄ FastAPI backend ⇄ PydanticAI (OpenAI/Anthropic, optionally via LiteLLM gateway) + SQLAlchemy (SQLite/PG).
 
 The game is not request/response — it's a server-driven loop. The backend holds scene state in memory, ticks conversations forward, calls LLMs, and broadcasts `scene_state` events to every connected client. The frontend is largely a thin renderer of whatever the server pushes.
 
-### Backend: scene → conversation → LLM
+### Backend: today's layout (pre-refactor)
 
-- `app/main.py` — builds FastAPI app, wraps it in `socketio.ASGIApp` as `socket_app`, wires `connect`/`disconnect` to `SceneManager.add_visitor`/`remove_visitor`. Routers: `/api/v1/config`, `/api/v1/scenes`. Health: `/health`.
-- `app/services/scene_manager.py` (the orchestrator, ~360 lines) — owns the active `Scene`, visitor set, tick loop, and broadcast. Composes `SceneConfigService`, `SceneService`, `SceneStateSnapshotService`, `ConversationManager`, `LLMManager`.
-- `app/services/conversation_manager.py` — turn-taking, speaking-time pacing (`base_speaking_time + char_speaking_time * len`), context window of 20, end-conversation request with 180s validity.
-- `app/services/llm_manager.py` — LangChain `ChatOpenAI` / `ChatAnthropic` behind a single interface. Character replies are parsed via `PydanticOutputParser` into a `CharacterResponse` schema (mood, mood_emoji, thoughts, content, reaction emoji, conversation_rating, end_conversation, recipient). Prompt templating lives here.
+- `app/main.py` — builds FastAPI app, wraps it in `socketio.ASGIApp` as `socket_app`, wires `connect`/`disconnect` to `SceneManager.add_visitor`/`remove_visitor`. Routers: `/api/v1/config`, `/api/v1/scenes`, `/api/v1/characters`. Health: `/health`. *Future Client layer will live here + `app/client/`.*
+- `app/services/scene_manager.py` (the orchestrator) — owns the active `Scene`, visitor set, tick loop, and broadcast. Composes `SceneConfigService`, `SceneService`, `SceneStateSnapshotService`, `ConversationManager`, `LLMManager`. *Will become `app/harness/orchestrator.py` (class `Harness`) + `app/world/state.py` (class `World`).*
+- `app/services/conversation_manager.py` — turn-taking, speaking-time pacing (`base_speaking_time + char_speaking_time * len`), context window of 20, end-conversation request with 180s validity. *Future `app/harness/conversation.py`.*
+- `app/services/llm_manager.py` — PydanticAI `Agent` per `LLMConfig` hash, `CharacterResponse` Pydantic schema, structured output via tool-calling. Routes via LiteLLM gateway when `LITELLM_BASE_URL` is set, else direct OpenAI/Anthropic SDK. *Future `app/agent/llm.py`.*
+- `app/characters/<id>/` — character library SSOT: `AGENTS.md` (role) + `.character.yaml` (identity + placement + LLMConfig). Loader at `app/characters/__init__.py`. *Future `app/agent/characters/<id>/` (+ `skills/<name>/SKILL.md` per agentskills.io spec, see ROADMAP).*
 - `app/db/` — SQLAlchemy async models. Two tables: `scene_configs` (JSON blob of a scene config) and `scene_state_snapshots` (time-series of scene state, FK to config).
-- `app/default_scene.py` / `default_scene.branding.py` — seeded scene definitions.
+- `app/default_scene.py` — seeded default scene composition (uses character library).
 - `app/core/config.py` — Pydantic Settings. `DB_TYPE=sqlite|postgresql`, `database_url` computed property, CORS origins auto-derive from `FRONTEND_PORT` + `ENV` when `BACKEND_CORS_ORIGINS` is empty.
 
 ### Frontend: React shell + Phaser game
@@ -91,8 +94,9 @@ The game is not request/response — it's a server-driven loop. The backend hold
 
 ## Conventions worth knowing
 
-- **Frontend formatter is Prettier** (`.prettierrc`, 2-space, single quotes), lint is ESLint 9 flat config. Backend format/lint is not pinned — stick with `mypy` for type safety.
-- **German-language scene content is expected** in `default_scene*.py` and some LLM prompts. Don't "translate to English" as a drive-by.
+- **Lint+format is Biome 2** (`biome.json`) frontend, **ruff** backend. Both wired into `lefthook` pre-commit. No ESLint/Prettier — don't reach for them.
+- **Test suite exists.** Backend: `uv run pytest` (38 tests, 62.92% coverage, floor 55%). Frontend: `pnpm test` (vitest, 20 tests, floor 15/9/8/15). E2E: `pnpm test:e2e` (Playwright). Browser smoke: `pnpm diag` (headless playwright via `frontend/scripts/diag.mjs`).
+- **German-language scene content is expected** in `default_scene.py` and some LLM prompts. Don't "translate to English" as a drive-by.
 - **`.cursorrules` is active and overrides generic advice** — key points: no file >500 LOC, don't read/edit `.env*`, never use service_role Supabase keys, keep `README.md` user-focused.
-- **No test suite.** No `pytest`, no `vitest`, no Playwright configured. Don't fabricate a `npm test` command — there isn't one.
 - **SQLite path gotcha.** Dev container mounts `./data/sqlite` to `/data/sqlite`; `SQLITE_URL` uses `sqlite+aiosqlite:////data/sqlite/pixeltales.db` (four slashes — absolute path inside container). Running the backend bare-metal without `SQLITE_URL` override writes to `data/sqlite/pixeltales.db` relative to CWD.
+- **Naming discipline (architecture):** layer names `agent`/`harness`/`world`/`client` are reserved for their respective layers (see `docs/architecture.md`). Avoid generic `manager`/`service`/`handler` — pick the layer's vocabulary instead. "Gateway" is reserved for the **LLM gateway** (LiteLLM); don't reuse for Client adapters.

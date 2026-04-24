@@ -99,11 +99,12 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 ### Backend
 
-- [ ] **PydanticAI migration of the LLM layer** (replaces an earlier "LangGraph rewrite" entry — see note below).
-  *Scope:* `LLMManager` and `ConversationManager._prepare_conversation_history` only. `SceneManager`'s tick loop stays — its `asyncio.sleep`s are user-visible animation pacing (speaking-time, engagement pause, cooldowns), not workflow scheduling. A graph framework wouldn't help and the old roadmap entry was wrong about "drops manual sleeps".
-  *Why PydanticAI over LangGraph:* (1) Pydantic-native — `CharacterResponse` is already Pydantic, drops the `with_structured_output(method="function_calling", strict=True)` + `PydanticOutputParser` dance. (2) Lighter dep surface — drops 5 `langchain-*` packages (~150 MB container). (3) Per-NPC `Agent` instance scales better than per-NPC `StateGraph` instance for any future MMORPG-NPC direction. (4) Tools (`@agent.tool`) and streaming are first-class — when we want them.
-  *Gating met:* 38 backend tests pin the contract (15 `ConversationManager` + 11 `SceneManager` + 8 `extra="forbid"` + 4 misc).
-  *Out of scope, deferred until concrete need:* per-character tools (no NPC needs to call APIs yet), streaming (no typing-animation feature pending), multi-NPC orchestration (we have 2 characters), `SceneManager` rewrite (works fine).
+- [x] ~~**PydanticAI migration of the LLM layer**~~ (commit `fb834c5`) — `LLMManager` + `ConversationManager._prepare_conversation_history` migrated to pydantic-ai 1.86. Drops 5 `langchain-*` packages, native structured-output, LiteLLM-gateway-compatible. Original roadmap entry mistakenly promised "drops manual sleeps"; sleeps stayed (animation pacing).
+
+- [ ] **Architecture refactor — 4-layer Agent / Harness / World / Client separation** ⭐ — see [`docs/architecture.md`](docs/architecture.md) for canonical model + naming rules + dependency graph + 5-phase plan.
+  *Why now:* current `SceneManager` mixes Harness-orchestration + World-mutation + Client-emit. Every Client addition (Twitch/Discord/REST-poll) and every World extension (props, spatial queries, time-of-day) requires touching that one file. Clean separation is the precondition for: per-character skills (Agent), multi-NPC support (Harness), Twitch/Discord clients (Client), and any MMORPG-NPC pivot (World becomes first-class). Naming-as-philosophy: codifying the layers in directories + class names + tests forces the discipline.
+  *Plan:* Phase A (this commit) = docs + ROADMAP + CLAUDE.md. Phase B = extract `World` (state + mutations + events). Phase C = rename `SceneManager` → `Harness`. Phase D = extract `SocketIOClient`. Phase E = rename Agent layer + move `app/characters/` → `app/agent/characters/`. Each phase one commit, all behavior-preserving (38 tests + `pnpm diag` browser smoke as guard rails).
+  *Gating met:* PydanticAI migration shipped (Agent layer is cleanest now); test coverage (62.92%) catches regressions; browser smoke verifies end-to-end.
 
 - [ ] **DB-stored per-character model config** — move `DEFAULT_MODEL` constant + `LLMConfig` from scene proposal payload to a `models` DB table. Hot-swappable without redeploy.
   *Why deferred:* needs Alembic migration **and** scene-proposal UI changes (dropdown reads from DB). Wait until users ask for runtime model swaps.
@@ -116,6 +117,30 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 - [ ] **hCaptcha on `/scenes/propose`** — additional spam guard.
   *Why deferred:* `slowapi` 5/min limit covers normal abuse. Re-evaluate if logs show distributed spam.
+
+- [ ] **[Agent]** **Per-cognitive-tier LLM routing via gateway aliases** — add a `tier:` field to `.character.yaml` (e.g. `cheap` for ambient chitchat, `default` for normal turns, `quality` for important moments). `agent/llm.py` loader translates to the LiteLLM-gateway alias when building the PydanticAI `Agent`. Cost-saving + MMORPG-ready.
+  *Why deferred:* needs a couple of `.character.yaml` schema decisions and a tier→model resolution table. Easy to add when LLM costs become a problem or when scenes need cheap-NPC variety.
+  *Source:* mined from `.archive/agent-architecture.md:1869-1891` (System-1/System-2 split).
+
+- [ ] **[Agent]** **Per-character skills (agentskills.io SKILL.md format)** — characters opt into a list of skills via `.character.yaml`. Each skill is a folder with `SKILL.md` (frontmatter: `name`, `description`; body: instructions). `agent/llm.py` loader registers each skill as a PydanticAI `@agent.tool` callable. Skill folders live either character-local (`app/agent/characters/<id>/skills/<name>/`) or in a shared library (`app/agent/skills/<name>/`).
+  *Why agentskills.io specifically:* open standard (Anthropic-released, multi-vendor adoption per agentskills.io/clients). Survives any future LLM-engine swap. Composable per-character without hand-coded tool registries.
+  *Why deferred:* no concrete NPC needs a tool yet — we have 2 ice-cream-shop characters that just talk. Pick up when (a) the first NPC needs a real action like `recall_about_npc`, `inspect_props`, `give_item`, OR (b) the social-memory item below ships and needs a skill-shaped read/write surface.
+  *Pairs with:* social-memory wishlist item (skill-shaped memory tools), per-character tier routing (skills can be expensive — light NPCs get fewer).
+
+- [ ] **[Client + Agent]** **Streaming responses (typing animation)** — Agent: swap `agent.run()` for `agent.run_stream()`. Client: `SocketIOClient` emits incremental tokens via a new `scene_state.partial` event. Frontend renders character-by-character.
+  *Why deferred:* current pacing already has `calculated_speaking_time` for the bubble visibility — streaming would replace that timing model. Pick up when (a) a designer wants a true "typing" animation or (b) latency becomes the bigger UX complaint than "it feels staged".
+  *Pairs with:* PydanticAI migration (shipped) — the Agent layer supports streaming natively.
+
+- [ ] **[Harness]** **Multi-NPC support (>2 characters + decision thresholds)** — current `_get_next_speaker` strictly alternates between 2 characters; `_get_other_character` picks any non-self. For 3+ NPCs the Harness needs a "should I speak now?" mood-based threshold instead of forced rotation. Otherwise group conversations are robotic.
+  *Why deferred:* MVP scenes are 2-character (Bob + Alice in the ice-cream shop). Concrete need = first 3-character scene proposal.
+  *Source:* `.private/.notes/PROMPTS.md:183-184` — "context + mood-based threshold, not always turn-based".
+
+- [ ] **[Harness]** **Rule-based fallbacks when the LLM provider is down** — when the Agent layer returns 5xx after the retry-loop exhausts, the Harness emits a template response (`<character> nods silently`, `<character> looks distracted`) so the scene stays alive instead of crashing the tick loop.
+  *Why deferred:* current `ConversationManager` retry-loop with exp backoff covers transient failures. Rule-based fallback only matters during sustained outages, which we haven't hit. Add when first user complains "the scene froze".
+  *Source:* `.archive/agent-architecture.md:1889`.
+
+- [ ] **[Cross-cutting]** **Grafana board for the Prometheus metrics** — Phase 9 exposes `/metrics` (`pixeltales_visitors_active`, `pixeltales_messages_total{character}`, `pixeltales_llm_response_seconds{provider,model}`) but nothing visualizes them. A public Grafana board would make the live demo "alive" for observers + give us regression visibility.
+  *Why deferred:* needs a Grafana endpoint to point at. Same gating as OpenTelemetry traces above — set up the observability host first, then wire both at once.
 
 - [x] ~~Pydantic v2 `class Config` cleanup~~ — replaced with `ConfigDict` in `models/llm.py`.
 
@@ -190,6 +215,14 @@ Alex's ratings: `[++]` high → `[--]` very low. Pick from here when next planni
 - [ ] `[--]` PydanticAI substitute for LangChain (testing)
 - [ ] `[--]` Twitch streaming of the scene
 - [ ] `[--]` Research gather.town features
+
+Mined from `.archive/agent-architecture.md` + `.private/.notes/PROMPTS.md` (2026-04-24):
+
+- [ ] `[o]` **Social memory / relationship tracking** — characters remember facts about each other ("Alice learned Bob is sarcastic") from observation, not metadata. Implementation candidate: [PARA method](https://fortelabs.com/blog/para/) per NPC (Projects = current scene goals, Areas = relationships, Resources = world facts, Archives = past scenes), exposed to the Agent layer as agentskills.io skills (see Backend "per-character skills" item).
+- [ ] `[o]` **Goal Manager / long-horizon arcs** — composite multi-turn objectives ("Alice tries to convince Bob to help her find the treasure") persisted across turns. Needs goal-state schema + planner-style reasoning step before each turn.
+- [ ] `[o]` **Embedding-based memory retrieval (pgvector)** — replace fixed-window-truncation with vector relevance. Only sinnvoll if multi-session continuity becomes a feature (i.e. scenes stop being ephemeral).
+- [ ] `[o]` **Async reflection offload** — move psychology/communication-analysis prompts off the hot path onto a background worker queue. Frees the main loop for visitor interactions, lets reflection-on-conversation be richer without blocking turn-taking.
+- [ ] `[-]` **Visitor-count → character-behavior signal** — broadcast `visitors_active` (already a Prometheus gauge) into character context so NPCs can "feel audience pressure" — speak louder with 100 watching, intimate with 2.
 
 ## ✅ Closed: Character Library — AGENTS.md adoption complete
 
