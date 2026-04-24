@@ -3,6 +3,7 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
+import type { Schemas } from '@/api/client';
 import {
   Accordion,
   AccordionContent,
@@ -43,7 +44,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { TILE_SIZE } from '@/game/config';
 import { getModelOptions, useConfig } from '@/hooks/use-config';
 import { useSceneProposal } from '@/hooks/use-scenes';
-import type { CharacterConfig, LLMConfig, SceneConfig } from '@/types/scene';
+import type { LLMConfig } from '@/types/scene';
+
+type CharacterConfig = Schemas['CharacterConfig'];
+type CreateSceneConfig = Schemas['CreateSceneConfig'];
+
 import { kebabCase } from '@/utils/format';
 import { Logger } from '@/utils/logger';
 import { ColorPalette } from './ColorPalette';
@@ -152,9 +157,11 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
       setIsSubmitting(true);
 
       // Convert form values to scene config
-      const sceneConfig: Omit<SceneConfig, 'id' | 'status' | 'system_prompt'> = {
+      const sceneConfig: CreateSceneConfig = {
         name: values.sceneName,
         description: values.sceneDescription,
+        status: 'proposed',
+        votes: null,
         proposer_name: values.proposerName,
         start_character_id: kebabCase(values.characters[0].name),
         characters_config: values.characters.reduce(

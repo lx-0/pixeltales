@@ -1,0 +1,943 @@
+{
+  "components": {
+    "schemas": {
+      "CharacterConfig": {
+        "description": "Configuration for a character.",
+        "properties": {
+          "color": {
+            "description": "Character's color in hex format (e.g., #FF0000)",
+            "examples": [
+              "#FF0000",
+              "#00FF00"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique identifier for the character",
+            "examples": [
+              "bob",
+              "alice"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "initial_action": {
+            "enum": [
+              "thinking",
+              "thinking:love",
+              "thinking:anger",
+              "thinking:sadness",
+              "thinking:surprise",
+              "thinking:fear",
+              "speaking",
+              "idle"
+            ],
+            "title": "Initial Action",
+            "type": "string"
+          },
+          "initial_direction": {
+            "enum": [
+              "front",
+              "right",
+              "left",
+              "back"
+            ],
+            "title": "Initial Direction",
+            "type": "string"
+          },
+          "initial_mood": {
+            "title": "Initial Mood",
+            "type": "string"
+          },
+          "initial_position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "llm_config": {
+            "$ref": "#/components/schemas/LLMConfig",
+            "description": "Configuration for the character's language model"
+          },
+          "name": {
+            "description": "Character's display name (2-50 characters)",
+            "examples": [
+              "Bob",
+              "Alice"
+            ],
+            "maxLength": 50,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "description": "Character's role and personality description (10-5000 characters)",
+            "examples": [
+              "A friendly shopkeeper who loves to tell stories..."
+            ],
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Role",
+            "type": "string"
+          },
+          "visual": {
+            "description": "Character's visual appearance description (10-500 characters)",
+            "examples": [
+              "A tall person with short brown hair and glasses..."
+            ],
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Visual",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "role",
+          "visual",
+          "llm_config",
+          "initial_position",
+          "initial_direction",
+          "initial_action",
+          "initial_mood"
+        ],
+        "title": "CharacterConfig",
+        "type": "object"
+      },
+      "ColorOption": {
+        "description": "Color option configuration.",
+        "properties": {
+          "group": {
+            "title": "Group",
+            "type": "string"
+          },
+          "hex": {
+            "title": "Hex",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "hex",
+          "group"
+        ],
+        "title": "ColorOption",
+        "type": "object"
+      },
+      "Comment": {
+        "description": "Comment on a scene proposal.",
+        "properties": {
+          "comment": {
+            "title": "Comment",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "user": {
+            "title": "User",
+            "type": "string"
+          }
+        },
+        "required": [
+          "user",
+          "comment",
+          "timestamp"
+        ],
+        "title": "Comment",
+        "type": "object"
+      },
+      "ConfigOptions": {
+        "description": "Available configuration options.",
+        "properties": {
+          "colors": {
+            "items": {
+              "$ref": "#/components/schemas/ColorOption"
+            },
+            "title": "Colors",
+            "type": "array"
+          },
+          "llm_providers": {
+            "items": {
+              "$ref": "#/components/schemas/LLMProvider"
+            },
+            "title": "Llm Providers",
+            "type": "array"
+          }
+        },
+        "required": [
+          "llm_providers",
+          "colors"
+        ],
+        "title": "ConfigOptions",
+        "type": "object"
+      },
+      "CreateSceneConfig": {
+        "description": "Scene configuration for creation without ID.",
+        "properties": {
+          "characters_config": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CharacterConfig"
+            },
+            "description": "Configuration for each character in the scene, keyed by character ID",
+            "title": "Characters Config",
+            "type": "object"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Comment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of comments on the scene proposal",
+            "title": "Comments"
+          },
+          "description": {
+            "description": "Scene description (10-5000 characters)",
+            "examples": [
+              "Two friends meet at a coffee shop and discuss their dreams..."
+            ],
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "name": {
+            "description": "Scene name (3-50 characters)",
+            "examples": [
+              "Coffee Shop Chat",
+              "Park Meeting"
+            ],
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Name",
+            "type": "string"
+          },
+          "proposed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO format datetime when the scene was proposed",
+            "title": "Proposed At"
+          },
+          "proposer_name": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the person proposing the scene (2-50 characters)",
+            "examples": [
+              "John Doe",
+              "Jane Smith"
+            ],
+            "title": "Proposer Name"
+          },
+          "start_character_id": {
+            "description": "ID of the character who starts the conversation",
+            "examples": [
+              "bob",
+              "alice"
+            ],
+            "title": "Start Character Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SceneConfigStatus",
+            "default": "proposed",
+            "description": "Current status of the scene configuration (proposed, active, or rejected)"
+          },
+          "votes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "description": "Number of votes the scene proposal has received",
+            "title": "Votes"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "start_character_id",
+          "characters_config"
+        ],
+        "title": "CreateSceneConfig",
+        "type": "object"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "title": "Detail",
+            "type": "array"
+          }
+        },
+        "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "LLMConfig": {
+        "description": "LLM configuration for the character.",
+        "properties": {
+          "max_tokens": {
+            "description": "Maximum number of tokens to generate (1-32000)",
+            "exclusiveMinimum": 0.0,
+            "maximum": 32000.0,
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "model_name": {
+            "description": "The name of the model to use",
+            "examples": [
+              "gpt-4o-mini",
+              "claude-3-5-sonnet-20241022"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Model Name",
+            "type": "string"
+          },
+          "provider": {
+            "description": "The LLM provider (openai or anthropic)",
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Provider",
+            "type": "string"
+          },
+          "temperature": {
+            "description": "Temperature controls randomness (0.0-2.0, default 0.7)",
+            "maximum": 2.0,
+            "minimum": 0.0,
+            "title": "Temperature",
+            "type": "number"
+          }
+        },
+        "required": [
+          "provider",
+          "model_name",
+          "max_tokens",
+          "temperature"
+        ],
+        "title": "LLMConfig",
+        "type": "object"
+      },
+      "LLMModel": {
+        "description": "LLM model configuration.",
+        "properties": {
+          "default_temperature": {
+            "default": 0.7,
+            "title": "Default Temperature",
+            "type": "number"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "max_tokens": {
+            "title": "Max Tokens",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "max_tokens"
+        ],
+        "title": "LLMModel",
+        "type": "object"
+      },
+      "LLMProvider": {
+        "description": "LLM provider configuration.",
+        "properties": {
+          "id": {
+            "enum": [
+              "openai",
+              "anthropic"
+            ],
+            "title": "Id",
+            "type": "string"
+          },
+          "models": {
+            "items": {
+              "$ref": "#/components/schemas/LLMModel"
+            },
+            "title": "Models",
+            "type": "array"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "models"
+        ],
+        "title": "LLMProvider",
+        "type": "object"
+      },
+      "Position": {
+        "description": "A position in the scene.",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y"
+        ],
+        "title": "Position",
+        "type": "object"
+      },
+      "SceneConfig": {
+        "description": "Scene configuration.",
+        "properties": {
+          "characters_config": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CharacterConfig"
+            },
+            "description": "Configuration for each character in the scene, keyed by character ID",
+            "title": "Characters Config",
+            "type": "object"
+          },
+          "comments": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/Comment"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "List of comments on the scene proposal",
+            "title": "Comments"
+          },
+          "description": {
+            "description": "Scene description (10-5000 characters)",
+            "examples": [
+              "Two friends meet at a coffee shop and discuss their dreams..."
+            ],
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Description",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "description": "Scene name (3-50 characters)",
+            "examples": [
+              "Coffee Shop Chat",
+              "Park Meeting"
+            ],
+            "maxLength": 50,
+            "minLength": 3,
+            "title": "Name",
+            "type": "string"
+          },
+          "proposed_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "ISO format datetime when the scene was proposed",
+            "title": "Proposed At"
+          },
+          "proposer_name": {
+            "anyOf": [
+              {
+                "maxLength": 50,
+                "minLength": 2,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Name of the person proposing the scene (2-50 characters)",
+            "examples": [
+              "John Doe",
+              "Jane Smith"
+            ],
+            "title": "Proposer Name"
+          },
+          "start_character_id": {
+            "description": "ID of the character who starts the conversation",
+            "examples": [
+              "bob",
+              "alice"
+            ],
+            "title": "Start Character Id",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/SceneConfigStatus",
+            "default": "proposed",
+            "description": "Current status of the scene configuration (proposed, active, or rejected)"
+          },
+          "system_prompt": {
+            "description": "System prompt that sets the context and rules (10-1000 characters)",
+            "examples": [
+              "You are in a cozy coffee shop on a rainy afternoon..."
+            ],
+            "maxLength": 1000,
+            "minLength": 10,
+            "title": "System Prompt",
+            "type": "string"
+          },
+          "votes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0,
+            "description": "Number of votes the scene proposal has received",
+            "title": "Votes"
+          }
+        },
+        "required": [
+          "name",
+          "description",
+          "start_character_id",
+          "characters_config",
+          "id",
+          "system_prompt"
+        ],
+        "title": "SceneConfig",
+        "type": "object"
+      },
+      "SceneConfigStatus": {
+        "description": "Scene config status enum.",
+        "enum": [
+          "proposed",
+          "active",
+          "rejected"
+        ],
+        "title": "SceneConfigStatus",
+        "type": "string"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "title": "Location",
+            "type": "array"
+          },
+          "msg": {
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "title": "Error Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError",
+        "type": "object"
+      },
+      "VotePayload": {
+        "properties": {
+          "vote": {
+            "title": "Vote",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "vote"
+        ],
+        "title": "VotePayload",
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "PixelTales",
+    "version": "0.1.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/api/v1/config": {
+      "get": {
+        "description": "Get available configuration options.",
+        "operationId": "get_config_options_api_v1_config_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Config Options",
+        "tags": [
+          "config"
+        ]
+      }
+    },
+    "/api/v1/scenes/propose": {
+      "post": {
+        "operationId": "propose_scene_api_v1_scenes_propose_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSceneConfig"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose Scene",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/api/v1/scenes/proposed": {
+      "get": {
+        "operationId": "get_proposed_scenes_api_v1_scenes_proposed_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SceneConfig"
+                  },
+                  "title": "Response Get Proposed Scenes Api V1 Scenes Proposed Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Get Proposed Scenes",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/api/v1/scenes/{scene_config_id}": {
+      "get": {
+        "operationId": "get_scene_config_api_v1_scenes__scene_config_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_config_id",
+            "required": true,
+            "schema": {
+              "title": "Scene Config Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Scene Config",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/api/v1/scenes/{scene_config_id}/comment": {
+      "post": {
+        "operationId": "add_comment_api_v1_scenes__scene_config_id__comment_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_config_id",
+            "required": true,
+            "schema": {
+              "title": "Scene Config Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "user",
+            "required": true,
+            "schema": {
+              "title": "User",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "comment",
+            "required": true,
+            "schema": {
+              "title": "Comment",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Add Comment",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/api/v1/scenes/{scene_config_id}/reject": {
+      "post": {
+        "operationId": "reject_scene_api_v1_scenes__scene_config_id__reject_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_config_id",
+            "required": true,
+            "schema": {
+              "title": "Scene Config Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Reject Scene",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/api/v1/scenes/{scene_config_id}/vote": {
+      "post": {
+        "operationId": "vote_scene_api_v1_scenes__scene_config_id__vote_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "scene_config_id",
+            "required": true,
+            "schema": {
+              "title": "Scene Config Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VotePayload"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SceneConfig"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Vote Scene",
+        "tags": [
+          "scenes"
+        ]
+      }
+    },
+    "/health": {
+      "get": {
+        "operationId": "health_check_health_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Health Check"
+      }
+    }
+  }
+}

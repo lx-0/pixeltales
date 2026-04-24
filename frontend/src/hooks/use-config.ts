@@ -1,46 +1,21 @@
 import { useQuery } from '@tanstack/react-query';
+import { apiClient, type Schemas } from '@/api/client';
 
-interface LLMModel {
-  id: string;
-  name: string;
-  max_tokens: number;
-  default_temperature: number;
-  description?: string;
-}
-
-interface LLMProvider {
-  id: string;
-  name: string;
-  models: LLMModel[];
-}
-
-interface ColorOption {
-  id: string;
-  name: string;
-  hex: string;
-  group: string;
-}
-
-interface ConfigOptions {
-  llm_providers: LLMProvider[];
-  colors: ColorOption[];
-}
+export type ConfigOptions = Schemas['ConfigOptions'];
+export type LLMProvider = Schemas['LLMProvider'];
 
 export function useConfig() {
-  return useQuery<ConfigOptions>({
+  return useQuery({
     queryKey: ['config'],
     queryFn: async () => {
-      const response = await fetch('/api/v1/config');
-      if (!response.ok) {
-        throw new Error('Failed to fetch config');
-      }
-      return response.json();
+      const { data, error } = await apiClient.GET('/api/v1/config');
+      if (error) throw new Error('Failed to fetch config');
+      return data;
     },
-    staleTime: Infinity, // Cache forever as this rarely changes
+    staleTime: Number.POSITIVE_INFINITY,
   });
 }
 
-// Helper to get model options for select
 export function getModelOptions(providers: LLMProvider[]) {
   return providers.map((provider) => ({
     label: provider.name,

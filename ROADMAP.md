@@ -51,11 +51,19 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [ ] Drop manual `asyncio.sleep` + scheduling in `SceneManager`.
 - [ ] Audit async SQLAlchemy session lifecycle (will mostly be touched here).
 
-## Phase 4 — Cross-stack type safety
+## Phase 4a ✅ — REST OpenAPI codegen
 
-- [ ] Auto-generate TypeScript client from FastAPI OpenAPI (`openapi-typescript` + `openapi-fetch`). `pnpm codegen` script.
-- [ ] Socket.IO event contract: Pydantic models → JSON Schema → TypeScript. Pick one source of truth (recommend: Pydantic models exported on a Socket API index endpoint, TS codegen consumes).
-- [ ] Migrate frontend REST calls in `use-config.ts`, `use-scenes.ts` to generated client.
+- [x] `backend/scripts/dump_openapi.py` — dumps FastAPI OpenAPI to `backend/openapi.json`
+- [x] Frontend: `openapi-typescript` (devDep) + `openapi-fetch` (dep). `pnpm codegen` regenerates `src/api/types.gen.ts`.
+- [x] `src/api/client.ts` — typed openapi-fetch client + `Schemas` alias
+- [x] `use-config.ts` + `use-scenes.ts` migrated to typed client
+- [x] `SceneProposalForm` uses generated `CreateSceneConfig` + `CharacterConfig`
+
+## Phase 4b — Socket.IO event typing (deferred)
+
+- [ ] Pydantic models for each Socket.IO event payload, dumped as JSON Schema
+- [ ] TS types codegenned via `json-schema-to-typescript`
+- [ ] Replace ad-hoc `Socket<any>` in `services/socket.ts` with typed events
 
 ## Phase 5 — Testing
 
