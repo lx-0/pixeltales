@@ -1,10 +1,12 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class LLMConfig(BaseModel):
     """LLM configuration for the character."""
+
+    model_config = ConfigDict(frozen=True)  # Immutable + hashable
 
     provider: Literal["openai", "anthropic"] = Field(
         description="The LLM provider (openai or anthropic)"
@@ -23,6 +25,3 @@ class LLMConfig(BaseModel):
         le=2.0,
         description="Temperature controls randomness (0.0-2.0, default 0.7)",
     )
-
-    class Config:
-        frozen = True  # Makes the model immutable and hashable

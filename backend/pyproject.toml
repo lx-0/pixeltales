@@ -67,8 +67,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"app/db/init_db.py" = ["F401"]  # imports for SQLAlchemy metadata registration
-"app/services/scene_manager.py" = ["RUF006"]  # fix in Phase 3 LangGraph rewrite
+"app/services/scene_manager.py" = ["RUF006"]  # fix in Phase 3b LangGraph rewrite
 
 [tool.ruff.format]
 quote-style = "double"

@@ -114,16 +114,13 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 - [ ] **hCaptcha on `/scenes/propose`** — additional spam guard.
   *Why deferred:* `slowapi` 5/min limit covers normal abuse. Re-evaluate if logs show distributed spam.
 
-- [ ] **Pydantic v2 `class Config` cleanup** — `app/models/llm.py:6` still uses class-based `Config`, raising `PydanticDeprecatedSince20`. Replace with `ConfigDict`.
-  *Why deferred:* warning only, not an error. Trivial fix; pick up next time `models/llm.py` is touched.
+- [x] ~~Pydantic v2 `class Config` cleanup~~ — replaced with `ConfigDict` in `models/llm.py`.
 
-- [ ] **`init_db.py` removal** — superseded by Alembic. Currently kept for legacy `python -m app.db.init_db` callers.
-  *Why deferred:* zero cost to keep; remove on next backend cleanup pass.
+- [x] ~~`init_db.py` removal~~ — deleted; Alembic is the single source of schema truth.
 
 ### Frontend
 
-- [ ] **Phaser 3.87 → 3.90** — safe minor bump within the v3 line. Bug fixes + small features, no API churn.
-  *Why deferred:* low effort, low value-add — bundle in next dependency sweep.
+- [x] ~~Phaser 3.87 → 3.90~~ — bumped. Typecheck + build clean, no API changes needed.
 
 - [ ] **Phaser 3 → 4 major upgrade** — v4.0.0 is now `latest` on npm. New WebGL render-node architecture (~30% faster on quads), `SpriteGPULayer` ("100×" for mass sprite scenes), `TilemapGPULayer` (whole layer as one quad), unified Filter system (FX + Masks merged), overhauled Tint system with explicit modes via `setTintMode()`. Breaking: `Point`, `Mesh`, `BitmapMask` removed; Shader API changed; lighting simplified. Official migration guide exists; **not** a drop-in replacement.
   *PixelTales API surface:* `Phaser.GameObjects.{Container,Graphics,Sprite,Text}`, `Phaser.Input.Keyboard.*`, `Phaser.Scale.{FIT,CENTER}`, `Phaser.Scenes.Events.*`, `Phaser.Tweens.Tween`, `Phaser.AUTO`. **None of the removed classes are used.** Tint usage in `UIControlsFactory.animateButton` (`setTint(0xcccccc)`) is the most likely friction point — check if `setTint` still works without explicit `setTintMode()`.
