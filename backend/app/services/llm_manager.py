@@ -145,18 +145,32 @@ class LLMManager:
         }
 
     def _get_model_instance(self, config: LLMConfig) -> ChatOpenAI | ChatAnthropic:
+        # When the LiteLLM gateway is configured, route every provider through
+        # it via the OpenAI-compatible API. The gateway handles upstream
+        # routing (OpenAI, Anthropic, etc.) and credential management.
+        if settings.use_gateway:
+            return ChatOpenAI(
+                model=config.model_name,
+                temperature=config.temperature,
+                base_url=settings.LITELLM_BASE_URL,
+                api_key=settings.LITELLM_API_KEY,
+                max_completion_tokens=config.max_tokens,
+            )
+
         if config.provider == "openai":
             if settings.OPENAI_API_KEY is None:
-                raise ValueError("OPENAI_API_KEY is not set")
+                raise ValueError("OPENAI_API_KEY is not set (and LITELLM gateway not configured)")
             return ChatOpenAI(
-                temperature=config.temperature,
                 model=config.model_name,
+                temperature=config.temperature,
                 api_key=settings.OPENAI_API_KEY,
                 max_completion_tokens=config.max_tokens,
             )
-        elif config.provider == "anthropic":
+        if config.provider == "anthropic":
             if settings.ANTHROPIC_API_KEY is None:
-                raise ValueError("ANTHROPIC_API_KEY is not set")
+                raise ValueError(
+                    "ANTHROPIC_API_KEY is not set (and LITELLM gateway not configured)"
+                )
             return ChatAnthropic(
                 model=config.model_name,
                 temperature=config.temperature,
@@ -165,8 +179,7 @@ class LLMManager:
                 timeout=None,
                 stop=None,
             )
-        else:
-            raise ValueError(f"Unsupported provider: {config.provider}")
+        raise ValueError(f"Unsupported provider: {config.provider}")
 
     async def generate_response(
         self, external_id: str, input: SystemPromptTemplateVars

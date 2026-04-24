@@ -76,11 +76,16 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [ ] Coverage floors deferred to Phase 8 CI.
 - [ ] LangGraph rewrite (Phase 3b) can now proceed safely on top of this baseline.
 
-## Phase 6 — LLM infrastructure
+## Phase 6a ✅ — LiteLLM gateway support
 
-- [ ] Route LangChain `ChatOpenAI`/`ChatAnthropic` through LiteLLM gateway at `llm.yester.cloud` (OpenAI-compatible `base_url`). Centralized keys, rate limits, usage tracking.
+- [x] New env vars: `LITELLM_BASE_URL`, `LITELLM_API_KEY`. When set, every provider call routes through the gateway via OpenAI-compatible API.
+- [x] Falls back to direct OpenAI/Anthropic when the gateway is unconfigured.
+- [x] `.env.example` documents both setups.
+
+## Phase 6b — Prompt externalization (deferred)
+
 - [ ] Externalize character prompts from `llm_manager.py` into `backend/app/prompts/*.md`. Scene config references by name.
-- [ ] Move `DEFAULT_MODEL` from code constant to DB-stored per-character config. Hot-swappable without redeploy.
+- [ ] Move `DEFAULT_MODEL` from code constant to DB-stored per-character config. Hot-swappable without redeploy. Needs Alembic migration + scene proposal UI changes.
 
 ## Phase 7 — Security & auth
 

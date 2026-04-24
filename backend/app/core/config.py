@@ -58,11 +58,21 @@ class Settings(BaseSettings):
     # LLMs
     DEFAULT_MODEL: str = "gpt-4o-mini"
 
+    # LiteLLM gateway (OpenAI-compatible). When set, every provider call
+    # routes through the gateway instead of the upstream API directly.
+    # Lets us centralize keys, rate limits, and usage tracking.
+    LITELLM_BASE_URL: str | None = None
+    LITELLM_API_KEY: SecretStr | None = None
+
     # OpenAI
     OPENAI_API_KEY: SecretStr | None = None
 
     # Anthropic
     ANTHROPIC_API_KEY: SecretStr | None = None
+
+    @property
+    def use_gateway(self) -> bool:
+        return bool(self.LITELLM_BASE_URL and self.LITELLM_API_KEY)
 
 
 settings = Settings()
