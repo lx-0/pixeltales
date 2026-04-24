@@ -95,12 +95,12 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [ ] Real OAuth (Logto/Authentik) — only when public production demand exists.
 - [ ] hCaptcha on scene-proposal — only if rate limit alone proves insufficient.
 
-## Phase 8 — CI/CD
+## Phase 8 ✅ — CI/CD
 
-- [ ] GitHub Actions: lint (Biome + ruff), typecheck (tsc + mypy), test (vitest + pytest + playwright), build (pnpm build + both Dockerfiles).
-- [ ] Matrix: Node 22, Python 3.12.
-- [ ] Push images to GHCR on `main` merge.
-- [ ] Renovate config for automated dependency bumps.
+- [x] `.github/workflows/ci.yml`: backend (ruff + mypy + pytest) and frontend (biome + tsc + vitest + build) jobs in parallel. Cached uv + pnpm. Node 22, Python 3.12.
+- [x] `.github/workflows/docker.yml`: builds both Docker images on `main` push + tags, pushes to GHCR (`pixeltales-backend`, `pixeltales-frontend`) with sha + branch + semver tags. GHA cache for layers.
+- [x] `renovate.json`: weekly schedule, semantic commits, grouped React + LangChain bumps, pinned Docker digests.
+- [ ] Playwright E2E in CI — deferred (needs docker compose setup in workflow + browser install).
 - [ ] Production deploy target confirmed (current demo: `pixeltales.0fo.de`).
 
 ## Phase 9 — Observability (optional)

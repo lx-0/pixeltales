@@ -1,0 +1,75 @@
+name: ci
+
+on:
+  push:
+    branches: [main, origin]
+  pull_request:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: backend (lint + typecheck + test)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.8.13"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+
+      - name: Install Python + sync deps
+        run: uv sync --frozen
+
+      - name: Ruff lint
+        run: uv run --no-sync ruff check
+
+      - name: Ruff format check
+        run: uv run --no-sync ruff format --check
+
+      - name: Mypy
+        run: uv run --no-sync mypy app
+
+      - name: Pytest
+        run: uv run pytest
+
+  frontend:
+    name: frontend (lint + typecheck + test + build)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: frontend/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint (Biome)
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Unit tests (vitest)
+        run: pnpm test
+
+      - name: Build
+        run: pnpm build
