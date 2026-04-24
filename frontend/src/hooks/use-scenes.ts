@@ -1,7 +1,7 @@
-import { SceneConfig } from '@/types/scene';
-import { Logger } from '@/utils/logger';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useState } from 'react';
+import type { SceneConfig } from '@/types/scene';
+import { Logger } from '@/utils/logger';
 
 const VOTED_PROPOSALS_KEY = 'pixeltales:voted_proposals';
 
@@ -11,11 +11,7 @@ function getVotedProposals(): Set<number> {
     const stored = localStorage.getItem(VOTED_PROPOSALS_KEY);
     return stored ? new Set(JSON.parse(stored)) : new Set();
   } catch (error) {
-    Logger.error(
-      'use-scenes',
-      'Failed to get voted proposals from localStorage:',
-      error,
-    );
+    Logger.error('use-scenes', 'Failed to get voted proposals from localStorage:', error);
     return new Set();
   }
 }
@@ -26,22 +22,13 @@ function addVotedProposal(proposalId: number): void {
     voted.add(proposalId);
     localStorage.setItem(VOTED_PROPOSALS_KEY, JSON.stringify([...voted]));
   } catch (error) {
-    Logger.error(
-      'use-scenes',
-      'Failed to save voted proposal to localStorage:',
-      error,
-    );
+    Logger.error('use-scenes', 'Failed to save voted proposal to localStorage:', error);
   }
 }
 
 // Hook to get all voted proposals
-export function useVotedProposals(): [
-  Set<number>,
-  (proposalId: number) => void,
-] {
-  const [votedProposals, setVotedProposals] = useState<Set<number>>(() =>
-    getVotedProposals(),
-  );
+export function useVotedProposals(): [Set<number>, (proposalId: number) => void] {
+  const [votedProposals, setVotedProposals] = useState<Set<number>>(() => getVotedProposals());
 
   // Update voted proposals when localStorage changes
   useEffect(() => {
@@ -82,9 +69,7 @@ export function useSceneProposal() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (
-      sceneConfig: Omit<SceneConfig, 'id' | 'status' | 'system_prompt'>,
-    ) => {
+    mutationFn: async (sceneConfig: Omit<SceneConfig, 'id' | 'status' | 'system_prompt'>) => {
       const response = await fetch('/api/v1/scenes/propose', {
         method: 'POST',
         headers: {
@@ -107,13 +92,7 @@ export function useSceneVote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({
-      sceneConfigId,
-      vote,
-    }: {
-      sceneConfigId: number;
-      vote: number;
-    }) => {
+    mutationFn: async ({ sceneConfigId, vote }: { sceneConfigId: number; vote: number }) => {
       // Check if already voted
       const votedProposals = getVotedProposals();
       if (votedProposals.has(sceneConfigId)) {
@@ -121,10 +100,7 @@ export function useSceneVote() {
         throw new Error('You have already voted on this proposal');
       }
 
-      Logger.info(
-        `use-scenes`,
-        `Voting on scene config ${sceneConfigId} with vote ${vote}`,
-      );
+      Logger.info(`use-scenes`, `Voting on scene config ${sceneConfigId} with vote ${vote}`);
       const response = await fetch(`/api/v1/scenes/${sceneConfigId}/vote`, {
         method: 'POST',
         headers: {
@@ -142,24 +118,18 @@ export function useSceneVote() {
       await queryClient.cancelQueries({ queryKey: ['scenes', 'proposed'] });
 
       // Snapshot the previous value
-      const previousProposals = queryClient.getQueryData<SceneConfig[]>([
-        'scenes',
-        'proposed',
-      ]);
+      const previousProposals = queryClient.getQueryData<SceneConfig[]>(['scenes', 'proposed']);
 
       // Optimistically update the proposals
       if (previousProposals) {
-        queryClient.setQueryData<SceneConfig[]>(
-          ['scenes', 'proposed'],
-          (old) => {
-            if (!old) return [];
-            return old.map((proposal) =>
-              proposal.id === sceneConfigId
-                ? { ...proposal, votes: (proposal.votes || 0) + vote }
-                : proposal,
-            );
-          },
-        );
+        queryClient.setQueryData<SceneConfig[]>(['scenes', 'proposed'], (old) => {
+          if (!old) return [];
+          return old.map((proposal) =>
+            proposal.id === sceneConfigId
+              ? { ...proposal, votes: (proposal.votes || 0) + vote }
+              : proposal
+          );
+        });
       }
 
       // Return context with the snapshotted value
@@ -168,10 +138,7 @@ export function useSceneVote() {
     onError: (_err, _variables, context) => {
       // If the mutation fails, use the context returned from onMutate to roll back
       if (context?.previousProposals) {
-        queryClient.setQueryData(
-          ['scenes', 'proposed'],
-          context.previousProposals,
-        );
+        queryClient.setQueryData(['scenes', 'proposed'], context.previousProposals);
       }
     },
     onSettled: () => {

@@ -1,9 +1,5 @@
-import type {
-  CharacterAction,
-  CharacterState,
-  SceneState,
-} from '@/types/scene';
-import { Scene } from 'phaser';
+import type { Scene } from 'phaser';
+import type { CharacterAction, CharacterState, SceneState } from '@/types/scene';
 import { Logger } from '../../utils/logger';
 import { TILE_SIZE } from '../config';
 
@@ -30,39 +26,27 @@ export class CharacterManager {
 
   preload(): void {
     // Load character sprites (48x96 because each frame uses two vertical tiles)
-    this.scene.load.spritesheet(
-      'bob',
-      '/assets/characters/Bob_idle_anim_48x48.png',
-      {
-        frameWidth: TILE_SIZE,
-        frameHeight: TILE_SIZE * 2,
-        startFrame: 0,
-        endFrame: 23,
-      },
-    );
+    this.scene.load.spritesheet('bob', '/assets/characters/Bob_idle_anim_48x48.png', {
+      frameWidth: TILE_SIZE,
+      frameHeight: TILE_SIZE * 2,
+      startFrame: 0,
+      endFrame: 23,
+    });
 
-    this.scene.load.spritesheet(
-      'alice',
-      '/assets/characters/Cleaner_girl_idle_anim_48x48.png',
-      {
-        frameWidth: TILE_SIZE,
-        frameHeight: TILE_SIZE * 2,
-        startFrame: 0,
-        endFrame: 23,
-      },
-    );
+    this.scene.load.spritesheet('alice', '/assets/characters/Cleaner_girl_idle_anim_48x48.png', {
+      frameWidth: TILE_SIZE,
+      frameHeight: TILE_SIZE * 2,
+      startFrame: 0,
+      endFrame: 23,
+    });
 
     // Load thinking animation spritesheet
-    this.scene.load.spritesheet(
-      'thinking',
-      '/assets/ui/ui_thinking_48x96.png',
-      {
-        frameWidth: TILE_SIZE,
-        frameHeight: TILE_SIZE * 2,
-        startFrame: 0,
-        endFrame: 9,
-      },
-    );
+    this.scene.load.spritesheet('thinking', '/assets/ui/ui_thinking_48x96.png', {
+      frameWidth: TILE_SIZE,
+      frameHeight: TILE_SIZE * 2,
+      startFrame: 0,
+      endFrame: 9,
+    });
   }
 
   create(): void {
@@ -86,26 +70,18 @@ export class CharacterManager {
     this.characters.clear();
 
     // Remove history mode event listener
-    this.scene.game.events.off(
-      'historyModeChange',
-      this.handleHistoryModeChange,
-      this,
-    );
+    this.scene.game.events.off('historyModeChange', this.handleHistoryModeChange, this);
   }
 
   setupEventListeners(): void {
     // Set up history mode event listeners
-    this.scene.game.events.on(
-      'historyModeChange',
-      this.handleHistoryModeChange,
-      this,
-    );
+    this.scene.game.events.on('historyModeChange', this.handleHistoryModeChange, this);
   }
 
   private handleHistoryModeChange(isInHistoryMode: boolean): void {
     Logger.info(
       this.constructor.name,
-      `Handling historyModeChange event with isInHistoryMode: ${isInHistoryMode}`,
+      `Handling historyModeChange event with isInHistoryMode: ${isInHistoryMode}`
     );
     if (isInHistoryMode) {
       this.clearCharactersAnimations();
@@ -179,11 +155,7 @@ export class CharacterManager {
 
       if (!character) {
         // Create new character if it doesn't exist
-        const sprite = this.scene.add.sprite(
-          charData.position.x,
-          charData.position.y,
-          id,
-        );
+        const sprite = this.scene.add.sprite(charData.position.x, charData.position.y, id);
         character = {
           id,
           state: charData,
@@ -207,10 +179,7 @@ export class CharacterManager {
     });
   }
 
-  private updateCharacterState(
-    character: Character,
-    state: CharacterState,
-  ): void {
+  private updateCharacterState(character: Character, state: CharacterState): void {
     const previousState = character.state;
     character.state = state;
 
@@ -219,9 +188,7 @@ export class CharacterManager {
     const isChange = action !== previousState?.action;
     Logger.info(
       this.constructor.name,
-      `Updating character state: ${character.id} - ${action}${
-        isChange ? '' : ' (no change)'
-      }`,
+      `Updating character state: ${character.id} - ${action}${isChange ? '' : ' (no change)'}`
     );
 
     // Update tint and bounce effect
@@ -253,14 +220,11 @@ export class CharacterManager {
     }
   }
 
-  private createThinkingSprite(
-    character: Character,
-    action: CharacterAction,
-  ): void {
+  private createThinkingSprite(character: Character, action: CharacterAction): void {
     const thinkingSprite = this.scene.add.sprite(
       character.sprite.x,
       character.sprite.y + this.THINKING_OFFSET_Y,
-      action,
+      action
     );
     character.thinkingSprite = thinkingSprite;
     thinkingSprite.play(action);

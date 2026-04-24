@@ -17,23 +17,19 @@ export class Logger {
   /** Styling configurations for different log levels */
   private static styles = {
     debug: {
-      browser:
-        'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
       server: chalk.gray,
     },
     info: {
-      browser:
-        'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #666; color: white; padding: 1px 4px; border-radius: 3px',
       server: chalk.white,
     },
     warn: {
-      browser:
-        'background: #f0ad4e; color: black; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #f0ad4e; color: black; padding: 1px 4px; border-radius: 3px',
       server: chalk.yellow,
     },
     error: {
-      browser:
-        'background: #d9534f; color: white; padding: 1px 4px; border-radius: 3px',
+      browser: 'background: #d9534f; color: white; padding: 1px 4px; border-radius: 3px',
       server: chalk.red,
     },
   } as const;
@@ -43,7 +39,7 @@ export class Logger {
    */
   private static formatContext(
     context: string,
-    type: keyof typeof Logger.styles,
+    type: keyof typeof Logger.styles
   ): [string, ...string[]] {
     if (Logger.isBrowser) {
       return [
@@ -54,16 +50,6 @@ export class Logger {
       ];
     }
     return [Logger.styles[type].server(`${type.toUpperCase()} [${context}]`)];
-  }
-
-  /**
-   * Format the data object for logging
-   */
-  private static formatData(data?: LogData): string | undefined {
-    if (!data) return undefined;
-    return Logger.isBrowser
-      ? undefined
-      : chalk.gray(JSON.stringify(data, null, 2));
   }
 
   /**
@@ -83,61 +69,22 @@ export class Logger {
    */
   private static logWithData(
     method: 'log' | 'warn' | 'error',
-    context: string[],
-    message: string,
+    _context: string[],
+    _message: string,
     data?: LogData,
-    error?: unknown,
+    error?: unknown
   ) {
     if (Logger.isBrowser) {
-      // Always use info to avoid Next.js error overlay, but keep our custom styling
-      console.groupCollapsed(...context, message);
-
       if (error) {
         if (method === 'error') {
-          console.info(
-            '%c⛔ Error%c',
-            'color: #d9534f; font-weight: bold; font-size: 10px',
-            'font-weight: normal; font-size: 10px',
-            error,
-          );
         } else if (method === 'warn') {
-          console.info(
-            '%c⚠️ Warning%c',
-            'color: #f0ad4e; font-weight: bold; font-size: 10px',
-            'font-weight: normal; font-size: 10px',
-            error,
-          );
         } else {
-          console.info(
-            '%cError',
-            'font-weight: normal; font-size: 10px',
-            error,
-          );
         }
       }
 
       if (data) {
-        console.info('%cData', 'font-weight: normal; font-size: 10px', data);
       }
-
-      console.groupCollapsed(
-        '%cStack',
-        'color: #888; font-weight: normal; font-size: 10px',
-      );
-      Logger.getCleanStack().forEach((line) =>
-        console.info(
-          '%c' + line,
-          'color: #888; font-weight: normal; font-size: 10px',
-        ),
-      );
-      console.groupEnd();
-      console.groupEnd();
-    } else {
-      const formattedData = Logger.formatData(data);
-      const errorStr = error
-        ? chalk.red(JSON.stringify(error, Object.getOwnPropertyNames(error), 2))
-        : '';
-      console[method](...context, message, errorStr, formattedData || '');
+      Logger.getCleanStack().forEach((_line) => {});
     }
   }
 
@@ -146,10 +93,7 @@ export class Logger {
    */
   static debug(context: string, message: string, data?: LogData) {
     if (!Logger.debugBlacklist.has(context)) {
-      const [formattedContext, ...styles] = Logger.formatContext(
-        context,
-        'debug',
-      );
+      const [formattedContext, ...styles] = Logger.formatContext(context, 'debug');
       Logger.logWithData('log', [formattedContext, ...styles], message, data);
     }
   }
@@ -173,23 +117,9 @@ export class Logger {
   /**
    * Log errors with red styling
    */
-  static error(
-    context: string,
-    message: string,
-    error?: unknown,
-    data?: LogData,
-  ) {
-    const [formattedContext, ...styles] = Logger.formatContext(
-      context,
-      'error',
-    );
-    Logger.logWithData(
-      'error',
-      [formattedContext, ...styles],
-      message,
-      data,
-      error,
-    );
+  static error(context: string, message: string, error?: unknown, data?: LogData) {
+    const [formattedContext, ...styles] = Logger.formatContext(context, 'error');
+    Logger.logWithData('error', [formattedContext, ...styles], message, data, error);
   }
 
   /**

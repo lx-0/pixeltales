@@ -1,20 +1,16 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import type React from 'react';
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import * as z from 'zod';
 import { TILE_SIZE } from '@/game/config';
 import type { CharacterConfig, LLMConfig, SceneConfig } from '@/types/scene';
 import { kebabCase } from '@/utils/format';
 import { Logger } from '@/utils/logger';
-import { zodResolver } from '@hookform/resolvers/zod';
-import React, { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import * as z from 'zod';
 import { getModelOptions, useConfig } from '../hooks/use-config';
 import { useSceneProposal } from '../hooks/use-scenes';
 import { ColorPalette } from './ColorPalette';
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from './ui/accordion';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
 import { Button } from './ui/button';
 import {
   Dialog,
@@ -80,7 +76,7 @@ const proposalFormSchema = z.object({
           temperature: z.number().min(0).max(2).default(0.7),
           max_tokens: z.number().min(1).max(4000).default(1000),
         }),
-      }),
+      })
     )
     .min(2, 'At least two characters are required'),
 });
@@ -92,10 +88,7 @@ interface SceneProposalFormProps {
   setIsModalOpen: (isOpen: boolean) => void;
 }
 
-export function SceneProposalForm({
-  trigger,
-  setIsModalOpen,
-}: SceneProposalFormProps) {
+export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalFormProps) {
   const { data: config, isLoading, error } = useConfig();
   const [isOpen, setIsOpen] = useState(false);
   const proposeMutation = useSceneProposal();
@@ -154,13 +147,13 @@ export function SceneProposalForm({
       setIsSubmitting(true);
 
       // Convert form values to scene config
-      const sceneConfig: Omit<SceneConfig, 'id' | 'status' | 'system_prompt'> =
-        {
-          name: values.sceneName,
-          description: values.sceneDescription,
-          proposer_name: values.proposerName,
-          start_character_id: kebabCase(values.characters[0].name),
-          characters_config: values.characters.reduce((acc, char, index) => {
+      const sceneConfig: Omit<SceneConfig, 'id' | 'status' | 'system_prompt'> = {
+        name: values.sceneName,
+        description: values.sceneDescription,
+        proposer_name: values.proposerName,
+        start_character_id: kebabCase(values.characters[0].name),
+        characters_config: values.characters.reduce(
+          (acc, char, index) => {
             // Find the color option to get the hex code
             const colorOption = config?.colors.find((c) => c.id === char.color);
             if (!colorOption) {
@@ -185,8 +178,10 @@ export function SceneProposalForm({
               initial_mood: 'neutral',
             };
             return acc;
-          }, {} as Record<string, CharacterConfig>),
-        };
+          },
+          {} as Record<string, CharacterConfig>
+        ),
+      };
 
       await proposeMutation.mutateAsync(sceneConfig);
 
@@ -205,23 +200,18 @@ export function SceneProposalForm({
         {trigger || <Button variant="outline">Propose New Scene</Button>}
       </DialogTrigger>
       <DialogContent
-        className={
-          'sm:max-w-[600px] lg:max-w-screen-lg overflow-y-scroll max-h-screen bg-gray-900'
-        }
+        className={'sm:max-w-[600px] lg:max-w-screen-lg overflow-y-scroll max-h-screen bg-gray-900'}
       >
         <DialogHeader>
           <DialogTitle>Propose New Scene</DialogTitle>
           <DialogDescription className="text-gray-400">
-            Create a proposal for the next conversation scene. Describe the
-            characters and their context.
+            Create a proposal for the next conversation scene. Describe the characters and their
+            context.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
-          <form
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className="space-y-6"
-          >
+          <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -271,9 +261,7 @@ export function SceneProposalForm({
               name="sceneDescription"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-gray-200">
-                    Scene Description
-                  </FormLabel>
+                  <FormLabel className="text-gray-200">Scene Description</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Describe what makes this scene interesting..."
@@ -282,8 +270,7 @@ export function SceneProposalForm({
                     />
                   </FormControl>
                   <FormDescription className="text-gray-400">
-                    A brief description to help others understand and vote on
-                    your proposal.
+                    A brief description to help others understand and vote on your proposal.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -340,9 +327,7 @@ export function SceneProposalForm({
                     name={`characters.${index}.role`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-200">
-                          Role Description
-                        </FormLabel>
+                        <FormLabel className="text-gray-200">Role Description</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Describe the character's role and personality..."
@@ -360,9 +345,7 @@ export function SceneProposalForm({
                     name={`characters.${index}.visual`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-gray-200">
-                          Visual Description
-                        </FormLabel>
+                        <FormLabel className="text-gray-200">Visual Description</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Describe the character's appearance..."
@@ -377,10 +360,7 @@ export function SceneProposalForm({
 
                   <div className="space-y-4 bg-gray-800/50 p-4 rounded-lg border border-gray-700">
                     <Accordion type="single" collapsible>
-                      <AccordionItem
-                        value="llm-config"
-                        className="border-gray-700"
-                      >
+                      <AccordionItem value="llm-config" className="border-gray-700">
                         <AccordionTrigger className="text-gray-200 hover:text-gray-100">
                           LLM Configuration
                         </AccordionTrigger>
@@ -392,19 +372,13 @@ export function SceneProposalForm({
                                 name={`characters.${index}.llm_config`}
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel className="text-gray-200">
-                                      Model
-                                    </FormLabel>
+                                    <FormLabel className="text-gray-200">Model</FormLabel>
                                     <Select
                                       onValueChange={(value: string) => {
-                                        const [provider, model] =
-                                          value.split(':');
-                                        const modelOption =
-                                          config?.llm_providers
-                                            .find((p) => p.id === provider)
-                                            ?.models.find(
-                                              (m) => m.id === model,
-                                            );
+                                        const [provider, model] = value.split(':');
+                                        const modelOption = config?.llm_providers
+                                          .find((p) => p.id === provider)
+                                          ?.models.find((m) => m.id === model);
 
                                         if (modelOption) {
                                           field.onChange({
@@ -412,8 +386,7 @@ export function SceneProposalForm({
                                             provider,
                                             model_name: model,
                                             max_tokens: modelOption.max_tokens,
-                                            temperature:
-                                              modelOption.default_temperature,
+                                            temperature: modelOption.default_temperature,
                                           });
                                         }
                                       }}
@@ -427,32 +400,18 @@ export function SceneProposalForm({
                                                 <span className="font-medium">
                                                   {
                                                     config?.llm_providers
-                                                      .find(
-                                                        (p) =>
-                                                          p.id ===
-                                                          field.value.provider,
-                                                      )
+                                                      .find((p) => p.id === field.value.provider)
                                                       ?.models.find(
-                                                        (m) =>
-                                                          m.id ===
-                                                          field.value
-                                                            .model_name,
+                                                        (m) => m.id === field.value.model_name
                                                       )?.name
                                                   }
                                                 </span>
                                                 <span className="text-xs text-gray-400">
                                                   {
                                                     config?.llm_providers
-                                                      .find(
-                                                        (p) =>
-                                                          p.id ===
-                                                          field.value.provider,
-                                                      )
+                                                      .find((p) => p.id === field.value.provider)
                                                       ?.models.find(
-                                                        (m) =>
-                                                          m.id ===
-                                                          field.value
-                                                            .model_name,
+                                                        (m) => m.id === field.value.model_name
                                                       )?.description
                                                   }
                                                 </span>
@@ -466,13 +425,8 @@ export function SceneProposalForm({
                                         className="w-[--radix-select-trigger-width] p-4 bg-gray-800 border-gray-700"
                                       >
                                         {config &&
-                                          getModelOptions(
-                                            config.llm_providers,
-                                          ).map((group) => (
-                                            <SelectGroup
-                                              key={group.label}
-                                              className="space-y-1"
-                                            >
+                                          getModelOptions(config.llm_providers).map((group) => (
+                                            <SelectGroup key={group.label} className="space-y-1">
                                               <SelectLabel className="px-1 text-gray-400">
                                                 {group.label}
                                               </SelectLabel>
@@ -510,24 +464,20 @@ export function SceneProposalForm({
                                 name={`characters.${index}.llm_config.temperature`}
                                 render={({ field }) => (
                                   <FormItem>
-                                    <FormLabel className="text-gray-200">
-                                      Temperature
-                                    </FormLabel>
+                                    <FormLabel className="text-gray-200">Temperature</FormLabel>
                                     <FormControl className="pt-3 pb-1">
                                       <Slider
                                         min={0}
                                         max={2}
                                         step={0.1}
                                         value={[field.value]}
-                                        onValueChange={([value]) =>
-                                          field.onChange(value)
-                                        }
+                                        onValueChange={([value]) => field.onChange(value)}
                                         className="[&_[role=slider]]:bg-gray-200"
                                       />
                                     </FormControl>
                                     <FormDescription className="text-gray-400">
-                                      {field.value.toFixed(1)} - Higher values
-                                      make the output more random
+                                      {field.value.toFixed(1)} - Higher values make the output more
+                                      random
                                     </FormDescription>
                                     <FormMessage />
                                   </FormItem>

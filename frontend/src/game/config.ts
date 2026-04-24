@@ -1,4 +1,4 @@
-import { Types } from 'phaser';
+import type { Types } from 'phaser';
 import { MainScene } from './MainScene';
 import { UIScene } from './UIScene';
 

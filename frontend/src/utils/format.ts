@@ -10,7 +10,7 @@ export function kebabCase(str: string) {
 export function formatTime(
   timestamp: number,
   options?: Intl.DateTimeFormatOptions,
-  locales?: Intl.LocalesArgument,
+  locales?: Intl.LocalesArgument
 ): string {
   return new Date(timestamp * 1000).toLocaleString(locales, options);
 }

@@ -1,7 +1,7 @@
+import type { Scene } from 'phaser';
 import type { Message, SceneState } from '@/types/scene';
-import { Scene } from 'phaser';
 import { Logger } from '../../utils/logger';
-import { CharacterManager } from './CharacterManager';
+import type { CharacterManager } from './CharacterManager';
 
 interface SpeechBubble {
   container: Phaser.GameObjects.Container;
@@ -26,7 +26,7 @@ export class SpeechBubbleManager {
 
   constructor(
     private scene: Scene,
-    private characterManager: CharacterManager,
+    private characterManager: CharacterManager
   ) {}
 
   reset(): void {
@@ -52,13 +52,11 @@ export class SpeechBubbleManager {
     for (const [key, value] of Object.entries(state.characters)) {
       if (value.action === 'speaking') {
         const character = this.characterManager.getCharacter(key);
-        const message = state.messages
-          .filter((m) => m.character === key)
-          .slice(-1)[0];
+        const message = state.messages.filter((m) => m.character === key).slice(-1)[0];
         if (character && message.content) {
           Logger.info(
             this.constructor.name,
-            `Creating speech bubble for ${key} with message ${message.content}`,
+            `Creating speech bubble for ${key} with message ${message.content}`
           );
           this.createSpeechBubble(
             character.sprite,
@@ -67,14 +65,13 @@ export class SpeechBubbleManager {
             value.name,
             message.calculated_speaking_time,
             message.mood,
-            message.mood_emoji,
+            message.mood_emoji
           );
         } else {
-          Logger.info(
-            this.constructor.name,
-            `No character or message found for ${key}`,
-            { character, message },
-          );
+          Logger.info(this.constructor.name, `No character or message found for ${key}`, {
+            character,
+            message,
+          });
         }
       }
     }
@@ -87,7 +84,7 @@ export class SpeechBubbleManager {
     characterName: string,
     speakingTime?: number,
     _mood?: string,
-    emoji?: string,
+    emoji?: string
   ): void {
     // Calculate bubble dimensions
     const padding = this.BUBBLE_PADDING;
@@ -120,10 +117,9 @@ export class SpeechBubbleManager {
     const bubbleWidth = Math.max(
       this.MIN_BUBBLE_WIDTH,
       Math.min(
-        Math.max(text.width, nameText.width + moodText.width + padding) +
-          padding * 2,
-        this.MAX_BUBBLE_WIDTH,
-      ),
+        Math.max(text.width, nameText.width + moodText.width + padding) + padding * 2,
+        this.MAX_BUBBLE_WIDTH
+      )
     );
 
     const bubbleHeight = text.height + nameText.height + padding * 3;
@@ -137,12 +133,7 @@ export class SpeechBubbleManager {
     background.fillStyle(0xffffff, 1);
 
     // Draw bubble background
-    this.drawBubbleBackground(
-      background,
-      bubbleWidth,
-      bubbleHeight,
-      pointerHeight,
-    );
+    this.drawBubbleBackground(background, bubbleWidth, bubbleHeight, pointerHeight);
 
     // Position texts within bubble
     nameText.setPosition(padding, padding);
@@ -155,12 +146,7 @@ export class SpeechBubbleManager {
     if (speakingTime) {
       progressBar =
         speakingTime > 0
-          ? this.createProgressBar(
-              bubbleWidth,
-              bubbleHeight,
-              speakingTime,
-              characterColor,
-            )
+          ? this.createProgressBar(bubbleWidth, bubbleHeight, speakingTime, characterColor)
           : undefined;
     }
 
@@ -172,8 +158,7 @@ export class SpeechBubbleManager {
 
     // Position bubble above character
     const bubbleX = speaker.x - bubbleWidth / 2;
-    const bubbleY =
-      speaker.y - speaker.height / 2 - bubbleHeight - pointerHeight;
+    const bubbleY = speaker.y - speaker.height / 2 - bubbleHeight - pointerHeight;
     container.setPosition(bubbleX, bubbleY);
 
     // Store the bubble
@@ -191,7 +176,7 @@ export class SpeechBubbleManager {
     graphics: Phaser.GameObjects.Graphics,
     width: number,
     height: number,
-    pointerHeight: number,
+    pointerHeight: number
   ): void {
     // Draw rounded rectangle for bubble
     graphics.beginPath();
@@ -211,7 +196,7 @@ export class SpeechBubbleManager {
     bubbleWidth: number,
     bubbleHeight: number,
     duration: number,
-    characterColor: string,
+    characterColor: string
   ): SpeechBubble['progressBar'] {
     if (duration <= 0) return undefined;
 
@@ -261,7 +246,7 @@ export class SpeechBubbleManager {
         character.state.name,
         undefined,
         message.mood,
-        message.mood_emoji,
+        message.mood_emoji
       );
     }
   }

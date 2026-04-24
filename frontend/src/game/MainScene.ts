@@ -20,15 +20,8 @@ export class MainScene extends Scene {
     Logger.info(this.constructor.name, 'init() called');
     // Initialize managers
     this.characterManager = new CharacterManager(this);
-    this.speechBubbleManager = new SpeechBubbleManager(
-      this,
-      this.characterManager,
-    );
-    this.stateManager = new StateManager(
-      this,
-      this.characterManager,
-      this.speechBubbleManager,
-    );
+    this.speechBubbleManager = new SpeechBubbleManager(this, this.characterManager);
+    this.stateManager = new StateManager(this, this.characterManager, this.speechBubbleManager);
     this.eventManager = new EventManager(this, this.stateManager);
 
     // Reset all managers
@@ -38,18 +31,12 @@ export class MainScene extends Scene {
 
     // Set up modal event listeners
     this.events.on('modalOpen', () => {
-      Logger.info(
-        this.constructor.name,
-        'Modal opened, pausing scene interactions',
-      );
+      Logger.info(this.constructor.name, 'Modal opened, pausing scene interactions');
       this.isModalOpen = true;
     });
 
     this.events.on('modalClose', () => {
-      Logger.info(
-        this.constructor.name,
-        'Modal closed, resuming scene interactions',
-      );
+      Logger.info(this.constructor.name, 'Modal closed, resuming scene interactions');
       this.isModalOpen = false;
     });
   }

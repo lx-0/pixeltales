@@ -1,7 +1,7 @@
+import type { Scene } from 'phaser';
 import type { SceneState } from '@/types/scene';
-import { Scene } from 'phaser';
 import { Logger } from '../../utils/logger';
-import { UIControlsManager } from './UIControlsManager';
+import type { UIControlsManager } from './UIControlsManager';
 
 export class HistoryManager {
   private historyMode: boolean = false;
@@ -21,21 +21,9 @@ export class HistoryManager {
 
   private setupEventListeners(): void {
     // Set up history mode event listeners
-    this.scene.game.events.on(
-      'enterHistoryMode',
-      this.handleEnterHistoryMode,
-      this,
-    );
-    this.scene.game.events.on(
-      'exitHistoryMode',
-      this.handleExitHistoryMode,
-      this,
-    );
-    this.scene.game.events.on(
-      'historyNavigateTo',
-      this.handleHistoryNavigateTo,
-      this,
-    );
+    this.scene.game.events.on('enterHistoryMode', this.handleEnterHistoryMode, this);
+    this.scene.game.events.on('exitHistoryMode', this.handleExitHistoryMode, this);
+    this.scene.game.events.on('historyNavigateTo', this.handleHistoryNavigateTo, this);
 
     // Listen for scene state updates from the game event system
     this.scene.game.events.on('sceneStateUpdate', (state: SceneState) => {
@@ -68,20 +56,17 @@ export class HistoryManager {
   private handleHistoryNavigateTo(direction: number): void {
     Logger.info(
       this.constructor.name,
-      `Handling historyNavigateTo event with direction: ${direction}, current index: ${this.currentHistoryIndex}`,
+      `Handling historyNavigateTo event with direction: ${direction}, current index: ${this.currentHistoryIndex}`
     );
     this.navigateHistory(direction);
   }
 
   private navigateHistory(direction: number): void {
-    Logger.info(
-      this.constructor.name,
-      `navigateHistory called with direction: ${direction}`,
-    );
+    Logger.info(this.constructor.name, `navigateHistory called with direction: ${direction}`);
     const newIndex = this.currentHistoryIndex + direction;
     Logger.info(
       this.constructor.name,
-      `Current index: ${this.currentHistoryIndex}, New index: ${newIndex}`,
+      `Current index: ${this.currentHistoryIndex}, New index: ${newIndex}`
     );
 
     if (newIndex >= 0 && newIndex < this.conversationHistory.length) {
@@ -94,7 +79,7 @@ export class HistoryManager {
 
       Logger.info(
         this.constructor.name,
-        `Emitting historyNavigate event with index: ${this.currentHistoryIndex}`,
+        `Emitting historyNavigate event with index: ${this.currentHistoryIndex}`
       );
       this.scene.game.events.emit('historyNavigate', this.currentHistoryIndex);
     } else {
@@ -136,20 +121,8 @@ export class HistoryManager {
     this.scene.game.events.off('sceneStateUpdate');
 
     // Remove scene event listeners
-    this.scene.game.events.removeListener(
-      'enterHistoryMode',
-      this.handleEnterHistoryMode,
-      this,
-    );
-    this.scene.game.events.removeListener(
-      'exitHistoryMode',
-      this.handleExitHistoryMode,
-      this,
-    );
-    this.scene.game.events.removeListener(
-      'historyNavigateTo',
-      this.handleHistoryNavigateTo,
-      this,
-    );
+    this.scene.game.events.removeListener('enterHistoryMode', this.handleEnterHistoryMode, this);
+    this.scene.game.events.removeListener('exitHistoryMode', this.handleExitHistoryMode, this);
+    this.scene.game.events.removeListener('historyNavigateTo', this.handleHistoryNavigateTo, this);
   }
 }

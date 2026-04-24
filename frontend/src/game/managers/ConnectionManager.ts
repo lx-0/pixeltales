@@ -1,4 +1,4 @@
-import { Scene } from 'phaser';
+import type { Scene } from 'phaser';
 import { socketService } from '../../services/socket';
 
 export class ConnectionManager {
@@ -56,9 +56,7 @@ export class ConnectionManager {
       this.connectionStatus.setText('🟢 Connected');
       this.connectionStatus.setBackgroundColor('#28a745');
     } else if (this.reconnectAttempt > 0) {
-      this.connectionStatus.setText(
-        `🟡 Reconnecting (${this.reconnectAttempt}/5)...`,
-      );
+      this.connectionStatus.setText(`🟡 Reconnecting (${this.reconnectAttempt}/5)...`);
       this.connectionStatus.setBackgroundColor('#ffc107');
     } else {
       this.connectionStatus.setText('🔴 Disconnected');
@@ -68,7 +66,7 @@ export class ConnectionManager {
     // Position in top-right corner with padding
     this.connectionStatus.setPosition(
       this.scene.cameras.main.width - this.connectionStatus.width - 10,
-      10,
+      10
     );
 
     // Fade out after 3 seconds if connected

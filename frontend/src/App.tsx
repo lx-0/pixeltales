@@ -1,9 +1,9 @@
-import type { SceneState } from '@/types/scene';
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Layout } from 'lucide-react';
 import { Game } from 'phaser';
 import { useEffect, useRef, useState } from 'react';
+import type { SceneState } from '@/types/scene';
 import ConversationHistory from './components/ConversationHistory';
 import SceneInfo from './components/SceneInfo';
 import { Button } from './components/ui/button';
@@ -141,8 +141,8 @@ export default function App() {
           <div className="bg-gray-800 rounded-lg p-2 sm:p-4 mx-auto w-full">
             <h2 className="text-lg sm:text-xl font-bold mb-2">About</h2>
             <p className="text-sm sm:text-base text-gray-400">
-              Watch as AI characters engage in endless conversations, each with
-              their own unique personality and story to tell.
+              Watch as AI characters engage in endless conversations, each with their own unique
+              personality and story to tell.
             </p>
           </div>
         </main>
