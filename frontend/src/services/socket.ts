@@ -99,10 +99,7 @@ class SocketService {
 
     this.socket.on('scene_state', (state) => {
       Logger.info(this.constructor.name, 'Received scene state update');
-      // Bridge: generated SceneState has all fields optional (Pydantic
-      // fields with defaults), the in-app SceneState marks them required
-      // because the server always populates them. Safe at runtime.
-      this.notifyListeners('scene_state', state as unknown as SceneState);
+      this.notifyListeners('scene_state', state);
     });
   }
 
