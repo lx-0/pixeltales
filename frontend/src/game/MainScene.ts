@@ -28,11 +28,16 @@ export class MainScene extends Scene {
   }
 
   init(data: MainSceneInitData): void {
-    Logger.info(this.constructor.name, 'init() called');
+    const hasData = !!(data?.catalog && data?.sceneConfig);
+    Logger.info(this.constructor.name, `init() called (hasData=${hasData})`);
 
-    if (!data?.catalog || !data?.sceneConfig) {
-      throw new Error('MainScene.init() missing catalog or sceneConfig');
-    }
+    // Phaser runs init() on every scene in gameConfig.scene at boot time,
+    // even for scenes declared `active: false`. The boot-time call has no
+    // data; we defer real setup until App.tsx calls scene.start('MainScene',
+    // initData) with the catalog + active SceneConfig. Phaser re-fires init
+    // on that explicit start.
+    if (!hasData) return;
+
     this.catalog = data.catalog;
     this.sceneConfig = data.sceneConfig;
     this.roomAssetKey = `room:${this.sceneConfig.room_id}`;
@@ -65,6 +70,10 @@ export class MainScene extends Scene {
   }
 
   preload(): void {
+    if (!this.catalog || !this.sceneConfig) {
+      Logger.info(this.constructor.name, 'preload() skipped — waiting for explicit start()');
+      return;
+    }
     Logger.info(this.constructor.name, 'preload() called');
 
     // Load the configured room background.
@@ -83,6 +92,10 @@ export class MainScene extends Scene {
   }
 
   create(): void {
+    if (!this.catalog || !this.sceneConfig) {
+      Logger.info(this.constructor.name, 'create() skipped — waiting for explicit start()');
+      return;
+    }
     Logger.info(this.constructor.name, 'create() called');
 
     // Set up room background
