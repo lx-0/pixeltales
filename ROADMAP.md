@@ -82,10 +82,10 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [x] Falls back to direct OpenAI/Anthropic when the gateway is unconfigured.
 - [x] `.env.example` documents both setups.
 
-## Phase 6b — Prompt externalization (deferred)
+## Phase 6b — Prompt externalization (partial)
 
-- [ ] Externalize character prompts from `llm_manager.py` into `backend/app/prompts/*.md`. Scene config references by name.
-- [ ] Move `DEFAULT_MODEL` from code constant to DB-stored per-character config. Hot-swappable without redeploy. Needs Alembic migration + scene proposal UI changes.
+- [x] `app/prompts/system.md` + `app/prompts/__init__.py` (cached loader). `app/config.py` SYSTEM_PROMPT now loaded from markdown — edit the file to tweak character behavior, no code change needed.
+- [ ] Move `DEFAULT_MODEL` from code constant to DB-stored per-character config. Hot-swappable without redeploy. Needs Alembic migration + scene proposal UI changes — defer until that flow is requested.
 
 ## Phase 7 ✅ — Security
 
@@ -111,7 +111,7 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
   - `pixeltales_messages_total{character}` (counter): scaffolded for SceneManager to bump on each emitted message
   - `pixeltales_llm_response_seconds{provider,model}` (histogram): scaffolded for LLMManager to time `ainvoke`
 - [x] Socket connect/disconnect handlers update `visitors_active`
-- [ ] Wire `messages_total` and `llm_response_seconds` increments inside SceneManager and LLMManager — easier under Phase 3b LangGraph rewrite when both files get touched anyway.
+- [x] Wired: SceneManager bumps `messages_total{character}` per emitted message; LLMManager wraps `ainvoke` with `llm_response_seconds{provider,model}.time()`.
 - [ ] OpenTelemetry traces (FastAPI + SQLAlchemy instrumentation) — deferred until a collector target exists (Tempo/Grafana Cloud).
 - [ ] Export target: Grafana Cloud or self-hosted Loki/Tempo.
 

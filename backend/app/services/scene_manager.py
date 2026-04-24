@@ -5,6 +5,7 @@ from socket import SocketIO
 
 import structlog
 
+from app.core.metrics import messages_total
 from app.models.character import CharacterAction
 from app.models.scene import (
     Scene,
@@ -187,6 +188,7 @@ class SceneManager:
         ].action_estimated_duration = message.calculated_speaking_time
 
         self.scene.state.messages.append(message)  ## TODO use conversation manager
+        messages_total.labels(character=characterId).inc()
 
         # Emit update to all visitors
         await self.emit_scene_update()

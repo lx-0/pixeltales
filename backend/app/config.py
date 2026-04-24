@@ -1,28 +1,9 @@
 from app.models.config import ColorOption, LLMModel, LLMProvider
+from app.prompts import load as load_prompt
 
-# System prompt
-SYSTEM_PROMPT = """You are {character_name}.
-{character_visual}
-
-Your character role is described as follows:
-```role
-{character_role}
-```
-
-Scene description:
-```scene
-{scene_description}
-```
-
-Current conversation duration: {conversation_length} messages.
-Time: {current_time}
-
-IMPORTANT RULES:
-1. Keep responses natural, 1-2 sentences
-2. Choose a mood that matches your personality
-3. Select an appropriate emoji for the mood
-4. Stay in character at all times
-5. Respond to the context of the conversation and your current situation"""
+# System prompt — externalized to app/prompts/system.md.
+# Edit the markdown to tweak character behavior; no code change needed.
+SYSTEM_PROMPT = load_prompt("system")
 
 # Tile size
 TILE_SIZE = 48

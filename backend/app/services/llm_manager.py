@@ -10,6 +10,7 @@ from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
 
 from app.core.config import settings
+from app.core.metrics import llm_response_seconds
 from app.models.llm import LLMConfig
 from app.models.scene import SceneConfig
 
@@ -192,5 +193,9 @@ class LLMManager:
             raise ValueError("External ID to LLM hash map not initialized")
 
         llm_config_hash = self.external_id_to_llm_hash_map[external_id]
+        if self.llm_configs is None:
+            raise ValueError("LLM configs not initialized")
+        cfg = self.llm_configs[llm_config_hash]
 
-        return await self.chains[llm_config_hash].ainvoke(input)
+        with llm_response_seconds.labels(provider=cfg.provider, model=cfg.model_name).time():
+            return await self.chains[llm_config_hash].ainvoke(input)
