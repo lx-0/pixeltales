@@ -1,14 +1,20 @@
 from functools import lru_cache
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, ValidationError
+from slowapi import Limiter  # type: ignore[import-untyped]
+from slowapi.util import get_remote_address  # type: ignore[import-untyped]
 
 from app.models.scene import CreateSceneConfig, SceneConfig
 from app.services.scene_config_service import SceneConfigService
 from app.utils.error_handling import format_validation_errors
 
 logger = structlog.get_logger(__name__)
+
+# Per-router limiter shares the same key_func as the app limiter; the
+# decorator picks up the correct Limiter instance from request.app.state.
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter()
 
@@ -41,7 +47,12 @@ async def get_scene_config(scene_config_id: str, svc: SceneConfigService = Scene
 
 
 @router.post("/scenes/propose", response_model=SceneConfig)
-async def propose_scene(scene_config: CreateSceneConfig, svc: SceneConfigService = SceneConfigDep):
+@limiter.limit("5/minute")
+async def propose_scene(
+    request: Request,
+    scene_config: CreateSceneConfig,
+    svc: SceneConfigService = SceneConfigDep,
+):
     try:
         return await svc.create_scene_config_proposal(scene_config)
     except ValidationError as e:
@@ -56,7 +67,9 @@ async def propose_scene(scene_config: CreateSceneConfig, svc: SceneConfigService
 
 
 @router.post("/scenes/{scene_config_id}/vote")
+@limiter.limit("30/minute")
 async def vote_scene(
+    request: Request,
     scene_config_id: str,
     payload: VotePayload,
     svc: SceneConfigService = SceneConfigDep,

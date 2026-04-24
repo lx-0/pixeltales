@@ -87,12 +87,13 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [ ] Externalize character prompts from `llm_manager.py` into `backend/app/prompts/*.md`. Scene config references by name.
 - [ ] Move `DEFAULT_MODEL` from code constant to DB-stored per-character config. Hot-swappable without redeploy. Needs Alembic migration + scene proposal UI changes.
 
-## Phase 7 — Security & auth
+## Phase 7 ✅ — Security
 
-- [ ] Rate limiting via `slowapi` on REST + socket connect. Per-IP limits.
-- [ ] Tighten CORS: explicit `allow_methods` and `allow_headers` instead of `["*"]`.
-- [ ] Decide on auth: either remove unused `python-jose` + `passlib` deps, or wire real OAuth (Logto/Authentik).
-- [ ] Scene-proposal endpoint spam protection (rate limit + optional hCaptcha).
+- [x] CORS tightened: explicit methods + headers (Phase 3a).
+- [x] slowapi global default 100/min, per-endpoint 5/min on /scenes/propose, 30/min on /vote.
+- [x] Drop unused `python-jose` + `passlib` deps (auth path was dead code; deferred until a real auth story is needed).
+- [ ] Real OAuth (Logto/Authentik) — only when public production demand exists.
+- [ ] hCaptcha on scene-proposal — only if rate limit alone proves insufficient.
 
 ## Phase 8 — CI/CD
 
