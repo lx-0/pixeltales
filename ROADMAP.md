@@ -200,11 +200,12 @@ All gaps from the prior open section closed in one commit (B1 path chosen):
 - [x] `app/characters/README.md` documents the loader contract (required yaml keys, slug rules, error behavior, programmatic API).
 - [x] B1 chosen: `backend/data/characters/` mounted as a compose volume; `POST /api/v1/characters` writes `<id>/AGENTS.md + .character.yaml` there. Slug-collision handling: `409 Conflict` returned, surfaced in the form.
 
-## Open: Tech debt + cleanup
+## ✅ Closed: Tech debt + cleanup (2026-04-24)
 
-Honest inventory of gaps I've been hand-waving past during the
+Honest inventory of gaps that were hand-waved past during the
 post-modernization track. Same discipline as the character library
-section: don't ship more feature work until this is closed.
+section: don't ship more feature work until this is closed. **All
+18 items shipped in 8 focused commits this session.**
 
 ### A — Dead code & drift
 
@@ -241,4 +242,12 @@ section: don't ship more feature work until this is closed.
 
 Phases shipped in order: 0 → 1 → 2 → 3a → 4a → 5 → 6a → 7 → 8 → 9 → 4b → 6b, then substantive tests + quick-wins bundle. Commits `021f5dd` … `d567dcd`.
 
-Post-modernization scene-content + UX + tech-refactor track (2026-04-24): `08b4d5f` (asset catalog) → `252b3ab` (dynamic Phaser load) → `b119c26` (sprite + room dropdowns) → `1d47744` (UX polish) → `605dd19` (state/config split) → `b46b482` (character library v1, partial — only seeds) → `0d96a0b` (roadmap flagged the gap) → `b9ddf22` (library is now SSOT — branding scene + scene-proposal write path + DB schema slim + tests + frontend form rework + GET/POST /characters + data/ volume mount). Browser smoke test still pending.
+**Post-modernization track (2026-04-24)** — scene-content + UX + tech-refactor + library SSOT, then a tech-debt sweep + browser-smoke fix:
+
+1. Scene-content + UX + state/config split: `08b4d5f` → `252b3ab` → `b119c26` → `1d47744` → `605dd19`
+2. Character library: `b46b482` (v1, partial — only seeds) → `0d96a0b` (flagged gap in roadmap) → `b9ddf22` (library is now SSOT — branding scene + scene-proposal write path + DB schema slim + tests + frontend form rework + GET/POST /characters + data/ volume mount)
+3. Low-hanging post-cleanup: `6283d7c` (roadmap hygiene) → `3001cb6` (`@/types/scene` re-exports generated types) → `4c4e7c5` (bundle splitting) → `43792f7` (coverage in CI) → `988e1fc` (Playwright in CI e2e job) → `f3ac3bf` (chart zoom)
+4. Tech-debt sweep: `4f82bcd` (inventory) → `8e0d11e` (A: dead code) → `0772ca5` (B: own anti-patterns) → `13b5510` (D: stale TODOs) → `da3aa22` (C: 9 lint warnings) → `004802b` (E14: snapshot retention + prune script) → `06b583e` (F19: extra="forbid" sweep + 8 boundary tests) → `574d43f` (E18: vitest config merge) → `37de70c` (E15: hook + component tests, coverage 1% → 16.5%)
+5. Browser smoke + bugfix: `1db547e` (MainScene tolerates Phaser boot-time init) → `2059032` (`pnpm diag` headless smoke tool) → `f9f1db1` (biome.json overrides cleanup)
+
+Browser smoke test confirmed working end-to-end via `pnpm diag` after `1db547e`. Local DB still 1.4 GB; user runs `prune_snapshots.py --yes` when convenient (~99% reduction).
