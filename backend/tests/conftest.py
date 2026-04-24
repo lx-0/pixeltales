@@ -19,7 +19,9 @@ from app.db import database
 from app.db.database import Base
 from tests.fixtures import (  # noqa: F401  (re-exported for pytest discovery)
     alice_config,
+    alice_identity,
     bob_config,
+    bob_identity,
     mock_llm_manager,
     scene,
     scene_config,

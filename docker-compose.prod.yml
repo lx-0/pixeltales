@@ -28,8 +28,10 @@ services:
     ports:
       - '${BACKEND_PORT:-8000}:8000'
     volumes:
-      # Only persistent storage for SQLite database
+      # Persistent storage for SQLite database
       - ./data/sqlite:/data/sqlite:rw
+      # User-proposed character library (AGENTS.md + .character.yaml per id)
+      - ./data/characters:/data/characters:rw
     environment:
       - ENV=production
       - FRONTEND_PORT=${FRONTEND_PORT:-80}
@@ -37,6 +39,7 @@ services:
       - BACKEND_CORS_ORIGINS=${BACKEND_CORS_ORIGINS:-["http://localhost:${FRONTEND_PORT:-80}", "http://localhost", "http://127.0.0.1:${FRONTEND_PORT:-80}", "http://127.0.0.1"]}
       - DB_TYPE=${DB_TYPE:-sqlite}
       - SQLITE_URL=${SQLITE_URL:-sqlite+aiosqlite:////data/sqlite/pixeltales.db}
+      - CHARACTERS_DATA_DIR=/data/characters
     env_file: .env.production
     networks:
       - app-network

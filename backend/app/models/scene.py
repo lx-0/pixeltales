@@ -2,7 +2,7 @@ from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
-from app.models.character import CharacterConfig, CharacterState
+from app.models.character import CharacterConfig, CharacterPlacement, CharacterState
 from app.models.conversation import Message
 
 # # Pydantic validation debugging
@@ -38,8 +38,8 @@ def empty_comment_list() -> list[Comment]:
     return []
 
 
-class SceneConfigBase(SceneBase):
-    """Base scene configuration with common fields."""
+class SceneConfigCommon(SceneBase):
+    """Scene configuration fields shared between read and write shapes."""
 
     name: str = Field(
         min_length=3,
@@ -58,9 +58,6 @@ class SceneConfigBase(SceneBase):
     start_character_id: str = Field(
         description="ID of the character who starts the conversation",
         json_schema_extra={"examples": ["bob", "alice"]},
-    )
-    characters_config: dict[str, CharacterConfig] = Field(
-        description="Configuration for each character in the scene, keyed by character ID"
     )
     room_id: str = Field(
         default="room",
@@ -92,16 +89,30 @@ class SceneConfigBase(SceneBase):
     )
 
 
-class CreateSceneConfig(SceneConfigBase):
-    """Scene configuration for creation without ID."""
+class CreateSceneConfig(SceneConfigCommon):
+    """Scene config WRITE shape: clients send placement-only entries.
+    Character identity (name, color, role, visual, llm_config, sprite_id)
+    must already exist in the library — POST /api/v1/characters to add a
+    new one before proposing a scene that uses it.
+    """
 
-    pass
+    characters_config: dict[str, CharacterPlacement] = Field(
+        description="Per-character placement (id, initial_position/direction/action/mood). "
+        "Identity is looked up from the library by id at render time."
+    )
 
 
-class SceneConfig(SceneConfigBase):
-    """Scene configuration."""
+class SceneConfig(SceneConfigCommon):
+    """Scene config READ shape: characters are returned fully hydrated
+    (placement merged with library identity) so the frontend can render
+    without a separate library round-trip per character.
+    """
 
     id: int
+    characters_config: dict[str, CharacterConfig] = Field(
+        description="Each entry merges the per-scene placement with the library "
+        "identity (name, color, role, visual, llm_config, sprite_id)."
+    )
     system_prompt: str = Field(
         min_length=10,
         max_length=1000,

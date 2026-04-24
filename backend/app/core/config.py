@@ -18,6 +18,12 @@ class Settings(BaseSettings):
     DB_TYPE: Literal["sqlite", "postgresql"] = "sqlite"  # "sqlite" or "postgresql"
     SQLITE_URL: str = "sqlite+aiosqlite:///data/sqlite/pixeltales.db"
 
+    # Character library — runtime data dir for user-proposed characters.
+    # Container mounts /data/characters; local dev defaults to data/characters
+    # relative to backend/. The seed library at app/characters/ is always
+    # scanned in addition to this dir.
+    CHARACTERS_DATA_DIR: str = "data/characters"
+
     # PostgreSQL settings
     POSTGRES_USER: str | None = None
     POSTGRES_PASSWORD: str | None = None

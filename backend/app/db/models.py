@@ -44,6 +44,8 @@ class DBSceneConfig(Base):
         system_prompt: str = SYSTEM_PROMPT,
     ):
         super().__init__()
+        # CreateSceneConfig already stores placement-only character entries
+        # (identity lives in the library), so model_dump() is the slim shape.
         self.config = config.model_dump()
         self.config["system_prompt"] = system_prompt
         self.system_prompt = system_prompt

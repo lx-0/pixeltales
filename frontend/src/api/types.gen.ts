@@ -4,6 +4,33 @@
  */
 
 export interface paths {
+    "/api/v1/characters": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Characters
+         * @description Return every character in the library, sorted by id for stability.
+         */
+        get: operations["list_characters_api_v1_characters_get"];
+        put?: never;
+        /**
+         * Create Character
+         * @description Persist a new character to the runtime data dir.
+         *
+         *     409 if the id already exists in the library (seed or data).
+         *     422 if the payload fails Pydantic validation.
+         */
+        post: operations["create_character_api_v1_characters_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/config": {
         parameters: {
             query?: never;
@@ -166,8 +193,11 @@ export interface components {
     schemas: {
         /**
          * CharacterConfig
-         * @description Scene-level configuration: a CharacterIdentity placed into a scene
-         *     with starting position, facing, action and mood.
+         * @description Wire shape returned by the scenes API: a CharacterIdentity merged
+         *     with a CharacterPlacement at serialize time. Frontend renders this.
+         *
+         *     NOT used as the storage shape — SceneConfig stores CharacterPlacement
+         *     and the identity is hydrated from the library before the API responds.
          */
         CharacterConfig: {
             /**
@@ -228,6 +258,87 @@ export interface components {
              * @example A tall person with short brown hair and glasses...
              */
             visual: string;
+        };
+        /**
+         * CharacterIdentity
+         * @description Library-level character identity — the part that travels with a
+         *     character across scenes. Lives on disk under app/characters/<id>/ or
+         *     data/characters/<id>/ (AGENTS.md + .character.yaml).
+         */
+        CharacterIdentity: {
+            /**
+             * Color
+             * @description Character's color in hex format (e.g., #FF0000)
+             * @example #FF0000
+             * @example #00FF00
+             */
+            color: string;
+            /**
+             * Id
+             * @description Unique identifier for the character
+             * @example bob
+             * @example alice
+             */
+            id: string;
+            /** @description Configuration for the character's language model */
+            llm_config: components["schemas"]["LLMConfig"];
+            /**
+             * Name
+             * @description Character's display name (2-50 characters)
+             * @example Bob
+             * @example Alice
+             */
+            name: string;
+            /**
+             * Role
+             * @description Character's role and personality description (10-5000 characters)
+             * @example A friendly shopkeeper who loves to tell stories...
+             */
+            role: string;
+            /**
+             * Sprite Id
+             * @description ID of a sprite from the backend asset catalog (GET /api/v1/config).
+             * @default bob
+             * @example bob
+             * @example cleaner_girl
+             * @example doctor_1
+             * @example zombie
+             */
+            sprite_id: string;
+            /**
+             * Visual
+             * @description Character's visual appearance description (10-500 characters)
+             * @example A tall person with short brown hair and glasses...
+             */
+            visual: string;
+        };
+        /**
+         * CharacterPlacement
+         * @description Scene-level placement: which library character stands where, facing
+         *     which way, doing what. Stored in SceneConfig.characters_config; the
+         *     identity lives in the library and is joined on read.
+         */
+        CharacterPlacement: {
+            /**
+             * Id
+             * @description Library character id; must exist in the character library.
+             * @example bob
+             * @example alice
+             */
+            id: string;
+            /**
+             * Initial Action
+             * @enum {string}
+             */
+            initial_action: "thinking" | "thinking:love" | "thinking:anger" | "thinking:sadness" | "thinking:surprise" | "thinking:fear" | "speaking" | "idle";
+            /**
+             * Initial Direction
+             * @enum {string}
+             */
+            initial_direction: "front" | "right" | "left" | "back";
+            /** Initial Mood */
+            initial_mood: string;
+            initial_position: components["schemas"]["Position"];
         };
         /**
          * CharacterState
@@ -315,15 +426,18 @@ export interface components {
         };
         /**
          * CreateSceneConfig
-         * @description Scene configuration for creation without ID.
+         * @description Scene config WRITE shape: clients send placement-only entries.
+         *     Character identity (name, color, role, visual, llm_config, sprite_id)
+         *     must already exist in the library — POST /api/v1/characters to add a
+         *     new one before proposing a scene that uses it.
          */
         CreateSceneConfig: {
             /**
              * Characters Config
-             * @description Configuration for each character in the scene, keyed by character ID
+             * @description Per-character placement (id, initial_position/direction/action/mood). Identity is looked up from the library by id at render time.
              */
             characters_config: {
-                [key: string]: components["schemas"]["CharacterConfig"];
+                [key: string]: components["schemas"]["CharacterPlacement"];
             };
             /**
              * Comments
@@ -505,12 +619,14 @@ export interface components {
         };
         /**
          * SceneConfig
-         * @description Scene configuration.
+         * @description Scene config READ shape: characters are returned fully hydrated
+         *     (placement merged with library identity) so the frontend can render
+         *     without a separate library round-trip per character.
          */
         SceneConfig: {
             /**
              * Characters Config
-             * @description Configuration for each character in the scene, keyed by character ID
+             * @description Each entry merges the per-scene placement with the library identity (name, color, role, visual, llm_config, sprite_id).
              */
             characters_config: {
                 [key: string]: components["schemas"]["CharacterConfig"];
@@ -657,6 +773,59 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    list_characters_api_v1_characters_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterIdentity"][];
+                };
+            };
+        };
+    };
+    create_character_api_v1_characters_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CharacterIdentity"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CharacterIdentity"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
     get_config_options_api_v1_config_get: {
         parameters: {
             query?: never;

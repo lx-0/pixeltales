@@ -1,14 +1,17 @@
 from datetime import UTC, datetime
+from typing import Any
 
 import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import SYSTEM_PROMPT, TILE_SIZE
+from app.characters import load as load_character
+from app.config import SYSTEM_PROMPT
 from app.db.database import async_session
 from app.db.models import DBSceneConfig
 from app.default_scene import default_scene_config, default_scene_config_id
-from app.models.base import Position
+from app.models.character import CharacterConfig, CharacterIdentity
+from app.models.llm import LLMConfig
 from app.models.scene import (
     Comment,
     CreateSceneConfig,
@@ -19,6 +22,68 @@ from app.models.scene import (
 logger = structlog.get_logger(__name__)
 
 
+def _placeholder_identity(char_id: str) -> CharacterIdentity:
+    """Identity used when a scene references a character no longer in the
+    library and no fallback identity is available in the stored row.
+    Keeps the scene rendering instead of 500-ing.
+    """
+    return CharacterIdentity(
+        id=char_id,
+        name=f"[unknown:{char_id}]",
+        color="#888888",
+        sprite_id="bob",
+        role="(missing character — id not found in the library)",
+        visual="(unknown character)",
+        llm_config=LLMConfig(
+            provider="openai",
+            model_name="gpt-4o-mini",
+            temperature=0.7,
+            max_tokens=4096,
+        ),
+    )
+
+
+def _slim_scene_for_storage(scene_config: SceneConfig | CreateSceneConfig) -> dict[str, Any]:
+    """Serialize a SceneConfig (read shape) for the DB JSON column, dropping
+    identity fields per character — the library is the source of truth.
+    """
+    payload = scene_config.model_dump()
+    chars: dict[str, dict[str, Any]] = payload.get("characters_config", {}) or {}
+    payload["characters_config"] = {
+        cid: {
+            "id": raw["id"],
+            "initial_position": raw["initial_position"],
+            "initial_direction": raw["initial_direction"],
+            "initial_action": raw["initial_action"],
+            "initial_mood": raw["initial_mood"],
+        }
+        for cid, raw in chars.items()
+    }
+    return payload
+
+
+def _hydrate_character(char_id: str, raw: dict[str, Any]) -> CharacterConfig:
+    """Merge a stored placement entry with the library identity. Tolerant of
+    the legacy fat shape — if identity fields are still embedded in the row
+    (pre-library DB rows), they're used as a last-resort fallback.
+    """
+    placement_keys = {"initial_position", "initial_direction", "initial_action", "initial_mood"}
+    placement = {k: raw[k] for k in placement_keys if k in raw}
+
+    try:
+        identity = load_character(char_id)
+    except KeyError:
+        # Legacy fallback: old rows embed the identity directly. Try to
+        # reconstruct from those before falling back to a placeholder.
+        legacy_identity_keys = {"name", "color", "role", "visual", "llm_config"}
+        if legacy_identity_keys.issubset(raw.keys()):
+            return CharacterConfig.model_validate({**raw, "id": char_id})
+        logger.warning("scene.character_missing_from_library", id=char_id)
+        identity = _placeholder_identity(char_id)
+
+    return CharacterConfig(**identity.model_dump(), **placement)
+
+
 class SceneConfigService:
     """Service for scene config."""
 
@@ -26,14 +91,18 @@ class SceneConfigService:
         pass
 
     def _convert_to_scene_config(self, db_config: DBSceneConfig) -> SceneConfig:
-        """Convert a DBSceneConfig to a SceneConfig."""
-        db_config_raw = db_config.config
-        db_config_raw["id"] = (
-            db_config.id
-        )  # Patch id since it's not in the config json after insert
-        db_config_raw["system_prompt"] = db_config.system_prompt  # Patch `system_prompt`
-        scene_config = SceneConfig.model_validate(db_config_raw)
-        return scene_config
+        """Convert a DBSceneConfig (storage shape, slim placements) into a
+        SceneConfig (read shape, identities hydrated from the library).
+        """
+        db_config_raw: dict[str, Any] = dict(db_config.config)
+        db_config_raw["id"] = db_config.id
+        db_config_raw["system_prompt"] = db_config.system_prompt
+
+        raw_chars: dict[str, dict[str, Any]] = db_config_raw.get("characters_config", {})
+        db_config_raw["characters_config"] = {
+            cid: _hydrate_character(cid, raw).model_dump() for cid, raw in raw_chars.items()
+        }
+        return SceneConfig.model_validate(db_config_raw)
 
     async def save_scene_config(self, scene_config: CreateSceneConfig) -> SceneConfig:
         """Save the current scene config to the database."""
@@ -128,7 +197,7 @@ class SceneConfigService:
                 scene_config = self._convert_to_scene_config(db_scene_config)
                 scene_config.votes = (scene_config.votes or 0) + vote
                 db_scene_config.votes = scene_config.votes
-                db_scene_config.config = scene_config.model_dump()
+                db_scene_config.config = _slim_scene_for_storage(scene_config)
                 await session.commit()
                 return scene_config
         except Exception as e:
@@ -147,7 +216,7 @@ class SceneConfigService:
                 scene_config = self._convert_to_scene_config(db_scene_config)
                 scene_config.status = status
                 db_scene_config.status = scene_config.status
-                db_scene_config.config = scene_config.model_dump()
+                db_scene_config.config = _slim_scene_for_storage(scene_config)
                 await session.commit()
                 return scene_config
         except Exception as e:
@@ -182,7 +251,7 @@ class SceneConfigService:
                         timestamp=datetime.now(UTC).isoformat(),
                     )
                 )
-                db_scene_config.config = scene_config.model_dump()
+                db_scene_config.config = _slim_scene_for_storage(scene_config)
                 await session.commit()
                 return scene_config
         except Exception as e:
@@ -202,18 +271,10 @@ class SceneConfigService:
         return await self.get_all_by_status(SceneConfigStatus.PROPOSED)
 
     async def create_scene_config_proposal(self, scene_config: CreateSceneConfig) -> SceneConfig:
-        """Propose a new scene."""
-        # Set default positions for characters if not provided
-        for i, (_, char) in enumerate(scene_config.characters_config.items()):
-            if not char.initial_position:
-                # Default to a line formation
-                char.initial_position = Position(
-                    x=TILE_SIZE * (7.5 + i),  # Start at x=7.5 tiles, increment by 1 tile
-                    y=TILE_SIZE * 7.5,  # Center vertically
-                )
-
+        """Propose a new scene. Placement is required by the schema; the
+        client is expected to position the characters before submitting.
+        """
         scene_config.proposed_at = datetime.now(UTC).isoformat()
         scene_config.status = SceneConfigStatus.PROPOSED
 
-        # Save to database
         return await self.save_scene_config(scene_config)

@@ -55,9 +55,8 @@ CharacterAction = Literal[
 
 class CharacterIdentity(CharacterBase):
     """Library-level character identity — the part that travels with a
-    character across scenes. Lives on disk under app/characters/<id>/
-    (AGENTS.md + .character.yaml). Scene-specific placement (initial_*)
-    sits one layer further out in CharacterConfig.
+    character across scenes. Lives on disk under app/characters/<id>/ or
+    data/characters/<id>/ (AGENTS.md + .character.yaml).
     """
 
     sprite_id: str = Field(
@@ -67,9 +66,30 @@ class CharacterIdentity(CharacterBase):
     )
 
 
+class CharacterPlacement(BaseModel):
+    """Scene-level placement: which library character stands where, facing
+    which way, doing what. Stored in SceneConfig.characters_config; the
+    identity lives in the library and is joined on read.
+    """
+
+    id: str = Field(
+        min_length=1,
+        max_length=50,
+        description="Library character id; must exist in the character library.",
+        json_schema_extra={"examples": ["bob", "alice"]},
+    )
+    initial_position: Position
+    initial_direction: Direction
+    initial_action: CharacterAction
+    initial_mood: str
+
+
 class CharacterConfig(CharacterIdentity):
-    """Scene-level configuration: a CharacterIdentity placed into a scene
-    with starting position, facing, action and mood.
+    """Wire shape returned by the scenes API: a CharacterIdentity merged
+    with a CharacterPlacement at serialize time. Frontend renders this.
+
+    NOT used as the storage shape — SceneConfig stores CharacterPlacement
+    and the identity is hydrated from the library before the API responds.
     """
 
     initial_position: Position

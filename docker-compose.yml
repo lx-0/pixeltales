@@ -38,6 +38,8 @@ services:
       - ./backend:/workspace
       # Persistent storage for SQLite database
       - ./data/sqlite:/data/sqlite:rw
+      # User-proposed character library (AGENTS.md + .character.yaml per id)
+      - ./data/characters:/data/characters:rw
       # Keep uv-managed virtual environment
       - backend-venv-dev:/opt/venv
     environment:
@@ -47,6 +49,7 @@ services:
       - BACKEND_CORS_ORIGINS=["http://localhost:${FRONTEND_PORT:-5173}"]
       - DB_TYPE=${DB_TYPE:-sqlite}
       - SQLITE_URL=${SQLITE_URL:-sqlite+aiosqlite:////data/sqlite/pixeltales.db}
+      - CHARACTERS_DATA_DIR=/data/characters
       - PYTHONPATH=/workspace
       - VIRTUAL_ENV=/opt/venv
       - PATH=/opt/venv/bin:${PATH}

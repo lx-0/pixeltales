@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "CharacterConfig": {
-        "description": "Scene-level configuration: a CharacterIdentity placed into a scene\nwith starting position, facing, action and mood.",
+        "description": "Wire shape returned by the scenes API: a CharacterIdentity merged\nwith a CharacterPlacement at serialize time. Frontend renders this.\n\nNOT used as the storage shape \u2014 SceneConfig stores CharacterPlacement\nand the identity is hydrated from the library before the API responds.",
         "properties": {
           "color": {
             "description": "Character's color in hex format (e.g., #FF0000)",
@@ -117,6 +117,145 @@
           "initial_mood"
         ],
         "title": "CharacterConfig",
+        "type": "object"
+      },
+      "CharacterIdentity": {
+        "description": "Library-level character identity \u2014 the part that travels with a\ncharacter across scenes. Lives on disk under app/characters/<id>/ or\ndata/characters/<id>/ (AGENTS.md + .character.yaml).",
+        "properties": {
+          "color": {
+            "description": "Character's color in hex format (e.g., #FF0000)",
+            "examples": [
+              "#FF0000",
+              "#00FF00"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "id": {
+            "description": "Unique identifier for the character",
+            "examples": [
+              "bob",
+              "alice"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "llm_config": {
+            "$ref": "#/components/schemas/LLMConfig",
+            "description": "Configuration for the character's language model"
+          },
+          "name": {
+            "description": "Character's display name (2-50 characters)",
+            "examples": [
+              "Bob",
+              "Alice"
+            ],
+            "maxLength": 50,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "description": "Character's role and personality description (10-5000 characters)",
+            "examples": [
+              "A friendly shopkeeper who loves to tell stories..."
+            ],
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Role",
+            "type": "string"
+          },
+          "sprite_id": {
+            "default": "bob",
+            "description": "ID of a sprite from the backend asset catalog (GET /api/v1/config).",
+            "examples": [
+              "bob",
+              "cleaner_girl",
+              "doctor_1",
+              "zombie"
+            ],
+            "title": "Sprite Id",
+            "type": "string"
+          },
+          "visual": {
+            "description": "Character's visual appearance description (10-500 characters)",
+            "examples": [
+              "A tall person with short brown hair and glasses..."
+            ],
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Visual",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "role",
+          "visual",
+          "llm_config"
+        ],
+        "title": "CharacterIdentity",
+        "type": "object"
+      },
+      "CharacterPlacement": {
+        "description": "Scene-level placement: which library character stands where, facing\nwhich way, doing what. Stored in SceneConfig.characters_config; the\nidentity lives in the library and is joined on read.",
+        "properties": {
+          "id": {
+            "description": "Library character id; must exist in the character library.",
+            "examples": [
+              "bob",
+              "alice"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "initial_action": {
+            "enum": [
+              "thinking",
+              "thinking:love",
+              "thinking:anger",
+              "thinking:sadness",
+              "thinking:surprise",
+              "thinking:fear",
+              "speaking",
+              "idle"
+            ],
+            "title": "Initial Action",
+            "type": "string"
+          },
+          "initial_direction": {
+            "enum": [
+              "front",
+              "right",
+              "left",
+              "back"
+            ],
+            "title": "Initial Direction",
+            "type": "string"
+          },
+          "initial_mood": {
+            "title": "Initial Mood",
+            "type": "string"
+          },
+          "initial_position": {
+            "$ref": "#/components/schemas/Position"
+          }
+        },
+        "required": [
+          "id",
+          "initial_position",
+          "initial_direction",
+          "initial_action",
+          "initial_mood"
+        ],
+        "title": "CharacterPlacement",
         "type": "object"
       },
       "CharacterState": {
@@ -313,13 +452,13 @@
         "type": "object"
       },
       "CreateSceneConfig": {
-        "description": "Scene configuration for creation without ID.",
+        "description": "Scene config WRITE shape: clients send placement-only entries.\nCharacter identity (name, color, role, visual, llm_config, sprite_id)\nmust already exist in the library \u2014 POST /api/v1/characters to add a\nnew one before proposing a scene that uses it.",
         "properties": {
           "characters_config": {
             "additionalProperties": {
-              "$ref": "#/components/schemas/CharacterConfig"
+              "$ref": "#/components/schemas/CharacterPlacement"
             },
-            "description": "Configuration for each character in the scene, keyed by character ID",
+            "description": "Per-character placement (id, initial_position/direction/action/mood). Identity is looked up from the library by id at render time.",
             "title": "Characters Config",
             "type": "object"
           },
@@ -699,13 +838,13 @@
         "type": "object"
       },
       "SceneConfig": {
-        "description": "Scene configuration.",
+        "description": "Scene config READ shape: characters are returned fully hydrated\n(placement merged with library identity) so the frontend can render\nwithout a separate library round-trip per character.",
         "properties": {
           "characters_config": {
             "additionalProperties": {
               "$ref": "#/components/schemas/CharacterConfig"
             },
-            "description": "Configuration for each character in the scene, keyed by character ID",
+            "description": "Each entry merges the per-scene placement with the library identity (name, color, role, visual, llm_config, sprite_id).",
             "title": "Characters Config",
             "type": "object"
           },
@@ -832,8 +971,8 @@
           "name",
           "description",
           "start_character_id",
-          "characters_config",
           "id",
+          "characters_config",
           "system_prompt"
         ],
         "title": "SceneConfig",
@@ -1011,6 +1150,72 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/characters": {
+      "get": {
+        "description": "Return every character in the library, sorted by id for stability.",
+        "operationId": "list_characters_api_v1_characters_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CharacterIdentity"
+                  },
+                  "title": "Response List Characters Api V1 Characters Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "List Characters",
+        "tags": [
+          "characters"
+        ]
+      },
+      "post": {
+        "description": "Persist a new character to the runtime data dir.\n\n409 if the id already exists in the library (seed or data).\n422 if the payload fails Pydantic validation.",
+        "operationId": "create_character_api_v1_characters_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CharacterIdentity"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CharacterIdentity"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Character",
+        "tags": [
+          "characters"
+        ]
+      }
+    },
     "/api/v1/config": {
       "get": {
         "description": "Get available configuration options.",

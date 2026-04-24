@@ -193,29 +193,17 @@ Alex's ratings: `[++]` high → `[--]` very low. Pick from here when next planni
 - [ ] `[--]` Twitch streaming of the scene
 - [ ] `[--]` Research gather.town features
 
-## Open: Character Library — finish the AGENTS.md adoption
+## ✅ Closed: Character Library — AGENTS.md adoption complete
 
-Commit `b46b482` introduced `app/characters/<id>/{AGENTS.md, .character.yaml}` as the format for character definitions and migrated bob, alice, doctor_1, doctor_2, zombie. **The migration is not complete** — three other code paths still define characters in the old shape, which means today *the project has two authoritative formats for the same data* and the AGENTS.md "standard" isn't actually a standard yet.
+All gaps from the prior open section closed in one commit (B1 path chosen):
 
-Don't ship more character-related work until this is closed. Open gaps:
-
-- [ ] **`backend/app/default_scene.branding.py`** — Claude + ChatGPT still inline in Python with ~80-line hardcoded role blocks. Migrate to `app/characters/claude/` + `app/characters/chatgpt/`, then collapse the file to a `_place()` composition like `default_scene.py`.
-
-- [ ] **User-proposed characters (`POST /api/v1/scenes/propose`)** — `SceneProposalForm` writes raw `CharacterConfig` objects into `scene_configs.config` JSON. This is the *most-used* character-creation path and it bypasses the library entirely. Two design options:
-    - **B1 — Filesystem write:** backend writes a new `data/characters/<slug>/AGENTS.md + .character.yaml` per proposal. Loader scans `app/characters/` (seeds, versioned) ∪ `data/characters/` (user, mounted volume). Needs slug-collision handling, write-from-request-handler safety, and a compose volume mount.
-    - **B2 — DB-backed library row:** new `characters` table (id, name, color, sprite_id, visual, role_md, llm_*) — same logical shape as `.character.yaml` but stored in the DB. Loader reads from disk + DB and merges. No filesystem writes from the request path.
-
-    Recommendation: **B1**, because it keeps the AGENTS.md file as the actual artifact and lets you `git diff` user-submitted characters. Bonus: a future "promote to seed" action is just `mv data/characters/<id> app/characters/<id>`.
-
-- [ ] **DB schema slim — `scene_configs.config` references library ids instead of embedding character configs.** Today the JSON column stores the full `CharacterConfig` per character. Once the library is the SSOT, scenes should just store `dict[str, CharacterPlacement]` (id + initial_position/direction/action/mood). Hydration via `load_character(id)` happens on read. Backwards compat: keep the read-path tolerant of the old fat shape (Pydantic `extra="ignore"` already handles it for SceneState; same trick works here for SceneConfig if we wrap the read).
-
-- [ ] **`backend/tests/fixtures.py:_make_char_config`** — builds CharacterConfig by hand, bypasses the library. Switch to `load_character("alice") / load_character("bob")` plus a `_place()` helper, so tests exercise the same path production uses.
-
-- [ ] **Frontend Sprite dropdown → Character dropdown.** Phase 3 added a sprite-id picker per character. Once the library is canonical, propose-a-character can become "pick from library OR create new" — keeps users from re-defining bob differently each time, and the "create new" path is what triggers a write to `data/characters/`.
-
-- [ ] **Standard discipline check.** `agents.md` is "standard Markdown, no required schema". `.character.yaml` is *our* convention next to it. Document the exact loader contract (which YAML keys are required, what happens on missing keys, slug rules) in `app/characters/README.md` so the library has a spec, not just five examples.
-
-Estimated split: A (branding + tests + DB-read tolerance, fully backwards compat) in one commit, B+C (write path + schema slim) in a second. Don't bundle — the second one needs a DB migration.
+- [x] `default_scene.branding.py` — Claude + ChatGPT migrated into `app/characters/{claude,chatgpt}/`; file collapsed to placement-only composition.
+- [x] `POST /api/v1/scenes/propose` — schema slimmed to `dict[str, CharacterPlacement]`; the form now POSTs `/api/v1/characters` per "create new" row before submitting the scene proposal. Library characters can also be picked from a dropdown per row.
+- [x] `scene_configs.config` storage now slim — character entries are placement-only in the JSON column; identity hydrated from the library on read. Pre-library DB rows still work via a fallback that uses the embedded identity if present.
+- [x] `tests/fixtures.py` builds Configs from `load_character("alice"|"bob")` — same path production uses.
+- [x] Frontend `SceneProposalForm` gets a per-row "Library character" dropdown ("Create new…" reveals the inline identity fields).
+- [x] `app/characters/README.md` documents the loader contract (required yaml keys, slug rules, error behavior, programmatic API).
+- [x] B1 chosen: `backend/data/characters/` mounted as a compose volume; `POST /api/v1/characters` writes `<id>/AGENTS.md + .character.yaml` there. Slug-collision handling: `409 Conflict` returned, surfaced in the form.
 
 ## Execution log
 

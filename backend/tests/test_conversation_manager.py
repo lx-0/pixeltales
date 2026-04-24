@@ -96,8 +96,10 @@ class TestSystemMessage:
         vars = cm._prepare_system_message(scene, "alice", message_recipient="bob")
         assert vars["character_name"] == "Alice"
         role = vars["character_role"]
+        # Role now comes from app/characters/alice/AGENTS.md (the library);
+        # verify identity flowed through, not the exact prose.
         assert isinstance(role, str)
-        assert role.startswith("A friendly test character")
+        assert "Alice" in role
         assert vars["message_recipient"] == "bob"
 
     def test_input_differs_for_empty_vs_ongoing_conversation(

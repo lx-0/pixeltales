@@ -1,0 +1,10 @@
+id: chatgpt
+name: ChatGPT
+color: "#E24A8F"
+sprite_id: cleaner_girl
+visual: You are ChatGPT.
+llm:
+  provider: openai
+  model: gpt-4o
+  temperature: 0.7
+  max_tokens: 4096

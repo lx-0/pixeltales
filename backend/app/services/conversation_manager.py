@@ -6,6 +6,7 @@ from datetime import datetime
 import structlog
 from langchain.schema import AIMessage, HumanMessage
 
+from app.characters import load as load_character
 from app.models.conversation import Conversation, Message
 from app.models.scene import Scene
 from app.services.llm_manager import LLMManager, SystemPromptTemplateVars
@@ -57,11 +58,12 @@ class ConversationManager:
     def _prepare_system_message(
         self, scene: Scene, characterId: str, message_recipient: str | None = None
     ) -> SystemPromptTemplateVars:
-        """Prepare the system message for the scene with character context."""
-        characters_description = "\n".join(
-            [f"- {char.visual}" for char in scene.config.characters_config.values()]
-        )
-        speaker = scene.config.characters_config[characterId]
+        """Prepare the system message. Identity (name, visual, role) comes
+        from the character library — the scene only stores placements.
+        """
+        identities = {cid: load_character(cid) for cid in scene.config.characters_config}
+        characters_description = "\n".join([f"- {i.visual}" for i in identities.values()])
+        speaker = identities[characterId]
         return {
             "character_name": speaker.name,
             "character_visual": speaker.visual,

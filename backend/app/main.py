@@ -10,7 +10,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler  # type: ignore[import
 from slowapi.errors import RateLimitExceeded  # type: ignore[import-untyped]
 from slowapi.util import get_remote_address  # type: ignore[import-untyped]
 
-from app.api.endpoints import config, scenes, socket_events
+from app.api.endpoints import characters, config, scenes, socket_events
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.metrics import visitors_active
@@ -56,6 +56,7 @@ app.add_middleware(
 )
 
 app.include_router(config.router, prefix=settings.API_V1_STR, tags=["config"])
+app.include_router(characters.router, prefix=settings.API_V1_STR, tags=["characters"])
 app.include_router(scenes.router, prefix=settings.API_V1_STR, tags=["scenes"])
 app.include_router(socket_events.router, prefix=settings.API_V1_STR, tags=["socket-events"])
 
