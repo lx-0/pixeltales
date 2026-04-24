@@ -114,6 +114,48 @@ def scene(
 
 
 @pytest.fixture
+def doctor_1_identity() -> CharacterIdentity:
+    return load_character("doctor_1")
+
+
+@pytest.fixture
+def three_character_scene(
+    alice_identity: CharacterIdentity,
+    bob_identity: CharacterIdentity,
+    doctor_1_identity: CharacterIdentity,
+) -> Scene:
+    """3-NPC scene for multi-NPC turn-taking tests."""
+    config = SceneConfig(
+        id=2,
+        name="Three Character Test Scene",
+        description="Three friends chatting in a test environment for at least ten chars.",
+        system_prompt="You are {character_name}. Role: {character_role}",
+        start_character_id="alice",
+        characters_config={
+            "alice": _config_from(alice_identity),
+            "bob": _config_from(bob_identity),
+            "doctor_1": _config_from(doctor_1_identity),
+        },
+        status=SceneConfigStatus.ACTIVE,
+    )
+    state = SceneState(
+        scene_id=2,
+        scene_config_id=2,
+        characters={
+            "alice": _state_for(alice_identity),
+            "bob": _state_for(bob_identity),
+            "doctor_1": _state_for(doctor_1_identity),
+        },
+        messages=[],
+        started_at=0.0,
+        conversation_active=True,
+        conversation_ended=False,
+        visitor_count=0,
+    )
+    return Scene(id=2, config=config, state=state)
+
+
+@pytest.fixture
 def mock_llm_manager() -> LLMManager:
     """LLMManager whose generate_response is a pre-canned CharacterResponse."""
     m = LLMManager()

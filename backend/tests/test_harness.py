@@ -85,6 +85,77 @@ class TestGetOtherCharacter:
             m._get_other_character("alice")
 
 
+class TestMultiNPCNextSpeaker:
+    """3+ character scenes use weighted choice biased against the most-recent
+    speaker — natural rotation, not robotic alternation."""
+
+    @pytest.fixture
+    def harness(self, three_character_scene: Scene) -> Harness:
+        m = Harness()
+        m.scene = three_character_scene
+        m._persist_state = AsyncMock()  # type: ignore[method-assign]
+        return m
+
+    def test_never_picks_last_speaker(self, harness: Harness):
+        """Run many trials — last speaker is excluded by construction."""
+        assert harness.scene is not None
+        harness.scene.state.messages = [make_message("alice", "hi")]
+        for _ in range(100):
+            speaker = harness._get_next_speaker()
+            assert speaker != "alice"
+            assert speaker in {"bob", "doctor_1"}
+
+    def test_three_chars_can_rotate_freely(self, harness: Harness):
+        """Over many turns the candidate set shouldn't be deterministic."""
+        import random
+
+        assert harness.scene is not None
+        random.seed(42)
+        harness.scene.state.messages = [make_message("alice", "hi")]
+        choices = {harness._get_next_speaker() for _ in range(50)}
+        # With weighted random over {bob, doctor_1}, both should appear
+        assert choices == {"bob", "doctor_1"}
+
+    def test_speak_weight_recency_penalty(self, harness: Harness):
+        """A character who just spoke gets a much lower weight than one
+        who hasn't been heard recently."""
+        assert harness.scene is not None
+        harness.scene.state.messages = [
+            make_message("alice", "first"),
+            make_message("bob", "second"),
+            make_message("doctor_1", "third"),
+        ]
+        # doctor_1 spoke most recently → lowest weight
+        assert harness._speak_weight("doctor_1") < harness._speak_weight("bob")
+        assert harness._speak_weight("bob") < harness._speak_weight("alice")
+
+    def test_speak_weight_end_conversation_request_dampens(self, harness: Harness):
+        """A character that requested end-of-conversation gets halved weight."""
+        assert harness.scene is not None
+        harness.scene.state.messages = []  # no recency penalty for any
+        baseline = harness._speak_weight("bob")
+        harness.scene.state.characters["bob"].end_conversation_requested = True
+        damped = harness._speak_weight("bob")
+        assert damped == pytest.approx(baseline * 0.5)
+
+    def test_speak_weight_never_zero(self, harness: Harness):
+        """Even worst-case (just spoke + end-requested) keeps a floor."""
+        assert harness.scene is not None
+        harness.scene.state.messages = [make_message("alice", "x")]
+        harness.scene.state.characters["alice"].end_conversation_requested = True
+        # Can't be picked anyway (last speaker excluded), but the weight
+        # function must not return 0.0 for safety.
+        assert harness._speak_weight("alice") > 0.0
+
+    def test_two_char_scene_still_alternates(self, sm: Harness):
+        """Backward compat: 2-char scenes hit the early-return shortcut and
+        deterministically pick the only other character."""
+        assert sm.scene is not None
+        sm.scene.state.messages = [make_message("alice", "x")]
+        for _ in range(20):
+            assert sm._get_next_speaker() == "bob"
+
+
 class TestSetVisitors:
     def test_active_when_visitors_present(self, sm: Harness):
         assert sm.scene is not None

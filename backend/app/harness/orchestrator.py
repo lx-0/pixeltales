@@ -232,17 +232,45 @@ class Harness:
 
         return message
 
+    def _speak_weight(self, character_id: str) -> float:
+        """How likely a character is to speak next, for weighted-random pick.
+
+        Recency penalty: a character who spoke 1/2/3 turns ago gets a
+        graduated drop (-0.7/-0.5/-0.3). End-conversation requests halve
+        the resulting weight — a character signalled they want to wrap up.
+        Never zero — there's always some non-zero chance.
+        """
+        scene = self.world.require_scene()
+        base = 1.0
+        recent = [m.character for m in scene.state.messages[-3:]]
+        # Look at most-recent first; only the most recent appearance penalises
+        for offset, cid in enumerate(reversed(recent), start=1):
+            if cid == character_id:
+                base -= max(0.0, 0.9 - offset * 0.2)
+                break
+        if scene.state.characters[character_id].end_conversation_requested:
+            base *= 0.5
+        return max(0.05, base)
+
     def _get_next_speaker(self) -> str:
-        """Determine the next speaker based on conversation state."""
+        """Pick the next speaker via recency/end-request-weighted choice.
+
+        For 2-character scenes this collapses to strict alternation (the
+        only non-last-speaker candidate is picked deterministically). For
+        3+ characters the weights bias against the last speaker without
+        absolute exclusion of recent ones — natural rotation, not robotic.
+        """
         scene = self.world.require_scene()
         if not scene.state.messages:
             return scene.config.start_character_id
 
-        # Get the last speaker
         last_speaker = scene.state.messages[-1].character
+        candidates = [cid for cid in scene.state.characters if cid != last_speaker]
+        if len(candidates) == 1:
+            return candidates[0]
 
-        # Switch speakers
-        return self._get_other_character(last_speaker)
+        weights = [self._speak_weight(cid) for cid in candidates]
+        return random.choices(candidates, weights=weights, k=1)[0]
 
     async def _conversation_loop(self) -> None:
         """Main conversation loop between AI characters."""

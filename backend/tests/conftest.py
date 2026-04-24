@@ -22,9 +22,11 @@ from tests.fixtures import (  # noqa: F401  (re-exported for pytest discovery)
     alice_identity,
     bob_config,
     bob_identity,
+    doctor_1_identity,
     mock_llm_manager,
     scene,
     scene_config,
+    three_character_scene,
 )
 
 
