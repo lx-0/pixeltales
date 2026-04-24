@@ -6,16 +6,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -p tsconfig.app.json && vite build",
+    "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.app.json --noEmit",
     "lint": "biome check",
     "lint:fix": "biome check --write",
     "format": "biome format --write",
-    "preview": "vite preview",
-    "reset": "rm -rf dist && rm -rf node_modules/.vite",
-    "reset:node": "rm -rf node_modules && npm ci",
-    "reset:modules": "npm run reset && npm run reset:node",
-    "reset:full": "npm run reset && npm run reset:node:full",
-    "reset:node:full": "rm -rf node_modules && rm package-lock.json && npm cache clean --force && npm i"
+    "check": "pnpm lint && pnpm typecheck",
+    "fix": "pnpm lint:fix && pnpm format",
+    "reset": "rm -rf dist node_modules/.vite",
+    "reset:full": "rm -rf dist node_modules pnpm-lock.yaml && pnpm install"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
