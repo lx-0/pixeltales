@@ -7,7 +7,7 @@
   },
   "files": {
     "includes": [
-      "**/*.{ts,tsx,js,jsx,json,jsonc}",
+      "**/*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc}",
       "!dist",
       "!node_modules",
       "!src/components/ui",
@@ -89,6 +89,14 @@
           "correctness": {
             "useJsxKeyInIterable": "warn"
           }
+        }
+      }
+    },
+    {
+      "includes": ["scripts/**"],
+      "linter": {
+        "rules": {
+          "suspicious": { "noConsole": "off" }
         }
       }
     }
