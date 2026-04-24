@@ -2,123 +2,150 @@
 
 Baseline: MVP commit `b91ae54` (April 2025). Python 3.11 + FastAPI + Poetry + LangChain, React 18 + Vite + Phaser 3 + npm, Node 18 in Dockerfile. No tests, no CI, Redux installed but unused.
 
-Target: Workspace-standard stack (pnpm, Biome, uv, Node 22, Python 3.12), typed cross-stack contracts, LangGraph-based multi-agent orchestration, test coverage, deployable via GitHub Actions.
-
-## Phase 0 ✅ — Dead code cleanup
-
-- [x] `apps/`, `packages/`, `supabase-backup/` — user moved to `.archive/`
-- [x] `.project/V1/` — removed (backed up to `.archive/legacy/.project/V1/`)
-- [x] `frontend/package.json` — dropped `@reduxjs/toolkit`, `react-redux`, `@types/react-redux`, `@shadcn/ui`
-- [x] Backend `pyproject.toml` — dropped `redis`
-- [ ] Workspace-root `CLAUDE.md` pixeltales entry (out of project scope, deferred)
-
-## Phase 1 ✅ — Tooling alignment
-
-- [x] Frontend: `npm` → `pnpm` (`pnpm-lock.yaml`, Dockerfile w/ corepack)
-- [x] Frontend: Node 18 → 22 in Dockerfile + `.nvmrc`
-- [x] Frontend: ESLint + Prettier → Biome (biome.json)
-- [x] Backend: Poetry → uv (`uv.lock`, Dockerfile w/ `ghcr.io/astral-sh/uv`)
-- [x] Backend: Python 3.11 → 3.12, asyncpg 0.29 → 0.30
-- [x] Backend: ruff added (config in pyproject.toml)
-- [x] Pre-commit hook: lefthook (`lefthook.yml`)
-
-## Phase 2 — Frontend modernization
-
-- [ ] **Atomic Design restructure** — introduce `components/{atoms,molecules,organisms,templates}/`. shadcn/ui stays at `components/ui/` (acts as atoms). Move the 6 top-level components (`ColorPalette`, `ConversationHistory`, `ConversationStatsChart`, `SceneInfo`, `SceneProposalForm`, `SceneProposalList`) into `organisms/`. Leave `atoms/` + `molecules/` empty until actual reuse appears (no premature abstraction).
-- [ ] Replace ad-hoc `Logger` utility with `pino` (browser bundle) for structured, level-filtered logs. Retire `chalk` dep.
-- [ ] Split `UIControlsManager.ts` (512 LOC, exceeds 500-LOC soft cap) into camera / overlay / input sub-managers.
-- [ ] React 18 → 19. Bump `@types/react` to 19, verify Phaser ref integration, `react-hook-form` compat.
-- [ ] Tailwind 3 → 4. Migrate to CSS-first config (`@theme`), replace `tailwindcss-animate` with `tw-animate-css`.
-- [ ] Re-init shadcn/ui with new CLI (`npx shadcn@latest init`), diff existing `components/ui/` against new baseline.
-- [ ] Confirm state strategy: `useState` + React Query only (Redux already dropped). Extract socket state into a single subscription hook if prop drilling grows.
-- [ ] Type Socket.IO events: deferred to Phase 4 (handled as part of cross-stack codegen).
-
-## Phase 3a ✅ — Backend mechanical modernization
-
-- [x] FastAPI 0.115 → 0.118+, Pydantic 2.10 → 2.11.
-- [x] structlog (dev: pretty console, prod: JSON). All `print()` and `logging.getLogger` migrated.
-- [x] Module-level singleton in `endpoints/scenes.py` → FastAPI `Depends` (`@lru_cache` factory).
-- [x] Alembic introduced. Initial migration auto-generated. Entrypoint stamps pre-Alembic DBs and runs `alembic upgrade head`.
-- [x] CORS tightened: explicit methods + headers (no more `["*"]`).
-- [x] pre-existing mypy bug fixed (`ChatAnthropic` missing `model` arg).
-- [x] Redis dropped (Phase 0).
-
-## Phase 3b — LangGraph rewrite (deferred to after Phase 5)
-
-Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManager` + `LLMManager` is too risky.
-
-- [ ] Model scene tick as LangGraph `StateGraph` (nodes per character turn).
-- [ ] Drop manual `asyncio.sleep` + scheduling in `SceneManager`.
-- [ ] Audit async SQLAlchemy session lifecycle (will mostly be touched here).
-
-## Phase 4a ✅ — REST OpenAPI codegen
-
-- [x] `backend/scripts/dump_openapi.py` — dumps FastAPI OpenAPI to `backend/openapi.json`
-- [x] Frontend: `openapi-typescript` (devDep) + `openapi-fetch` (dep). `pnpm codegen` regenerates `src/api/types.gen.ts`.
-- [x] `src/api/client.ts` — typed openapi-fetch client + `Schemas` alias
-- [x] `use-config.ts` + `use-scenes.ts` migrated to typed client
-- [x] `SceneProposalForm` uses generated `CreateSceneConfig` + `CharacterConfig`
-
-## Phase 4b ✅ — Socket.IO event typing
-
-- [x] Backend `app/api/endpoints/socket_events.py` — schemas-only catalog endpoint exposes `ServerToClientEvents` (Pydantic) so OpenAPI codegen picks up `SceneState`.
-- [x] Frontend `src/api/socket-events.ts` — `ServerToClientEvents` + `ClientToServerEvents` map types from generated schemas.
-- [x] `services/socket.ts` — `Socket<ServerToClientEvents, ClientToServerEvents>` typing. Bridge cast on the receiving side keeps consumers on the existing hand-typed `SceneState` (slightly stricter than the generated type).
-
-## Phase 5 ✅ — Testing infrastructure
-
-- [x] Backend: pytest + pytest-asyncio + httpx, in-memory SQLite fixture (`tests/conftest.py`).
-- [x] Baseline tests: /health, /api/v1/config, SceneConfigService basics. 4 tests pass.
-- [x] Latent SceneManager bug fixed: `asyncio.create_task` moved out of `__init__` (was failing module import outside event loop). Now lifespan calls `scene_manager.start()`.
-- [x] Frontend: vitest + jsdom + @testing-library/react, sample utils tests. 5 tests pass.
-- [x] Playwright config + tests-e2e/smoke.spec.ts (page loads, socket connects).
-  Run via `pnpm test:e2e` after `pnpm exec playwright install chromium` and stack up.
-- [ ] Coverage floors deferred to Phase 8 CI.
-- [ ] LangGraph rewrite (Phase 3b) can now proceed safely on top of this baseline.
-
-## Phase 6a ✅ — LiteLLM gateway support
-
-- [x] New env vars: `LITELLM_BASE_URL`, `LITELLM_API_KEY`. When set, every provider call routes through the gateway via OpenAI-compatible API.
-- [x] Falls back to direct OpenAI/Anthropic when the gateway is unconfigured.
-- [x] `.env.example` documents both setups.
-
-## Phase 6b — Prompt externalization (partial)
-
-- [x] `app/prompts/system.md` + `app/prompts/__init__.py` (cached loader). `app/config.py` SYSTEM_PROMPT now loaded from markdown — edit the file to tweak character behavior, no code change needed.
-- [ ] Move `DEFAULT_MODEL` from code constant to DB-stored per-character config. Hot-swappable without redeploy. Needs Alembic migration + scene proposal UI changes — defer until that flow is requested.
-
-## Phase 7 ✅ — Security
-
-- [x] CORS tightened: explicit methods + headers (Phase 3a).
-- [x] slowapi global default 100/min, per-endpoint 5/min on /scenes/propose, 30/min on /vote.
-- [x] Drop unused `python-jose` + `passlib` deps (auth path was dead code; deferred until a real auth story is needed).
-- [ ] Real OAuth (Logto/Authentik) — only when public production demand exists.
-- [ ] hCaptcha on scene-proposal — only if rate limit alone proves insufficient.
-
-## Phase 8 ✅ — CI/CD
-
-- [x] `.github/workflows/ci.yml`: backend (ruff + mypy + pytest) and frontend (biome + tsc + vitest + build) jobs in parallel. Cached uv + pnpm. Node 22, Python 3.12.
-- [x] `.github/workflows/docker.yml`: builds both Docker images on `main` push + tags, pushes to GHCR (`pixeltales-backend`, `pixeltales-frontend`) with sha + branch + semver tags. GHA cache for layers.
-- [x] `renovate.json`: weekly schedule, semantic commits, grouped React + LangChain bumps, pinned Docker digests.
-- [ ] Playwright E2E in CI — deferred (needs docker compose setup in workflow + browser install).
-- [ ] Production deploy target confirmed (current demo: `pixeltales.0fo.de`).
-
-## Phase 9 ✅ — Observability (Prometheus baseline)
-
-- [x] `prometheus-fastapi-instrumentator` exposes `/metrics` (HTTP request counters, latency histograms — out of the box)
-- [x] Custom metrics in `app/core/metrics.py`:
-  - `pixeltales_visitors_active` (gauge): currently connected Socket.IO clients
-  - `pixeltales_messages_total{character}` (counter): scaffolded for SceneManager to bump on each emitted message
-  - `pixeltales_llm_response_seconds{provider,model}` (histogram): scaffolded for LLMManager to time `ainvoke`
-- [x] Socket connect/disconnect handlers update `visitors_active`
-- [x] Wired: SceneManager bumps `messages_total{character}` per emitted message; LLMManager wraps `ainvoke` with `llm_response_seconds{provider,model}.time()`.
-- [ ] OpenTelemetry traces (FastAPI + SQLAlchemy instrumentation) — deferred until a collector target exists (Tempo/Grafana Cloud).
-- [ ] Export target: Grafana Cloud or self-hosted Loki/Tempo.
+Target: workspace-standard stack (pnpm, Biome, uv, Node 22, Python 3.12), typed cross-stack contracts, structured logging + metrics, deployable via GitHub Actions.
 
 ---
 
-## Execution order
+## Phase 0 ✅ — Dead code cleanup
 
-Phase 0 → 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → (9).
+- [x] `apps/`, `packages/`, `supabase-backup/` moved to `.archive/`
+- [x] `.project/V1/` removed (backed up to `.archive/legacy/.project/V1/`)
+- [x] frontend deps: drop `@reduxjs/toolkit`, `react-redux`, `@types/react-redux`, `@shadcn/ui`
+- [x] backend deps: drop `redis`
 
-Phase 3 (LangGraph) is the heaviest single-phase rewrite; can be parallelized with Phase 4 (codegen) since they touch different surfaces.
+## Phase 1 ✅ — Tooling alignment
+
+- [x] Frontend: npm → pnpm, Node 18 → 22, ESLint+Prettier → Biome, `.nvmrc`
+- [x] Backend: Poetry → uv, Python 3.11 → 3.12, asyncpg 0.29 → 0.30, ruff
+- [x] Pre-commit hook: lefthook
+
+## Phase 2 ✅ — Frontend modernization
+
+- [x] Atomic Design folder structure (`components/{atoms,molecules,organisms,templates}/`)
+- [x] Move 6 top-level components to `organisms/`, switch to `@/` alias
+- [x] Replace ad-hoc `Logger` with pino (browser bundle), retire chalk
+- [x] Split `UIControlsManager.ts` into manager + factory
+- [x] React 18 → 19 (no source changes needed)
+- [x] Tailwind 3 → 4 (CSS-first config in `index.css`, `@tailwindcss/vite`, `tw-animate-css`)
+- [x] State strategy confirmed: `useState` + React Query only
+
+## Phase 3a ✅ — Backend mechanical modernization
+
+- [x] FastAPI 0.115 → 0.118+, Pydantic 2.10 → 2.11
+- [x] structlog (dev: pretty console, prod: JSON), all `print()` and `logging.getLogger` migrated
+- [x] Module-level singleton in `endpoints/scenes.py` → FastAPI `Depends`
+- [x] Alembic introduced; entrypoint stamps pre-Alembic DBs and runs `alembic upgrade head`
+- [x] CORS tightened: explicit methods + headers
+- [x] Pre-existing mypy bug fixed (`ChatAnthropic` missing `model` arg)
+
+## Phase 4a ✅ — REST OpenAPI codegen
+
+- [x] `backend/scripts/dump_openapi.py` → `backend/openapi.json`
+- [x] Frontend: `openapi-typescript` (dev) + `openapi-fetch` (runtime), `pnpm codegen`
+- [x] `src/api/client.ts` typed client + `Schemas` alias
+- [x] `use-config.ts`, `use-scenes.ts`, `SceneProposalForm` migrated to generated types
+
+## Phase 4b ✅ — Socket.IO event typing
+
+- [x] Backend `socket_events.py` schemas-only catalog endpoint
+- [x] Frontend `src/api/socket-events.ts` maps generated schemas to `ServerToClientEvents` / `ClientToServerEvents`
+- [x] `services/socket.ts` uses `Socket<ServerToClientEvents, ClientToServerEvents>`
+
+## Phase 5 ✅ — Testing infrastructure
+
+- [x] Backend: pytest + pytest-asyncio + httpx, in-memory SQLite fixture (4 tests)
+- [x] Latent SceneManager bug fixed (`asyncio.create_task` out of `__init__` → lifespan `start()`)
+- [x] Frontend: vitest + jsdom + @testing-library/react (5 tests)
+- [x] Playwright config + smoke test (`pnpm test:e2e` after `pnpm exec playwright install chromium`)
+
+## Phase 6a ✅ — LiteLLM gateway support
+
+- [x] Env: `LITELLM_BASE_URL`, `LITELLM_API_KEY`. When set, all providers route through the gateway via OpenAI-compatible API
+- [x] Falls back to direct OpenAI/Anthropic when unconfigured
+
+## Phase 6b ✅ — Prompt externalization
+
+- [x] `app/prompts/system.md` + cached loader. SYSTEM_PROMPT loaded from markdown — edit the file, no code change needed.
+
+## Phase 7 ✅ — Security
+
+- [x] CORS tightened (Phase 3a)
+- [x] slowapi: global 100/min, 5/min on `/scenes/propose`, 30/min on `/vote`
+- [x] Drop unused `python-jose` + `passlib` deps
+
+## Phase 8 ✅ — CI/CD
+
+- [x] `.github/workflows/ci.yml`: backend + frontend jobs in parallel, cached uv + pnpm, Node 22, Python 3.12
+- [x] `.github/workflows/docker.yml`: builds + pushes to GHCR on `main` + tags, GHA layer cache
+- [x] `renovate.json`: weekly, semantic commits, grouped React + LangChain bumps, pinned Docker digests
+
+## Phase 9 ✅ — Observability (Prometheus baseline)
+
+- [x] `prometheus-fastapi-instrumentator` exposes `/metrics`
+- [x] Custom metrics in `app/core/metrics.py`: `pixeltales_visitors_active` (gauge), `pixeltales_messages_total{character}` (counter), `pixeltales_llm_response_seconds{provider,model}` (histogram)
+- [x] Socket connect/disconnect updates `visitors_active`
+- [x] SceneManager bumps `messages_total`; LLMManager times `ainvoke` with `llm_response_seconds`
+
+---
+
+## Open / Future Work
+
+Items that were intentionally deferred. Each has a "Why deferred" line so future-you (or a future agent) can judge whether the gating condition has changed.
+
+### Backend
+
+- [ ] **LangGraph rewrite of `SceneManager` + `ConversationManager` + `LLMManager`** — model the scene tick as a `StateGraph` with one node per character turn. Drops manual `asyncio.sleep` + scheduling. Audit async SQLAlchemy session lifecycle while at it.
+  *Why deferred:* current tests are smoke-only. Big-bang rewrite without real coverage is roulette. Gate on substantive `SceneManager` / `ConversationManager` test coverage (≥60% line coverage on the tick loop and turn-taking).
+
+- [ ] **DB-stored per-character model config** — move `DEFAULT_MODEL` constant + `LLMConfig` from scene proposal payload to a `models` DB table. Hot-swappable without redeploy.
+  *Why deferred:* needs Alembic migration **and** scene-proposal UI changes (dropdown reads from DB). Wait until users ask for runtime model swaps.
+
+- [ ] **OpenTelemetry traces** — `opentelemetry-instrumentation-fastapi` + `opentelemetry-instrumentation-sqlalchemy`, OTLP exporter.
+  *Why deferred:* no collector endpoint yet. Set one up first (Tempo / Grafana Cloud / self-hosted).
+
+- [ ] **Real OAuth (Logto / Authentik)** — protected endpoints, user identity on socket connect.
+  *Why deferred:* PixelTales is a public read-mostly demo today. Only justified if write endpoints (proposals, votes) become abuse vectors that rate-limiting alone can't contain.
+
+- [ ] **hCaptcha on `/scenes/propose`** — additional spam guard.
+  *Why deferred:* `slowapi` 5/min limit covers normal abuse. Re-evaluate if logs show distributed spam.
+
+- [ ] **Pydantic v2 `class Config` cleanup** — `app/models/llm.py:6` still uses class-based `Config`, raising `PydanticDeprecatedSince20`. Replace with `ConfigDict`.
+  *Why deferred:* warning only, not an error. Trivial fix; pick up next time `models/llm.py` is touched.
+
+- [ ] **`init_db.py` removal** — superseded by Alembic. Currently kept for legacy `python -m app.db.init_db` callers.
+  *Why deferred:* zero cost to keep; remove on next backend cleanup pass.
+
+### Frontend
+
+- [ ] **shadcn/ui refresh** — re-init with `npx shadcn@latest init`, diff `components/ui/*` against the new baseline (current files predate React 19 + Tailwind 4).
+  *Why deferred:* current components work. shadcn `forwardRef` usage is deprecated in R19 but not removed. Re-do when something visually breaks or when adding a new shadcn primitive.
+
+- [ ] **Migrate `@/types/scene` consumers to generated types** — currently a hand-typed `SceneState` exists alongside `Schemas['SceneState']`. They're nearly identical; the cast in `services/socket.ts` bridges them.
+  *Why deferred:* large diff for marginal benefit. Sweep when the hand-typed schema actually drifts from the generated one.
+
+- [ ] **Bundle splitting** — production JS is 2.4 MB (mostly Phaser). `manualChunks` to split vendor / Phaser / app.
+  *Why deferred:* page is fast enough on broadband; LCP bottleneck is Phaser asset loading, not JS parse. Re-visit when mobile users complain.
+
+### Test / CI
+
+- [ ] **Coverage floors in CI** — pytest-cov + vitest coverage gates (target backend ≥60%, frontend ≥40% on first pass).
+  *Why deferred:* baseline is too thin (4 + 5 tests). Set floors when there's real coverage to hold the line on.
+
+- [ ] **Playwright in CI** — workflow boots compose stack, runs `pnpm test:e2e`.
+  *Why deferred:* needs compose setup in the workflow file + chromium install + secrets for `OPENAI_API_KEY`. Wait until E2E suite has more than the smoke test.
+
+- [ ] **Substantive backend tests** — `SceneManager` tick loop + `ConversationManager` turn-taking with mocked LLM. Required gating for the LangGraph rewrite above.
+
+### Workspace / scope
+
+- [ ] **Workspace-root `~/Sync/home/alex/Code/WebDev/CLAUDE.md`** — pixeltales entry says "Turborepo. NestJS, Drizzle, React" (V1 leftover, since-deleted). Should describe the actual stack.
+  *Why deferred:* outside this project's git repo. Pick up during a workspace-wide CLAUDE.md sweep.
+
+- [ ] **Production deploy target documented** — current live demo is `pixeltales.0fo.de`. Codify how it's deployed (compose? K8s?) so the GHCR-pushed images can be wired to it.
+  *Why deferred:* needs your input on the actual hosting setup.
+
+---
+
+## Execution log
+
+Phases shipped in order: 0 → 1 → 2 → 3a → 4a → 5 → 6a → 7 → 8 → 9 → 4b → 6b. 13 commits between `021f5dd` and `4bb3574`.
