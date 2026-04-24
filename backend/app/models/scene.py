@@ -5,17 +5,6 @@ from pydantic import BaseModel, Field
 from app.models.character import CharacterConfig, CharacterPlacement, CharacterState
 from app.models.conversation import Message
 
-# # Pydantic validation debugging
-# BaseModel.model_config = ConfigDict(
-#     validation_error_cause=True, extra="forbid", str_strip_whitespace=True
-# )
-
-
-class SceneBase(BaseModel):
-    """Base class for the scene."""
-
-    _ = None
-
 
 class SceneConfigStatus(StrEnum):
     """Scene config status enum."""
@@ -38,7 +27,7 @@ def empty_comment_list() -> list[Comment]:
     return []
 
 
-class SceneConfigCommon(SceneBase):
+class SceneConfigCommon(BaseModel):
     """Scene configuration fields shared between read and write shapes."""
 
     name: str = Field(
@@ -121,7 +110,7 @@ class SceneConfig(SceneConfigCommon):
     )
 
 
-class SceneState(SceneBase):
+class SceneState(BaseModel):
     """State of the scene."""
 
     scene_id: int
