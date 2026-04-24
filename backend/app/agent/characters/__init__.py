@@ -32,8 +32,15 @@ _AGENTS_FILE = "AGENTS.md"
 _METADATA_FILE = ".character.yaml"
 _SLUG_RE = re.compile(r"^[a-z][a-z0-9_\-]{0,49}$")
 _REQUIRED_KEYS = {"id", "name", "color", "sprite_id", "visual"}
-_REQUIRED_LLM_KEYS = {"provider", "model"}
+# `.character.yaml` `llm:` block accepts EITHER explicit (provider+model) OR
+# a high-level `tier:` (gateway alias like "cheap"/"default"/"quality").
+# When `tier` is set, the LLMConfig is built with provider="openai" and
+# model_name=<tier>; the LiteLLM gateway resolves the actual upstream model.
+# Tier requires LITELLM_BASE_URL+LITELLM_API_KEY at runtime; no startup
+# check — surfaces as an OpenAI 404 if the gateway is not configured.
+_LLM_EXPLICIT_KEYS = {"provider", "model"}
 _OPTIONAL_LLM_KEYS = {"temperature", "max_tokens"}
+_LLM_TIER_KEY = "tier"
 
 # Cache + lock so writes invalidate without races. Tests reset via
 # `_invalidate_cache()`.
@@ -76,10 +83,30 @@ def _validate_yaml(path: Path, raw: dict[str, Any]) -> None:
     llm = raw["llm"]
     if not isinstance(llm, dict):
         raise ValueError(f"{path}: `llm` must be a mapping")
-    llm_missing = _REQUIRED_LLM_KEYS - set(llm.keys())
-    if llm_missing:
-        raise ValueError(f"{path}: missing llm keys: {sorted(llm_missing)}")
-    llm_extra = set(llm.keys()) - _REQUIRED_LLM_KEYS - _OPTIONAL_LLM_KEYS
+    llm_keys = set(llm.keys())
+
+    has_tier = _LLM_TIER_KEY in llm_keys
+    has_explicit = bool(_LLM_EXPLICIT_KEYS & llm_keys)
+    if has_tier and has_explicit:
+        raise ValueError(
+            f"{path}: `llm` block has both `{_LLM_TIER_KEY}` and explicit "
+            f"{sorted(_LLM_EXPLICIT_KEYS)} — use one or the other"
+        )
+    if not has_tier and not has_explicit:
+        raise ValueError(
+            f"{path}: `llm` block must set either `{_LLM_TIER_KEY}` or {sorted(_LLM_EXPLICIT_KEYS)}"
+        )
+    if has_tier:
+        allowed = {_LLM_TIER_KEY} | _OPTIONAL_LLM_KEYS
+        if not isinstance(llm[_LLM_TIER_KEY], str) or not llm[_LLM_TIER_KEY]:
+            raise ValueError(f"{path}: `llm.{_LLM_TIER_KEY}` must be a non-empty string")
+    else:
+        explicit_missing = _LLM_EXPLICIT_KEYS - llm_keys
+        if explicit_missing:
+            raise ValueError(f"{path}: missing llm keys: {sorted(explicit_missing)}")
+        allowed = _LLM_EXPLICIT_KEYS | _OPTIONAL_LLM_KEYS
+
+    llm_extra = llm_keys - allowed
     if llm_extra:
         raise ValueError(f"{path}: unknown llm keys: {sorted(llm_extra)}")
 
@@ -105,6 +132,16 @@ def _load_one(char_dir: Path) -> CharacterIdentity:
     llm = raw["llm"]
     role = agents_path.read_text(encoding="utf-8").rstrip("\n")
 
+    # Tier shorthand → gateway-routed OpenAI-compat call. Provider stays
+    # "openai" because LiteLLM is OpenAI-compatible; gateway resolves the
+    # tier alias to a real upstream model.
+    if _LLM_TIER_KEY in llm:
+        provider = "openai"
+        model_name = llm[_LLM_TIER_KEY]
+    else:
+        provider = llm["provider"]
+        model_name = llm["model"]
+
     return CharacterIdentity(
         id=raw["id"],
         name=raw["name"],
@@ -113,8 +150,8 @@ def _load_one(char_dir: Path) -> CharacterIdentity:
         visual=raw["visual"],
         role=role,
         llm_config=LLMConfig(
-            provider=llm["provider"],
-            model_name=llm["model"],
+            provider=provider,
+            model_name=model_name,
             temperature=float(llm.get("temperature", 0.7)),
             max_tokens=int(llm.get("max_tokens", 4096)),
         ),
