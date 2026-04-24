@@ -38,6 +38,7 @@ dev = [
   "types-aiofiles>=24.1",
   "types-python-dateutil>=2.9",
   "types-pyyaml>=6.0",
+  "pytest-cov>=7.1.0",
 ]
 
 [tool.mypy]
@@ -82,4 +83,28 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-ra -q --strict-markers --strict-config"
 filterwarnings = [
   "ignore::DeprecationWarning:passlib.*",
+]
+
+[tool.coverage.run]
+source = ["app"]
+# Skip app-bootstrap + migration code: Alembic migrations, the main FastAPI
+# wiring, and DB entrypoints aren't exercised by unit tests and shouldn't
+# drag the floor down. Revisit once E2E tests cover startup paths.
+omit = [
+  "app/main.py",
+  "app/db/database.py",
+  "app/core/logging.py",
+  "app/core/metrics.py",
+  "app/default_scene*.py",
+]
+
+[tool.coverage.report]
+# First-pass floor. Raise as coverage grows; ratchet down never.
+fail_under = 55
+show_missing = true
+skip_covered = false
+exclude_also = [
+  "if __name__ == .__main__.:",
+  "raise NotImplementedError",
+  "\\.\\.\\.$",
 ]

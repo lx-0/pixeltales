@@ -18,7 +18,26 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      exclude: ['src/api/types.gen.ts', 'src/test/**', '**/*.config.*'],
+      // Report on every source file, not just transitively imported ones.
+      // Without this the report only shows files the (currently tiny) test
+      // suite happens to touch — a misleading view of what's covered.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/api/types.gen.ts',
+        'src/test/**',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        // Phaser scenes need a real GL context; skip until we have a Phaser
+        // mock in the test setup.
+        'src/game/**',
+        '**/*.config.*',
+        '**/main.tsx',
+      ],
+      // No threshold gate yet — the current 5-test baseline only covers
+      // format.ts (~1% overall). Setting a meaningful floor needs at
+      // least a hooks/components test pass first. Coverage runs in CI
+      // for visibility (HTML report uploaded as artifact); ratchet up a
+      // floor here once tests grow.
     },
   },
 });

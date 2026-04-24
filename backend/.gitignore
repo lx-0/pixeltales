@@ -21,6 +21,12 @@ wheels/
 .installed.cfg
 *.egg
 
+# Coverage
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
 # Environment files
 .env
 .env.local

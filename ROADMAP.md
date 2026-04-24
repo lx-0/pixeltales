@@ -129,16 +129,13 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 - [ ] **shadcn/ui refresh** — re-init with `npx shadcn@latest init`, diff `components/ui/*` against the new baseline (current files predate React 19 + Tailwind 4).
   *Why deferred:* current components work. shadcn `forwardRef` usage is deprecated in R19 but not removed. Re-do when something visually breaks or when adding a new shadcn primitive.
 
-- [ ] **Migrate `@/types/scene` consumers to generated types** — currently a hand-typed `SceneState` exists alongside `Schemas['SceneState']`. They're nearly identical; the cast in `services/socket.ts` bridges them.
-  *Why deferred:* large diff for marginal benefit. Sweep when the hand-typed schema actually drifts from the generated one.
+- [x] ~~**Migrate `@/types/scene` consumers to generated types**~~ — `scene.ts` is now a thin re-export layer over `Schemas['...']`; `Direction` + `CharacterAction` extracted via indexed access. Cast in `services/socket.ts` removed. (`3001cb6`)
 
-- [ ] **Bundle splitting** — production JS is 2.4 MB (mostly Phaser). `manualChunks` to split vendor / Phaser / app.
-  *Why deferred:* page is fast enough on broadband; LCP bottleneck is Phaser asset loading, not JS parse. Re-visit when mobile users complain.
+- [x] ~~**Bundle splitting**~~ — `manualChunks` splits prod into phaser (1.5 MB), vendor (416 kB), recharts (249 kB), react-vendor (194 kB), query-vendor (46 kB), index/app (89 kB). Phaser still over 500 kB warning threshold but unsplittable without dynamic import (which would defer game load). (`4c4e7c5`)
 
 ### Test / CI
 
-- [ ] **Coverage floors in CI** — pytest-cov + vitest coverage gates (target backend ≥60%, frontend ≥40% on first pass).
-  *Why deferred:* baseline is too thin (4 + 5 tests). Set floors when there's real coverage to hold the line on.
+- [x] ~~**Coverage floors in CI**~~ — pytest-cov + vitest `@vitest/coverage-v8` wired into CI, HTML/XML reports uploaded as artifacts. Backend floor at 55% (current 62.63%); frontend has no gate yet because the 5-test baseline only covers `format.ts` (~1% overall) — set a floor once components/hooks tests exist.
 
 - [ ] **Playwright in CI** — workflow boots compose stack, runs `pnpm test:e2e`.
   *Why deferred:* needs compose setup in the workflow file + chromium install + secrets for `OPENAI_API_KEY`. Wait until E2E suite has more than the smoke test.

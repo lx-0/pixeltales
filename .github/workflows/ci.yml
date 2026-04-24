@@ -37,8 +37,17 @@ jobs:
       - name: Mypy
         run: uv run --no-sync mypy app
 
-      - name: Pytest
-        run: uv run pytest
+      - name: Pytest (with coverage)
+        run: uv run pytest --cov --cov-report=xml --cov-report=term
+
+      - name: Upload backend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/coverage.xml
+          if-no-files-found: ignore
+          retention-days: 14
 
   frontend:
     name: frontend (lint + typecheck + test + build)
@@ -68,8 +77,17 @@ jobs:
       - name: Typecheck
         run: pnpm typecheck
 
-      - name: Unit tests (vitest)
-        run: pnpm test
+      - name: Unit tests (vitest, with coverage)
+        run: pnpm test:coverage
+
+      - name: Upload frontend coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          if-no-files-found: ignore
+          retention-days: 14
 
       - name: Build
         run: pnpm build
