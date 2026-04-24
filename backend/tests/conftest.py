@@ -49,7 +49,7 @@ async def session_factory(test_engine: Any, monkeypatch: pytest.MonkeyPatch) -> 
     for module_path in (
         "app.services.scene_config_service",
         "app.services.scene_service",
-        "app.services.scene_state_snapshot_service",
+        "app.world.persistence.snapshots",
     ):
         import importlib
 

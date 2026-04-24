@@ -16,7 +16,8 @@ from app.services.conversation_manager import ConversationManager, Message
 from app.services.llm_manager import LLMManager
 from app.services.scene_config_service import SceneConfigService
 from app.services.scene_service import SceneService
-from app.services.scene_state_snapshot_service import SceneStateSnapshotService
+from app.world import World
+from app.world.persistence.snapshots import SceneStateSnapshotService
 
 logger = structlog.get_logger(__name__)
 
@@ -33,8 +34,9 @@ class SceneManager:
         )
         self.new_conversation_cooldown = 600.0  # 10 minutes in seconds
 
-        # Scene incl state and config
-        self.scene: Scene | None = None  # active scene
+        # World owns scene state + fires events; SceneManager mutates
+        # state through World rather than poking attributes directly.
+        self.world = World()
         self.scene_service = SceneService()
         self.scene_config_service = SceneConfigService()
         self.scene_state_snapshot_service = SceneStateSnapshotService()
@@ -47,6 +49,22 @@ class SceneManager:
         # Technical
         self.sio: SocketIO | None = None  # Will be set by the socket manager
         self._loop_task: asyncio.Task[None] | None = None
+
+    # Compatibility shim — existing callers + tests read/write `sm.scene`.
+    # Reads delegate to the World; writes propagate to the World too so
+    # there is exactly one source of truth.
+    @property
+    def scene(self) -> Scene | None:
+        return self.world.scene
+
+    @scene.setter
+    def scene(self, value: Scene | None) -> None:
+        if value is None:
+            # Reset path: build a fresh World rather than carrying over
+            # subscribers tied to a stale scene.
+            self.world = World()
+        else:
+            self.world.set_scene(value)
 
     def start(self) -> None:
         """Start the conversation tick loop. Must be called from a running event loop."""
@@ -71,7 +89,7 @@ class SceneManager:
         self.scene = snapshot
         # load conversation from snapshot
         self.conversation_manager.init_conversation(snapshot.state.messages)
-        return self.scene.state
+        return snapshot.state
 
     async def load_new_scene(self, scene_config_id: int | None = None) -> None:
         """Load a new scene."""
@@ -84,7 +102,8 @@ class SceneManager:
                 raise ValueError(f"Scene config with id {scene_config_id} not found")
         self.scene = await self.scene_service.create_scene(scene_config, len(self.active_visitors))
         self.conversation_manager.init_conversation()
-        await self.scene_state_snapshot_service.create_snapshot(self.scene.state)
+        scene = self.world.require_scene()
+        await self.scene_state_snapshot_service.create_snapshot(scene.state)
 
     async def _load_and_run(self) -> None:
         """Initialize the scene manager."""
@@ -97,11 +116,10 @@ class SceneManager:
         if latest_snapshot is None:
             await self.load_new_scene()
 
-        if self.scene is None:
-            raise ValueError("Scene not found")
+        scene = self.world.require_scene()
 
         # Initialize LLMs for the scene
-        self.llm_manager.init_scene(self.scene.config)
+        self.llm_manager.init_scene(scene.config)
 
         # Start the conversation loop
         asyncio.create_task(self._conversation_loop())
@@ -120,9 +138,7 @@ class SceneManager:
 
     def get_scene_state(self) -> SceneState:
         """Get the current state of the scene."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
-        return self.scene.state
+        return self.world.require_scene().state
 
     def _set_visitors(self, visitor_count: int, state: SceneState) -> SceneState:
         """Set the number of visitors in the scene state."""
@@ -137,25 +153,24 @@ class SceneManager:
             sid: The socket ID of the visitor
         """
         self.active_visitors.add(sid)
-        if self.scene:
-            self.scene.state = self._set_visitors(len(self.active_visitors), self.scene.state)
+        if self.world.scene is not None:
+            await self.world.set_visitor_count(len(self.active_visitors))
             await self.emit_scene_update(sid)
 
     async def remove_visitor(self, sid: str) -> None:
         """Remove a visitor from the scene."""
         self.active_visitors.remove(sid)
-        if self.scene:
-            self.scene.state = self._set_visitors(len(self.active_visitors), self.scene.state)
+        if self.world.scene is not None:
+            await self.world.set_visitor_count(len(self.active_visitors))
             await self.emit_scene_update(sid)
 
     def _get_other_character(self, characterId: str) -> str:
         """Get another random character."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
+        scene = self.world.require_scene()
         char_ids = list(
             filter(
                 lambda char_id: char_id != characterId,
-                self.scene.state.characters.keys(),
+                scene.state.characters.keys(),
             )
         )
         return random.choice(char_ids)
@@ -167,31 +182,20 @@ class SceneManager:
         estimated_duration: float | None = None,
     ) -> None:
         """Set the action of a character."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
-        self.scene.state.characters[characterId].action = action
-        self.scene.state.characters[characterId].action_started_at = time.time()
-        self.scene.state.characters[characterId].action_estimated_duration = estimated_duration
+        await self.world.set_character_action(
+            characterId, action, estimated_duration=estimated_duration
+        )
         await self.emit_scene_update()
 
     async def _set_character_speaking(self, characterId: str, recipient: str | None = None) -> None:
         """Set the character to speaking."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
-
         message = await self._generate_message(characterId, recipient)
-
-        self.scene.state.characters[characterId].action = "speaking"
-        self.scene.state.characters[characterId].action_started_at = message.unix_timestamp
-        self.scene.state.characters[
-            characterId
-        ].action_estimated_duration = message.calculated_speaking_time
 
         # SceneState.messages is the source of truth; ConversationManager
         # reads it via `self.conversation.messages = scene.state.messages`
         # at the top of generate_message() each turn, so appending here
-        # is fine.
-        self.scene.state.messages.append(message)
+        # is fine. World.add_message also flips the speaker to "speaking".
+        await self.world.add_message(message)
         messages_total.labels(character=characterId).inc()
 
         # Emit update to all visitors
@@ -202,29 +206,22 @@ class SceneManager:
 
     async def _generate_message(self, characterId: str, recipient: str | None = None) -> Message:
         """Generate a message for the current speaker."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
+        scene = self.world.require_scene()
 
         # Set character to thinking
         await self._set_character_action(characterId, "thinking")
 
         # Generate message
-        message = await self.conversation_manager.generate_message(
-            self.scene, characterId, recipient
-        )
+        message = await self.conversation_manager.generate_message(scene, characterId, recipient)
 
         # Update character's mood
-        self.scene.state.characters[characterId].current_mood = message.mood
+        await self.world.set_character_mood(characterId, message.mood)
 
         # Update character's end conversation request
-        end_conversation = message.end_conversation
-        if end_conversation:
-            self.scene.state.characters[characterId].end_conversation_requested = end_conversation
-            self.scene.state.characters[characterId].end_conversation_requested_at = time.time()
-            self.scene.state.characters[
-                characterId
-            ].end_conversation_requested_validity_duration = (
-                self.conversation_manager.get_end_conversation_request_validity()
+        if message.end_conversation:
+            await self.world.request_end_conversation(
+                characterId,
+                self.conversation_manager.get_end_conversation_request_validity(),
             )
 
         # Simulate speaking pause
@@ -234,33 +231,32 @@ class SceneManager:
 
     def _get_next_speaker(self) -> str:
         """Determine the next speaker based on conversation state."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
-        if not self.scene.state.messages:
-            return self.scene.config.start_character_id
+        scene = self.world.require_scene()
+        if not scene.state.messages:
+            return scene.config.start_character_id
 
         # Get the last speaker
-        last_speaker = self.scene.state.messages[-1].character
+        last_speaker = scene.state.messages[-1].character
 
         # Switch speakers
         return self._get_other_character(last_speaker)
 
     async def _conversation_loop(self) -> None:
         """Main conversation loop between AI characters."""
-        if self.scene is None:
-            raise ValueError("Scene not found")
+        scene = self.world.require_scene()
         while True:
             # Check if a new conversation shall be started
             if (
-                self.scene.state.conversation_ended
-                and (self.scene.state.ended_at or 0) + self.new_conversation_cooldown < time.time()
+                scene.state.conversation_ended
+                and (scene.state.ended_at or 0) + self.new_conversation_cooldown < time.time()
             ):
                 # Load new scene (same scene config)
                 logger.info(f"[{time.time()}]: Loading new scene")
                 await self.load_new_scene()
+                scene = self.world.require_scene()
                 await self.emit_scene_update(save_snapshot=False)
 
-            if self.scene.state.conversation_active and not self.scene.state.conversation_ended:
+            if scene.state.conversation_active and not scene.state.conversation_ended:
                 try:
                     # Wait until all characters completed speaking
                     await self._wait_until_all_characters_completed_speaking()
@@ -288,9 +284,8 @@ class SceneManager:
         # "Speaking Loop": Wait until all characters completed speaking
         # logger.info(f"[{current_time}]: Speaking loop started")
         # loop through all characters and check if they have completed speaking
-        if self.scene is None:
-            raise ValueError("Scene not found")
-        for charId, character in self.scene.state.characters.items():
+        scene = self.world.require_scene()
+        for charId, character in scene.state.characters.items():
             if character.action != "speaking":
                 continue
 
@@ -315,28 +310,19 @@ class SceneManager:
     async def _handle_end_conversation_requests(self):
         """Handle end conversation requests."""
         current_time = time.time()
-        all_characters_agreed_to_end = True
-        is_changed = False
-        if self.scene is None:
-            raise ValueError("Scene not found")
-        for _charId, character in self.scene.state.characters.items():
-            if (
-                character.end_conversation_requested
-                and character.end_conversation_requested_at is not None
-                and current_time - character.end_conversation_requested_at
-                > self.conversation_manager.get_end_conversation_request_validity()
-            ):
-                # clean expired end conversation requests
-                character.end_conversation_requested = False
-                character.end_conversation_requested_at = None
-                character.end_conversation_requested_validity_duration = None
-                is_changed = True
-            if not character.end_conversation_requested:
-                all_characters_agreed_to_end = False
-        if all_characters_agreed_to_end:
-            self.scene.state.conversation_active = False
-            self.scene.state.conversation_ended = True
-            self.scene.state.ended_at = time.time()
+        scene = self.world.require_scene()
+        validity = self.conversation_manager.get_end_conversation_request_validity()
+
+        # Drop expired requests; World fires an event if anything was cleared.
+        cleared = await self.world.clear_expired_end_conversation_requests(current_time, validity)
+
+        # Re-evaluate after expirations.
+        all_characters_agreed_to_end = all(
+            char.end_conversation_requested for char in scene.state.characters.values()
+        )
+        is_changed = bool(cleared)
+        if all_characters_agreed_to_end and scene.state.characters:
+            await self.world.end_conversation()
             is_changed = True
             logger.info("All characters agreed to end conversation")
         # Emit update if state changed
