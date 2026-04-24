@@ -13,21 +13,21 @@ The LLM-driven reasoning entity. One Agent per character. An Agent has:
 
 An Agent knows nothing about how it's invoked, where its perception comes from, or where its actions go. Channel-agnostic, scene-agnostic, harness-agnostic.
 
-**Implementation today:** PydanticAI `Agent` per `LLMConfig` hash, `CharacterResponse` schema.
+**Implementation:** `app/agent/llm.py` (`LLMManager` — one PydanticAI `Agent[None, CharacterResponse]` per unique `LLMConfig` hash) + `app/agent/characters/<id>/{AGENTS.md, .character.yaml}` (the seed library; runtime-proposed characters land in `data/characters/`).
 
 ### Harness — *the orchestrator*
 
 Owns the agentic loop. Drives turn-taking, paces character output, persists snapshots, retries on transient errors, applies fallbacks on sustained errors. Reads from World to build perception; writes Agent's output back to World. Channel-agnostic — does not know that Phaser exists.
 
-**Implementation today:** mostly `SceneManager` + `ConversationManager` (currently mixed with World mutations and Client emit — see refactor below).
+**Implementation:** `app/harness/orchestrator.py` (`Harness` — owns the active scene's tick loop), `app/harness/conversation.py` (turn-taking + history prep), `app/harness/scene_loader.py` + `scene_config_loader.py` (lifecycle).
 
 ### World — *the simulated environment*
 
 Server-authoritative state of the scene: positions, characters, time, props, event log, conversation messages. Mutated by Harness, queried by Agents (via Harness for perception), broadcast by Clients (via subscribed events).
 
-The World fires **domain events** (`character_started_speaking`, `visitor_joined`, `scene_ended`); subscribers handle them. The World does not know who's watching.
+The World fires **domain events** (`CharacterActionChanged`, `CharacterMessageAdded`, `VisitorCountChanged`, `EndConversationRequested`, …); subscribers register via `world.subscribe(callback)`. The World does not know who's watching.
 
-**Implementation today:** `SceneState` + `Scene` Pydantic models, `scene_state_snapshot_service` for persistence. World mutations live inline in `SceneManager` (target: extract).
+**Implementation:** `app/world/state.py` (`World` — mutation API + async event bus), `app/world/events.py` (typed `WorldEvent` dataclasses), `app/world/persistence/snapshots.py` (`SceneStateSnapshotService` — per-scene retention + SQLite).
 
 ### Client — *the I/O adapter*
 
@@ -35,7 +35,7 @@ Translates between the World and the outside world. Subscribes to World events, 
 
 Today there is one Client (Socket.IO bridge to the Phaser game). Tomorrow there can be many: REST polling, Twitch viewer-stream, Discord bot, mobile app.
 
-**Implementation today:** Socket.IO server in `app/main.py` + scattered emits inside `SceneManager` (target: extract into `app/client/socketio.py`).
+**Implementation:** `app/client/socketio.py` (`SocketIOClient` — subscribes to `World.subscribe`, owns Socket.IO `connect`/`disconnect` handlers, broadcasts `scene_state` to all viewers). The REST router under `app/api/` is a second Client surface, organized by FastAPI conventions.
 
 ## Why this split
 
@@ -92,59 +92,40 @@ Cross-cutting (`app/core/`, `app/db/`, `app/models/`, `app/utils/`) may be impor
 - `handler` — legacy term; if it's I/O it's a Client adapter, if it's orchestration it's Harness
 - `gateway` — reserved in this project for the **LLM gateway** (LiteLLM). Do not reuse for the Client layer.
 
-## Current → Target Mapping
+## File Layout (post-refactor)
 
-| Today | Layer | Target |
-|---|---|---|
-| `app/services/llm_manager.py` | Agent | `app/agent/llm.py` |
-| `app/characters/<id>/{AGENTS.md,.character.yaml}` | Agent | `app/agent/characters/<id>/{AGENTS.md,.character.yaml}` (+ future `skills/<name>/SKILL.md`) |
-| `app/services/scene_manager.py` | Harness | `app/harness/orchestrator.py` (class: `Harness`) |
-| `app/services/conversation_manager.py` | Harness | `app/harness/conversation.py` |
-| `app/services/scene_service.py` | Harness | `app/harness/lifecycle.py` (scene loading) |
-| `app/services/scene_config_service.py` | Harness | `app/harness/lifecycle.py` (proposal handling) |
-| `app/models/scene.py` (state portion) | World | `app/world/state.py` (class: `World`) |
-| `app/services/scene_state_snapshot_service.py` | World | `app/world/persistence/snapshots.py` |
-| Socket.IO emit inline in `SceneManager` + bridge in `main.py` | Client | `app/client/socketio.py` (class: `SocketIOClient`) |
-| `app/api/v1/...` FastAPI routers | Client (REST) | stays at `app/api/` (already a clean Client surface) |
-| `app/core/`, `app/db/`, `app/models/` (non-scene), `app/utils/`, `app/prompts/` | Cross-cutting | stays |
+| Path | Layer | Class |
+|------|-------|-------|
+| `app/agent/llm.py` | Agent | `LLMManager` |
+| `app/agent/characters/<id>/{AGENTS.md, .character.yaml}` | Agent (data) | — (loaded by `app/agent/characters/__init__.py`) |
+| `app/agent/characters/<id>/skills/<name>/SKILL.md` | Agent (data, planned) | — (per agentskills.io, see ROADMAP) |
+| `app/harness/orchestrator.py` | Harness | `Harness` |
+| `app/harness/conversation.py` | Harness | `ConversationManager` |
+| `app/harness/scene_loader.py` | Harness | `SceneService` |
+| `app/harness/scene_config_loader.py` | Harness | `SceneConfigService` |
+| `app/world/state.py` | World | `World` |
+| `app/world/events.py` | World | `WorldEvent` + 7 typed subclasses |
+| `app/world/persistence/snapshots.py` | World | `SceneStateSnapshotService` |
+| `app/client/socketio.py` | Client | `SocketIOClient` |
+| `app/api/endpoints/{scenes,config,characters}.py` | Client (REST) | FastAPI routers |
+| `app/main.py` | Wiring | composes Harness + SocketIOClient at module load |
+| `app/core/`, `app/db/`, `app/models/`, `app/utils/`, `app/prompts/` | Cross-cutting | — |
 
-## Refactor Phases
+## Refactor History
 
-5 phases, each its own commit. Behavior-preserving — 38 backend tests + browser smoke (`pnpm diag`) as guard rails throughout.
+All 5 phases shipped 2026-04-24. The split was executed in 2 parallel git worktrees: one subagent ran B→C→D sequentially (shared file surface), another ran E in parallel (independent). Total: 5 commits + 2 merge commits + 1 hotfix.
 
-**Phase A — Docs (this commit)**
-- This file: canonical 4-layer reference + naming rules
-- ROADMAP entries reframed with layer labels
-- Root `CLAUDE.md` Architecture section updated to point here
+| Phase | Commit | What landed |
+|-------|--------|-------------|
+| A | `d37b3da` | Docs only — this file + ROADMAP layer labels + CLAUDE.md pointer |
+| B | `a4e8a23` | Extract `World` (state.py + mutations + events.py + persistence/snapshots.py) |
+| C | `959a9f2` | Rename `SceneManager` → `Harness`; files moved into `app/harness/` |
+| D | `fdb8b1e` | Extract `SocketIOClient`; Harness no longer holds `sio` reference; `RUF006` lint ignore resolved |
+| E | `30e494b` | Move `services/llm_manager.py` → `agent/llm.py`, `characters/` → `agent/characters/` |
+| (merge) | `128b180` + `5363f8b` | Phase-E and Phase-BCD branches merged back into `origin` |
+| (fix) | `f507d2c` | structlog `event=` kwarg shadowed reserved key in `world/state.py` + `client/socketio.py`; tests didn't catch because they don't fire WorldEvents — caught by `pnpm diag` browser smoke on first `VisitorCountChanged` broadcast |
 
-**Phase B — Extract World layer**
-- Create `app/world/` package
-- Define `World` class wrapping scene state with mutation API (`set_character_action`, `add_message`, `record_visitor_join`, ...)
-- Add `WorldEvent` dataclasses in `world/events.py`; `World` fires events on every mutation
-- Move `scene_state_snapshot_service` → `world/persistence/snapshots.py`
-- `SceneManager` calls `World.*` instead of mutating state inline
-- Tests green; no class renames yet (containment of risk)
-
-**Phase C — Rename Harness layer**
-- Move `services/scene_manager.py` → `harness/orchestrator.py`; rename class `SceneManager` → `Harness`
-- Move `services/conversation_manager.py` → `harness/conversation.py`
-- Move `services/scene_service.py` + `scene_config_service.py` → `harness/lifecycle.py`
-- Update FastAPI deps + `main.py` imports
-- Tests green
-
-**Phase D — Extract Client layer**
-- Create `app/client/socketio.py` with `SocketIOClient` class
-- Subscribe to World events fired in Phase B; emit `scene_state` to all viewers
-- Remove direct `self.sio.emit(...)` calls from `Harness` (was `SceneManager`)
-- Tests green; browser smoke green
-
-**Phase E — Rename Agent layer**
-- Move `services/llm_manager.py` → `agent/llm.py`
-- Move `app/characters/` → `app/agent/characters/`
-- Update imports
-- Tests green
-
-Estimated total surface: ~30-40 files touched across all phases. Done one phase per commit.
+Behavior preserved end-to-end: 38 tests pass, mypy clean (37 source files), coverage 64.60% (was 62.92%), browser smoke green (Bob + Alice render, OpenAI 200 OK, World events broadcast).
 
 ## System Diagram
 

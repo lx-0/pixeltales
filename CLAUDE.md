@@ -60,21 +60,26 @@ uv run alembic revision --autogenerate -m "..."          # new schema migration
 
 ## Architecture
 
-**Canonical: 4-layer Agent / Harness / World / Client.** See [`docs/architecture.md`](docs/architecture.md) for the full model, dependency rules, naming conventions, and refactor phases. Current code in `app/services/` mixes Harness + World + Client and is being progressively migrated.
+**Canonical: 4-layer Agent / Harness / World / Client.** See [`docs/architecture.md`](docs/architecture.md) for the full model, dependency rules, naming conventions, and dependency graph.
 
 ### Runtime shape
 
 Browser ⇄ Socket.IO ⇄ FastAPI backend ⇄ PydanticAI (OpenAI/Anthropic, optionally via LiteLLM gateway) + SQLAlchemy (SQLite/PG).
 
-The game is not request/response — it's a server-driven loop. The backend holds scene state in memory, ticks conversations forward, calls LLMs, and broadcasts `scene_state` events to every connected client. The frontend is largely a thin renderer of whatever the server pushes.
+The game is not request/response — it's a server-driven loop. The Harness ticks conversations forward, mutates the World, the World fires events, the SocketIOClient broadcasts to every connected viewer.
 
-### Backend: today's layout (pre-refactor)
+### Backend layout
 
-- `app/main.py` — builds FastAPI app, wraps it in `socketio.ASGIApp` as `socket_app`, wires `connect`/`disconnect` to `SceneManager.add_visitor`/`remove_visitor`. Routers: `/api/v1/config`, `/api/v1/scenes`, `/api/v1/characters`. Health: `/health`. *Future Client layer will live here + `app/client/`.*
-- `app/services/scene_manager.py` (the orchestrator) — owns the active `Scene`, visitor set, tick loop, and broadcast. Composes `SceneConfigService`, `SceneService`, `SceneStateSnapshotService`, `ConversationManager`, `LLMManager`. *Will become `app/harness/orchestrator.py` (class `Harness`) + `app/world/state.py` (class `World`).*
-- `app/services/conversation_manager.py` — turn-taking, speaking-time pacing (`base_speaking_time + char_speaking_time * len`), context window of 20, end-conversation request with 180s validity. *Future `app/harness/conversation.py`.*
-- `app/services/llm_manager.py` — PydanticAI `Agent` per `LLMConfig` hash, `CharacterResponse` Pydantic schema, structured output via tool-calling. Routes via LiteLLM gateway when `LITELLM_BASE_URL` is set, else direct OpenAI/Anthropic SDK. *Future `app/agent/llm.py`.*
-- `app/characters/<id>/` — character library SSOT: `AGENTS.md` (role) + `.character.yaml` (identity + placement + LLMConfig). Loader at `app/characters/__init__.py`. *Future `app/agent/characters/<id>/` (+ `skills/<name>/SKILL.md` per agentskills.io spec, see ROADMAP).*
+- `app/main.py` — builds FastAPI app + `socketio.AsyncServer`, instantiates `Harness` + `SocketIOClient(sio, harness.world, harness)`. Routers: `/api/v1/config`, `/api/v1/scenes`, `/api/v1/characters`. Health: `/health`. ASGI entrypoint: `app.main:socket_app`.
+- `app/agent/llm.py` — `LLMManager` (Agent layer): one PydanticAI `Agent[None, CharacterResponse]` per unique `LLMConfig` hash. Structured output via tool-calling. Routes via LiteLLM gateway when `LITELLM_BASE_URL` is set, else direct OpenAI/Anthropic SDK.
+- `app/agent/characters/<id>/` — character library SSOT: `AGENTS.md` (role) + `.character.yaml` (identity + placement + LLMConfig). Loader at `app/agent/characters/__init__.py`. Future `skills/<name>/SKILL.md` per agentskills.io spec (see ROADMAP).
+- `app/harness/orchestrator.py` — `Harness` (Harness layer): owns the active scene's tick loop, visitor set, retry policy, and snapshot persistence. Composes `Conversation`, `SceneService`, `SceneConfigService`. Calls into `World` for state mutations.
+- `app/harness/conversation.py` — turn-taking, speaking-time pacing (`base_speaking_time + char_speaking_time * len`), context window of 20, end-conversation request with 180s validity.
+- `app/harness/scene_loader.py` + `scene_config_loader.py` — scene + proposal loading.
+- `app/world/state.py` — `World` (World layer): wraps `Scene` with mutation API (`set_character_action`, `add_message`, `set_visitor_count`, …). Every mutation fires a `WorldEvent`. Subscribers register via `world.subscribe(callback)`.
+- `app/world/events.py` — typed `WorldEvent` dataclasses (`CharacterActionChanged`, `CharacterMessageAdded`, `VisitorCountChanged`, …).
+- `app/world/persistence/snapshots.py` — `SceneStateSnapshotService`: per-scene retention + SQLite persistence.
+- `app/client/socketio.py` — `SocketIOClient` (Client layer): subscribes to World events, broadcasts `scene_state` to all viewers via Socket.IO. Owns `connect`/`disconnect` handlers; routes `add_visitor`/`remove_visitor` to the Harness.
 - `app/db/` — SQLAlchemy async models. Two tables: `scene_configs` (JSON blob of a scene config) and `scene_state_snapshots` (time-series of scene state, FK to config).
 - `app/default_scene.py` — seeded default scene composition (uses character library).
 - `app/core/config.py` — Pydantic Settings. `DB_TYPE=sqlite|postgresql`, `database_url` computed property, CORS origins auto-derive from `FRONTEND_PORT` + `ENV` when `BACKEND_CORS_ORIGINS` is empty.
