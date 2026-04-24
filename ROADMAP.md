@@ -209,4 +209,4 @@ All gaps from the prior open section closed in one commit (B1 path chosen):
 
 Phases shipped in order: 0 → 1 → 2 → 3a → 4a → 5 → 6a → 7 → 8 → 9 → 4b → 6b, then substantive tests + quick-wins bundle. Commits `021f5dd` … `d567dcd`.
 
-Post-modernization scene-content + UX + tech-refactor track: `08b4d5f` → `252b3ab` → `b119c26` → `1d47744` → `605dd19` → `b46b482` (character library — partial; see "Open: Character Library" above).
+Post-modernization scene-content + UX + tech-refactor track (2026-04-24): `08b4d5f` (asset catalog) → `252b3ab` (dynamic Phaser load) → `b119c26` (sprite + room dropdowns) → `1d47744` (UX polish) → `605dd19` (state/config split) → `b46b482` (character library v1, partial — only seeds) → `0d96a0b` (roadmap flagged the gap) → `b9ddf22` (library is now SSOT — branding scene + scene-proposal write path + DB schema slim + tests + frontend form rework + GET/POST /characters + data/ volume mount). Browser smoke test still pending.

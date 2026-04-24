@@ -128,3 +128,20 @@ Backend container rebuild after 1 and 5. Frontend hot-reload handles 2-4.
 
 - Character-Sprite fallback for `has_idle_anim=false` — single static frame vs. generate animation from one frame? Default: single static frame displayed, no Phaser animation played. Revisit if it looks dead compared to animated characters.
 - Where to store the asset catalog? Currently `app/config.py`. Could move to a `backend/assets.json` file checked in separately so non-code contributors can add sprites. Keep in config.py for now; extract only if friction appears.
+
+## Status — Shipped 2026-04-24
+
+All 5 features from the spec landed in order:
+
+1. ✅ Scene-content backend (`08b4d5f`) — sprite + room asset catalog, `CharacterConfig.sprite_id`, `SceneConfig.room_id`
+2. ✅ Scene-content frontend (`252b3ab`) — `CharacterManager` + `MainScene` dynamic preload, sprite_id as Phaser asset key, has_idle_anim fallback
+3. ✅ `SceneProposalForm` dropdowns (`b119c26`) — sprite + room pickers
+4. ✅ UX polish (`1d47744`) — items-baseline → items-center for "is thinking", Layout button moved into ConversationHistory header
+5. ✅ SceneState/SceneConfig split (`605dd19`) — CharacterState slimmed; consumers join with sceneConfig in App.tsx
+
+**Bonus track** (not in original spec, emerged from conversation):
+
+6. Character library v1 (`b46b482`) — AGENTS.md + .character.yaml per character; loader in `app/characters/__init__.py`
+7. Character library SSOT closure (`b9ddf22`) — gap-fix after user pushback; covers branding scene, scene-proposal write path, DB schema slim, tests, frontend form rework, GET/POST /characters endpoints, data/characters/ volume mount. See `app/characters/README.md` for the full library spec and `ROADMAP.md` "✅ Closed: Character Library" section for the gap inventory.
+
+**Browser smoke test still pending** — needs `docker compose down -v && docker compose up --build` because of pyyaml dep + Pydantic model + compose volume changes.
