@@ -1,6 +1,6 @@
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.base import Direction, Position
 from app.models.llm import LLMConfig
@@ -57,7 +57,12 @@ class CharacterIdentity(CharacterBase):
     """Library-level character identity — the part that travels with a
     character across scenes. Lives on disk under app/characters/<id>/ or
     data/characters/<id>/ (AGENTS.md + .character.yaml).
+
+    Strict on unknown keys — typos in `.character.yaml` or in a
+    POST /api/v1/characters payload should fail loudly.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     sprite_id: str = Field(
         default="bob",
@@ -70,7 +75,12 @@ class CharacterPlacement(BaseModel):
     """Scene-level placement: which library character stands where, facing
     which way, doing what. Stored in SceneConfig.characters_config; the
     identity lives in the library and is joined on read.
+
+    Strict on unknown keys — POST /api/v1/scenes/propose should reject
+    typos and accidental identity-field bleed-through.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     id: str = Field(
         min_length=1,

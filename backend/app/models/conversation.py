@@ -1,17 +1,10 @@
-from pydantic import BaseModel
-
-#
-# Scene
-# - List[Character]
-# - List[Conversation]
-#   - List[Participant]
-#   - List[Message]
-#
-#
+from pydantic import BaseModel, ConfigDict
 
 
 class Message(BaseModel):
     """A message in the conversation."""
+
+    model_config = ConfigDict(extra="forbid")
 
     character: str  # message sender (characterId)
     content: str | None = None

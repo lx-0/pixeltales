@@ -1,6 +1,6 @@
 from enum import StrEnum
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.character import CharacterConfig, CharacterPlacement, CharacterState
 from app.models.conversation import Message
@@ -16,6 +16,8 @@ class SceneConfigStatus(StrEnum):
 
 class Comment(BaseModel):
     """Comment on a scene proposal."""
+
+    model_config = ConfigDict(extra="forbid")
 
     user: str
     comment: str
@@ -83,7 +85,11 @@ class CreateSceneConfig(SceneConfigCommon):
     Character identity (name, color, role, visual, llm_config, sprite_id)
     must already exist in the library — POST /api/v1/characters to add a
     new one before proposing a scene that uses it.
+
+    Strict on unknown keys: API write boundary, typos should fail loud.
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     characters_config: dict[str, CharacterPlacement] = Field(
         description="Per-character placement (id, initial_position/direction/action/mood). "

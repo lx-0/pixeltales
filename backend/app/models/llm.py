@@ -6,7 +6,8 @@ from pydantic import BaseModel, ConfigDict, Field
 class LLMConfig(BaseModel):
     """LLM configuration for the character."""
 
-    model_config = ConfigDict(frozen=True)  # Immutable + hashable
+    # Immutable + hashable; reject unknown keys so YAML / JSON typos surface.
+    model_config = ConfigDict(frozen=True, extra="forbid")
 
     provider: Literal["openai", "anthropic"] = Field(
         description="The LLM provider (openai or anthropic)"
