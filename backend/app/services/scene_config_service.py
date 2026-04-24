@@ -1,13 +1,13 @@
 import logging
-from typing import List, Optional
 from datetime import UTC, datetime
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import SYSTEM_PROMPT, TILE_SIZE
-from app.db.models import DBSceneConfig
 from app.db.database import async_session
+from app.db.models import DBSceneConfig
+from app.default_scene import default_scene_config, default_scene_config_id
 from app.models.base import Position
 from app.models.scene import (
     Comment,
@@ -15,7 +15,6 @@ from app.models.scene import (
     SceneConfig,
     SceneConfigStatus,
 )
-from app.default_scene import default_scene_config, default_scene_config_id
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -33,9 +32,7 @@ class SceneConfigService:
         db_config_raw["id"] = (
             db_config.id
         )  # Patch id since it's not in the config json after insert
-        db_config_raw["system_prompt"] = (
-            db_config.system_prompt
-        )  # Patch `system_prompt`
+        db_config_raw["system_prompt"] = db_config.system_prompt  # Patch `system_prompt`
         scene_config = SceneConfig.model_validate(db_config_raw)
         return scene_config
 
@@ -56,24 +53,18 @@ class SceneConfigService:
             logger.error(f"Error saving scene config: {e}")
             raise e
 
-    async def _get_by_id(
-        self, scene_config_id: int, session: AsyncSession
-    ) -> Optional[DBSceneConfig]:
+    async def _get_by_id(self, scene_config_id: int, session: AsyncSession) -> DBSceneConfig | None:
         """Get a scene config by ID using select for update."""
         try:
             stmt = (
-                select(DBSceneConfig)
-                .where(DBSceneConfig.id == scene_config_id)
-                .with_for_update()
+                select(DBSceneConfig).where(DBSceneConfig.id == scene_config_id).with_for_update()
             )
             result = await session.execute(stmt)
             return result.scalar_one_or_none()
         except Exception as e:
-            raise Exception(
-                f"Error getting scene config {scene_config_id}: {str(e)}"
-            ) from e
+            raise Exception(f"Error getting scene config {scene_config_id}: {e!s}") from e
 
-    async def get_by_id(self, scene_config_id: int) -> Optional[SceneConfig]:
+    async def get_by_id(self, scene_config_id: int) -> SceneConfig | None:
         """Get a scene config by ID."""
         async with async_session() as session:
             db_scene_config = await self._get_by_id(scene_config_id, session)
@@ -81,7 +72,7 @@ class SceneConfigService:
                 return None
         return self._convert_to_scene_config(db_scene_config)
 
-    async def get_all(self) -> List[SceneConfig]:
+    async def get_all(self) -> list[SceneConfig]:
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -93,9 +84,9 @@ class SceneConfigService:
                     for db_scene_config in db_scene_configs
                 ]
         except Exception as e:
-            raise Exception(f"Error getting all scene configs: {str(e)}") from e
+            raise Exception(f"Error getting all scene configs: {e!s}") from e
 
-    async def get_all_by_status(self, status: SceneConfigStatus) -> List[SceneConfig]:
+    async def get_all_by_status(self, status: SceneConfigStatus) -> list[SceneConfig]:
         try:
             async with async_session() as session:
                 result = await session.execute(
@@ -109,9 +100,9 @@ class SceneConfigService:
                     for db_scene_config in db_scene_configs
                 ]
         except Exception as e:
-            raise Exception(f"Error getting scene configs by status: {str(e)}") from e
+            raise Exception(f"Error getting scene configs by status: {e!s}") from e
 
-    async def get_highest_voted_scene_config(self) -> Optional[SceneConfig]:
+    async def get_highest_voted_scene_config(self) -> SceneConfig | None:
         """Get the highest voted scene config."""
         try:
             async with async_session() as session:
@@ -125,9 +116,7 @@ class SceneConfigService:
                     return self._convert_to_scene_config(db_scene_config)
             return None
         except Exception as e:
-            raise Exception(
-                f"Error getting highest voted scene config: {str(e)}"
-            ) from e
+            raise Exception(f"Error getting highest voted scene config: {e!s}") from e
 
     async def increment_votes(self, scene_config_id: int, vote: int) -> SceneConfig:
         """Increment the votes for a scene config."""
@@ -145,12 +134,10 @@ class SceneConfigService:
                 return scene_config
         except Exception as e:
             raise Exception(
-                f"Error incrementing votes for scene config {scene_config_id}: {str(e)}"
+                f"Error incrementing votes for scene config {scene_config_id}: {e!s}"
             ) from e
 
-    async def set_status(
-        self, scene_config_id: int, status: SceneConfigStatus
-    ) -> SceneConfig:
+    async def set_status(self, scene_config_id: int, status: SceneConfigStatus) -> SceneConfig:
         """Set the status of a scene config."""
         try:
             async with async_session() as session:
@@ -166,7 +153,7 @@ class SceneConfigService:
                 return scene_config
         except Exception as e:
             raise Exception(
-                f"Error setting status for scene config {scene_config_id}: {str(e)}"
+                f"Error setting status for scene config {scene_config_id}: {e!s}"
             ) from e
 
     async def activate_proposal(self, scene_config_id: int) -> SceneConfig:
@@ -200,9 +187,7 @@ class SceneConfigService:
                 await session.commit()
                 return scene_config
         except Exception as e:
-            raise Exception(
-                f"Error adding comment to scene config {scene_config_id}: {str(e)}"
-            ) from e
+            raise Exception(f"Error adding comment to scene config {scene_config_id}: {e!s}") from e
 
     async def get_default_scene_config(self) -> SceneConfig:
         """Get the default scene config."""
@@ -213,21 +198,18 @@ class SceneConfigService:
             )
         return db_default
 
-    async def get_proposals(self) -> List[SceneConfig]:
+    async def get_proposals(self) -> list[SceneConfig]:
         """Get all proposed scene configs."""
         return await self.get_all_by_status(SceneConfigStatus.PROPOSED)
 
-    async def create_scene_config_proposal(
-        self, scene_config: CreateSceneConfig
-    ) -> SceneConfig:
+    async def create_scene_config_proposal(self, scene_config: CreateSceneConfig) -> SceneConfig:
         """Propose a new scene."""
         # Set default positions for characters if not provided
         for i, (_, char) in enumerate(scene_config.characters_config.items()):
             if not char.initial_position:
                 # Default to a line formation
                 char.initial_position = Position(
-                    x=TILE_SIZE
-                    * (7.5 + i),  # Start at x=7.5 tiles, increment by 1 tile
+                    x=TILE_SIZE * (7.5 + i),  # Start at x=7.5 tiles, increment by 1 tile
                     y=TILE_SIZE * 7.5,  # Center vertically
                 )
 

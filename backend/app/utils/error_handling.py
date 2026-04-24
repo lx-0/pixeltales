@@ -1,5 +1,6 @@
-from typing import Dict, List, Any, TypedDict
 import logging
+from typing import Any, TypedDict
+
 from pydantic import ValidationError
 
 # Set up logger
@@ -10,11 +11,11 @@ class ErrorDict(TypedDict):
     field: str
     message: str
     type: str
-    context: Dict[str, Any]
+    context: dict[str, Any]
     input: Any | None
 
 
-def format_validation_errors(error: ValidationError) -> List[ErrorDict]:
+def format_validation_errors(error: ValidationError) -> list[ErrorDict]:
     """Format validation errors into a more readable structure.
 
     Args:
@@ -23,10 +24,10 @@ def format_validation_errors(error: ValidationError) -> List[ErrorDict]:
     Returns:
         A list of formatted error dictionaries with field, message, and context
     """
-    formatted_errors: List[ErrorDict] = []
+    formatted_errors: list[ErrorDict] = []
 
     # Log the full error for debugging
-    logger.error(f"Validation Error: {str(error)}")
+    logger.error(f"Validation Error: {error!s}")
     logger.error(f"Error details: {error.errors()}")
 
     for err in error.errors():

@@ -1,16 +1,16 @@
-from datetime import UTC, datetime
 import time
+from datetime import UTC, datetime
 from typing import Any, cast
 
-from sqlalchemy import ForeignKey, event, Update, Table
-from sqlalchemy.orm import Mapped, mapped_column, relationship, Mapper
+from sqlalchemy import ForeignKey, Table, Update, event
 from sqlalchemy.engine.base import Connection
+from sqlalchemy.orm import Mapped, Mapper, mapped_column, relationship
 from sqlalchemy.types import JSON, Float, Integer, String
 
 from app.config import SYSTEM_PROMPT
-from app.db.database import Base
 from app.core.config import settings
-from app.models.scene import CreateSceneConfig, SceneState, SceneConfigStatus
+from app.db.database import Base
+from app.models.scene import CreateSceneConfig, SceneConfigStatus, SceneState
 
 
 class DBSceneConfig(Base):
@@ -18,18 +18,14 @@ class DBSceneConfig(Base):
 
     __tablename__ = "scene_configs"
     __table_args__ = (
-        {"schema": settings.POSTGRES_SCHEMA}
-        if settings.DB_TYPE == "postgresql"
-        else None
+        {"schema": settings.POSTGRES_SCHEMA} if settings.DB_TYPE == "postgresql" else None
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     created_at: Mapped[float] = mapped_column(Float, index=True)  # unix timestamp
     config: Mapped[dict[str, Any]] = mapped_column(JSON)  # Complete SceneConfig as JSON
     votes: Mapped[int] = mapped_column(Integer, default=0)
-    status: Mapped[SceneConfigStatus] = mapped_column(
-        String, default=SceneConfigStatus.PROPOSED
-    )
+    status: Mapped[SceneConfigStatus] = mapped_column(String, default=SceneConfigStatus.PROPOSED)
     system_prompt: Mapped[str] = mapped_column(String, default="")
     # Relationship to scene with cascade delete
     scenes: Mapped[list["DBScene"]] = relationship(
@@ -75,9 +71,7 @@ class DBScene(Base):
 
     __tablename__ = "scenes"
     __table_args__ = (
-        {"schema": settings.POSTGRES_SCHEMA}
-        if settings.DB_TYPE == "postgresql"
-        else None
+        {"schema": settings.POSTGRES_SCHEMA} if settings.DB_TYPE == "postgresql" else None
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -112,9 +106,7 @@ class DBSceneStateSnapshot(Base):
 
     __tablename__ = "scene_state_snapshots"
     __table_args__ = (
-        {"schema": settings.POSTGRES_SCHEMA}
-        if settings.DB_TYPE == "postgresql"
-        else None
+        {"schema": settings.POSTGRES_SCHEMA} if settings.DB_TYPE == "postgresql" else None
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)

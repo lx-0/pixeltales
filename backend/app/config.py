@@ -1,5 +1,3 @@
-from typing import List
-
 from app.models.config import ColorOption, LLMModel, LLMProvider
 
 # System prompt
@@ -29,7 +27,7 @@ IMPORTANT RULES:
 # Tile size
 TILE_SIZE = 48
 
-LLM_PROVIDERS: List[LLMProvider] = [
+LLM_PROVIDERS: list[LLMProvider] = [
     LLMProvider(
         id="openai",
         name="OpenAI",
@@ -93,7 +91,7 @@ LLM_PROVIDERS: List[LLMProvider] = [
     ),
 ]
 
-CHARACTER_COLORS: List[ColorOption] = [
+CHARACTER_COLORS: list[ColorOption] = [
     # Gray scale
     ColorOption(id="slate", name="Slate", hex="#64748b", group="gray"),
     ColorOption(id="gray", name="Gray", hex="#6b7280", group="gray"),

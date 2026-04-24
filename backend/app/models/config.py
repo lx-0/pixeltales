@@ -1,5 +1,5 @@
-from typing import List
-from typing_extensions import Literal
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -18,7 +18,7 @@ class LLMProvider(BaseModel):
 
     id: Literal["openai", "anthropic"]
     name: str
-    models: List[LLMModel]
+    models: list[LLMModel]
 
 
 class ColorOption(BaseModel):
@@ -33,5 +33,5 @@ class ColorOption(BaseModel):
 class ConfigOptions(BaseModel):
     """Available configuration options."""
 
-    llm_providers: List[LLMProvider]
-    colors: List[ColorOption]
+    llm_providers: list[LLMProvider]
+    colors: list[ColorOption]

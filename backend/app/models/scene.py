@@ -1,5 +1,4 @@
-from typing import Dict, List, Optional
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, Field
 
@@ -18,7 +17,7 @@ class SceneBase(BaseModel):
     _ = None
 
 
-class SceneConfigStatus(str, Enum):
+class SceneConfigStatus(StrEnum):
     """Scene config status enum."""
 
     PROPOSED = "proposed"
@@ -34,7 +33,7 @@ class Comment(BaseModel):
     timestamp: str  # ISO format datetime
 
 
-def empty_comment_list() -> List[Comment]:
+def empty_comment_list() -> list[Comment]:
     """Return an empty list of comments."""
     return []
 
@@ -53,16 +52,14 @@ class SceneConfigBase(SceneBase):
         max_length=5000,
         description="Scene description (10-5000 characters)",
         json_schema_extra={
-            "examples": [
-                "Two friends meet at a coffee shop and discuss their dreams..."
-            ]
+            "examples": ["Two friends meet at a coffee shop and discuss their dreams..."]
         },
     )
     start_character_id: str = Field(
         description="ID of the character who starts the conversation",
         json_schema_extra={"examples": ["bob", "alice"]},
     )
-    characters_config: Dict[str, CharacterConfig] = Field(
+    characters_config: dict[str, CharacterConfig] = Field(
         description="Configuration for each character in the scene, keyed by character ID"
     )
     status: SceneConfigStatus = Field(
@@ -71,20 +68,20 @@ class SceneConfigBase(SceneBase):
     )
 
     # Proposal-specific fields
-    proposer_name: Optional[str] = Field(
+    proposer_name: str | None = Field(
         None,
         min_length=2,
         max_length=50,
         description="Name of the person proposing the scene (2-50 characters)",
         json_schema_extra={"examples": ["John Doe", "Jane Smith"]},
     )
-    proposed_at: Optional[str] = Field(
+    proposed_at: str | None = Field(
         None, description="ISO format datetime when the scene was proposed"
     )
-    votes: Optional[int] = Field(
+    votes: int | None = Field(
         default=0, description="Number of votes the scene proposal has received"
     )
-    comments: Optional[List[Comment]] = Field(
+    comments: list[Comment] | None = Field(
         default_factory=empty_comment_list,
         description="List of comments on the scene proposal",
     )
@@ -104,9 +101,7 @@ class SceneConfig(SceneConfigBase):
         min_length=10,
         max_length=1000,
         description="System prompt that sets the context and rules (10-1000 characters)",
-        json_schema_extra={
-            "examples": ["You are in a cozy coffee shop on a rainy afternoon..."]
-        },
+        json_schema_extra={"examples": ["You are in a cozy coffee shop on a rainy afternoon..."]},
     )
 
 
@@ -115,12 +110,12 @@ class SceneState(SceneBase):
 
     scene_id: int
     scene_config_id: int
-    characters: Dict[str, CharacterState]
-    messages: List[Message]
+    characters: dict[str, CharacterState]
+    messages: list[Message]
     started_at: float  # Unix timestamp (Epoch time)
     conversation_active: bool
     conversation_ended: bool
-    ended_at: Optional[float] = None  # Unix timestamp (Epoch time)
+    ended_at: float | None = None  # Unix timestamp (Epoch time)
     visitor_count: int  # number of current visitors in the scene
 
 

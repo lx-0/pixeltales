@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 
-from app.models.config import ConfigOptions
 from app.config import CHARACTER_COLORS, LLM_PROVIDERS
+from app.models.config import ConfigOptions
 
 router = APIRouter()
 

@@ -1,16 +1,14 @@
+import asyncio
 import logging
 import random
 import time
-import asyncio
 from datetime import datetime
-from typing import List, Optional
 
 from langchain.schema import AIMessage, HumanMessage
 
+from app.models.conversation import Conversation, Message
 from app.models.scene import Scene
 from app.services.llm_manager import LLMManager, SystemPromptTemplateVars
-from app.models.conversation import Conversation, Message
-
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -29,19 +27,19 @@ class ConversationManager:
         self.llm_manager = llm_manager
         self.conversation: Conversation | None = None
 
-    def init_conversation(self, messages: List[Message] = []) -> None:
+    def init_conversation(self, messages: list[Message] | None = None) -> None:
+        if messages is None:
+            messages = []
         self.conversation = Conversation(messages=messages)
 
     def get_end_conversation_request_validity(self) -> float:
         return self.end_conversation_request_validity
 
-    def _prepare_conversation_history(
-        self, characterId: str
-    ) -> List[HumanMessage | AIMessage]:
+    def _prepare_conversation_history(self, characterId: str) -> list[HumanMessage | AIMessage]:
         """Prepare the conversation history."""
         if self.conversation is None:
             raise ValueError("Conversation not set")
-        history: List[HumanMessage | AIMessage] = []
+        history: list[HumanMessage | AIMessage] = []
         for msg in self.conversation.messages[
             -self.context_window :
         ]:  # Last N messages for context
@@ -58,7 +56,7 @@ class ConversationManager:
         return f"{scene_description}\n\nCharacters:\n{characters_description}"
 
     def _prepare_system_message(
-        self, scene: Scene, characterId: str, message_recipient: Optional[str] = None
+        self, scene: Scene, characterId: str, message_recipient: str | None = None
     ) -> SystemPromptTemplateVars:
         """Prepare the system message for the scene with character context."""
         characters_description = "\n".join(
@@ -86,7 +84,7 @@ class ConversationManager:
         return self.base_speaking_time + (message_length * self.char_speaking_time)
 
     async def generate_message(
-        self, scene: Scene, characterId: str, recipient: Optional[str] = None
+        self, scene: Scene, characterId: str, recipient: str | None = None
     ) -> Message:
         """Generate a message for the current speaker."""
 

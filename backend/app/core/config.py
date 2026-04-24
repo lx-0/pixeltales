@@ -1,5 +1,5 @@
-from typing import List, Optional
-from typing_extensions import Literal
+from typing import Literal
+
 from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -19,11 +19,11 @@ class Settings(BaseSettings):
     SQLITE_URL: str = "sqlite+aiosqlite:///data/sqlite/pixeltales.db"
 
     # PostgreSQL settings
-    POSTGRES_USER: Optional[str] = None
-    POSTGRES_PASSWORD: Optional[str] = None
-    POSTGRES_HOST: Optional[str] = None
-    POSTGRES_PORT: Optional[str] = None
-    POSTGRES_DB: Optional[str] = None
+    POSTGRES_USER: str | None = None
+    POSTGRES_PASSWORD: str | None = None
+    POSTGRES_HOST: str | None = None
+    POSTGRES_PORT: str | None = None
+    POSTGRES_DB: str | None = None
     POSTGRES_SCHEMA: str = "pixeltales"
 
     @property
@@ -41,10 +41,10 @@ class Settings(BaseSettings):
     BACKEND_PORT: str = "8000"  # Default backend port
 
     # CORS
-    BACKEND_CORS_ORIGINS: List[str] = []
+    BACKEND_CORS_ORIGINS: list[str] = []
 
     @property
-    def cors_origins(self) -> List[str]:
+    def cors_origins(self) -> list[str]:
         """Get the CORS origins based on environment and ports."""
         if self.BACKEND_CORS_ORIGINS:
             return self.BACKEND_CORS_ORIGINS
@@ -53,16 +53,16 @@ class Settings(BaseSettings):
         if self.ENV == "development":
             return [f"http://localhost:{self.FRONTEND_PORT}"]
         else:
-            return [f"http://localhost:{self.FRONTEND_PORT}", f"http://localhost:80"]
+            return [f"http://localhost:{self.FRONTEND_PORT}", "http://localhost:80"]
 
     # LLMs
     DEFAULT_MODEL: str = "gpt-4o-mini"
 
     # OpenAI
-    OPENAI_API_KEY: Optional[SecretStr] = None
+    OPENAI_API_KEY: SecretStr | None = None
 
     # Anthropic
-    ANTHROPIC_API_KEY: Optional[SecretStr] = None
+    ANTHROPIC_API_KEY: SecretStr | None = None
 
 
 settings = Settings()

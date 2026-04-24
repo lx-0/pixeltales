@@ -1,21 +1,20 @@
-from typing import Set, Optional
-import time
+import asyncio
 import logging
 import random
-import asyncio
+import time
 from socket import SocketIO
 
-from app.services.conversation_manager import ConversationManager, Message
-from app.services.scene_config_service import SceneConfigService
-from app.services.scene_service import SceneService
-from app.services.scene_state_snapshot_service import SceneStateSnapshotService
-from app.services.llm_manager import LLMManager
 from app.models.character import CharacterAction
 from app.models.scene import (
     Scene,
     SceneConfig,
     SceneState,
 )
+from app.services.conversation_manager import ConversationManager, Message
+from app.services.llm_manager import LLMManager
+from app.services.scene_config_service import SceneConfigService
+from app.services.scene_service import SceneService
+from app.services.scene_state_snapshot_service import SceneStateSnapshotService
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -28,7 +27,9 @@ class SceneManager:
         """Initialize the scene manager."""
 
         # Configs
-        self.base_pause_time = 5.0  # Base pause time for engagement (between speaking and thinking), in seconds
+        self.base_pause_time = (
+            5.0  # Base pause time for engagement (between speaking and thinking), in seconds
+        )
         self.new_conversation_cooldown = 600.0  # 10 minutes in seconds
 
         # Scene incl state and config
@@ -40,10 +41,10 @@ class SceneManager:
         self.conversation_manager = ConversationManager(self.llm_manager)
 
         # Internal states
-        self.active_visitors: Set[str] = set()
+        self.active_visitors: set[str] = set()
 
         # Technical
-        self.sio: Optional[SocketIO] = None  # Will be set by the socket manager
+        self.sio: SocketIO | None = None  # Will be set by the socket manager
 
         # Start the conversation loop
         asyncio.create_task(self._load_and_run())
@@ -77,9 +78,7 @@ class SceneManager:
             scene_config = await self.scene_config_service.get_by_id(scene_config_id)
             if scene_config is None:
                 raise ValueError(f"Scene config with id {scene_config_id} not found")
-        self.scene = await self.scene_service.create_scene(
-            scene_config, len(self.active_visitors)
-        )
+        self.scene = await self.scene_service.create_scene(scene_config, len(self.active_visitors))
         self.conversation_manager.init_conversation()
         await self.scene_state_snapshot_service.create_snapshot(self.scene.state)
 
@@ -107,9 +106,7 @@ class SceneManager:
         """Set the socket instance for emitting updates."""
         self.sio = sio
 
-    async def emit_scene_update(
-        self, sid: Optional[str] = None, save_snapshot: bool = True
-    ) -> None:
+    async def emit_scene_update(self, sid: str | None = None, save_snapshot: bool = True) -> None:
         """Emit scene state update to all connected visitors."""
         state = self.get_scene_state()
         if save_snapshot:
@@ -137,18 +134,14 @@ class SceneManager:
         """
         self.active_visitors.add(sid)
         if self.scene:
-            self.scene.state = self._set_visitors(
-                len(self.active_visitors), self.scene.state
-            )
+            self.scene.state = self._set_visitors(len(self.active_visitors), self.scene.state)
             await self.emit_scene_update(sid)
 
     async def remove_visitor(self, sid: str) -> None:
         """Remove a visitor from the scene."""
         self.active_visitors.remove(sid)
         if self.scene:
-            self.scene.state = self._set_visitors(
-                len(self.active_visitors), self.scene.state
-            )
+            self.scene.state = self._set_visitors(len(self.active_visitors), self.scene.state)
             await self.emit_scene_update(sid)
 
     def _get_other_character(self, characterId: str) -> str:
@@ -167,21 +160,17 @@ class SceneManager:
         self,
         characterId: str,
         action: CharacterAction,
-        estimated_duration: Optional[float] = None,
+        estimated_duration: float | None = None,
     ) -> None:
         """Set the action of a character."""
         if self.scene is None:
             raise ValueError("Scene not found")
         self.scene.state.characters[characterId].action = action
         self.scene.state.characters[characterId].action_started_at = time.time()
-        self.scene.state.characters[characterId].action_estimated_duration = (
-            estimated_duration
-        )
+        self.scene.state.characters[characterId].action_estimated_duration = estimated_duration
         await self.emit_scene_update()
 
-    async def _set_character_speaking(
-        self, characterId: str, recipient: Optional[str] = None
-    ) -> None:
+    async def _set_character_speaking(self, characterId: str, recipient: str | None = None) -> None:
         """Set the character to speaking."""
         if self.scene is None:
             raise ValueError("Scene not found")
@@ -189,12 +178,10 @@ class SceneManager:
         message = await self._generate_message(characterId, recipient)
 
         self.scene.state.characters[characterId].action = "speaking"
-        self.scene.state.characters[characterId].action_started_at = (
-            message.unix_timestamp
-        )
-        self.scene.state.characters[characterId].action_estimated_duration = (
-            message.calculated_speaking_time
-        )
+        self.scene.state.characters[characterId].action_started_at = message.unix_timestamp
+        self.scene.state.characters[
+            characterId
+        ].action_estimated_duration = message.calculated_speaking_time
 
         self.scene.state.messages.append(message)  ## TODO use conversation manager
 
@@ -204,9 +191,7 @@ class SceneManager:
         # Simulate speaking pause
         await asyncio.sleep(message.calculated_speaking_time)
 
-    async def _generate_message(
-        self, characterId: str, recipient: Optional[str] = None
-    ) -> Message:
+    async def _generate_message(self, characterId: str, recipient: str | None = None) -> Message:
         """Generate a message for the current speaker."""
         if self.scene is None:
             raise ValueError("Scene not found")
@@ -225,12 +210,8 @@ class SceneManager:
         # Update character's end conversation request
         end_conversation = message.end_conversation
         if end_conversation:
-            self.scene.state.characters[characterId].end_conversation_requested = (
-                end_conversation
-            )
-            self.scene.state.characters[characterId].end_conversation_requested_at = (
-                time.time()
-            )
+            self.scene.state.characters[characterId].end_conversation_requested = end_conversation
+            self.scene.state.characters[characterId].end_conversation_requested_at = time.time()
             self.scene.state.characters[
                 characterId
             ].end_conversation_requested_validity_duration = (
@@ -263,18 +244,14 @@ class SceneManager:
             # Check if a new conversation shall be started
             if (
                 self.scene.state.conversation_ended
-                and (self.scene.state.ended_at or 0) + self.new_conversation_cooldown
-                < time.time()
+                and (self.scene.state.ended_at or 0) + self.new_conversation_cooldown < time.time()
             ):
                 # Load new scene (same scene config)
                 logger.info(f"[{time.time()}]: Loading new scene")
                 await self.load_new_scene()
                 await self.emit_scene_update(save_snapshot=False)
 
-            if (
-                self.scene.state.conversation_active
-                and not self.scene.state.conversation_ended
-            ):
+            if self.scene.state.conversation_active and not self.scene.state.conversation_ended:
                 try:
                     # Wait until all characters completed speaking
                     await self._wait_until_all_characters_completed_speaking()
@@ -312,8 +289,7 @@ class SceneManager:
             logger.info(f"[{current_time}]: Speaking character: {charId}")
             if (
                 character.action_estimated_duration is not None
-                and current_time - character.action_started_at
-                < character.action_estimated_duration
+                and current_time - character.action_started_at < character.action_estimated_duration
             ):
                 # Wait until the character has completed speaking
                 await asyncio.sleep(

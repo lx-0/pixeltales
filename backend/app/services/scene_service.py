@@ -1,6 +1,5 @@
 import logging
 import time
-from typing import Dict
 
 from app.db.database import async_session
 from app.db.models import DBScene
@@ -18,8 +17,8 @@ class SceneService:
         pass
 
     def _initialize_characters_state(
-        self, characters_config: Dict[str, CharacterConfig], started_at: float
-    ) -> Dict[str, CharacterState]:
+        self, characters_config: dict[str, CharacterConfig], started_at: float
+    ) -> dict[str, CharacterState]:
         """Initialize characters from `characters` dict with more detailed context"""
         return {
             char_id: CharacterState(
@@ -57,9 +56,7 @@ class SceneService:
             visitor_count=visitor_count,
         )  # Initial State
 
-    async def create_scene(
-        self, scene_config: SceneConfig, current_visitor_count: int
-    ) -> Scene:
+    async def create_scene(self, scene_config: SceneConfig, current_visitor_count: int) -> Scene:
         """Create a new scene."""
         try:
             async with async_session() as session:

@@ -1,8 +1,9 @@
 import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, ValidationError
 
-from app.models.scene import SceneConfig, CreateSceneConfig
+from app.models.scene import CreateSceneConfig, SceneConfig
 from app.services.scene_config_service import SceneConfigService
 from app.utils.error_handling import format_validation_errors
 
@@ -45,11 +46,9 @@ async def propose_scene(scene_config: CreateSceneConfig):
                 "message": "Invalid scene configuration",
                 "errors": formatted_errors,
             },
-        )
+        ) from e
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to propose scene: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to propose scene: {e!s}") from e
 
 
 @router.post("/scenes/{scene_config_id}/vote")
@@ -59,14 +58,10 @@ async def vote_scene(scene_config_id: str, payload: VotePayload) -> SceneConfig:
         raise HTTPException(status_code=400, detail="Vote must be -1 or 1")
 
     try:
-        return await scene_config_service.increment_votes(
-            int(scene_config_id), payload.vote
-        )
+        return await scene_config_service.increment_votes(int(scene_config_id), payload.vote)
     except Exception as e:
-        logger.error(f"Error voting on scene config {scene_config_id}: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Failed to vote on scene: {str(e)}"
-        )
+        logger.error(f"Error voting on scene config {scene_config_id}: {e!s}")
+        raise HTTPException(status_code=500, detail=f"Failed to vote on scene: {e!s}") from e
 
 
 @router.post("/scenes/{scene_config_id}/reject")
@@ -78,6 +73,4 @@ async def reject_scene(scene_config_id: str):
 @router.post("/scenes/{scene_config_id}/comment")
 async def add_comment(scene_config_id: str, user: str, comment: str):
     """Add a comment to a scene config proposal."""
-    return await scene_config_service.add_comment_on_proposal(
-        int(scene_config_id), user, comment
-    )
+    return await scene_config_service.add_comment_on_proposal(int(scene_config_id), user, comment)

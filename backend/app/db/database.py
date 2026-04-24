@@ -1,7 +1,8 @@
 import logging
-from typing import AsyncGenerator, Dict, Any
+from collections.abc import AsyncGenerator
+from typing import Any
 
-from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import CreateSchema
 
@@ -11,7 +12,7 @@ from app.core.config import settings
 logger = logging.getLogger(__name__)
 
 # Configure engine args based on database type
-engine_args: Dict[str, Any] = {
+engine_args: dict[str, Any] = {
     "echo": False,  # Set to True for SQL query logging
 }
 
@@ -24,9 +25,7 @@ if settings.DB_TYPE == "postgresql":
             "max_overflow": 10,
             "pool_timeout": 30,
             "pool_recycle": 1800,
-            "connect_args": {
-                "server_settings": {"search_path": settings.POSTGRES_SCHEMA}
-            },
+            "connect_args": {"server_settings": {"search_path": settings.POSTGRES_SCHEMA}},
         }
     )
 
@@ -62,9 +61,7 @@ async def init_schema() -> None:
     if settings.DB_TYPE == "postgresql":
         try:
             async with engine.begin() as conn:
-                await conn.execute(
-                    CreateSchema(settings.POSTGRES_SCHEMA, if_not_exists=True)
-                )
+                await conn.execute(CreateSchema(settings.POSTGRES_SCHEMA, if_not_exists=True))
                 logger.info(f"Created schema: {settings.POSTGRES_SCHEMA}")
         except Exception as e:
             logger.error(f"Error creating schema: {e}")

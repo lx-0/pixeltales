@@ -28,6 +28,7 @@ python-multipart = "^0.0.20"
 
 [tool.poetry.group.dev.dependencies]
 mypy = "^1.14.1"
+ruff = "^0.8.0"
 types-aiofiles = "^24.1.0.20241221"
 types-python-dateutil = "^2.9.0.20241206"
 
@@ -36,6 +37,36 @@ plugins = ["pydantic.mypy"]
 strict_optional = true
 ignore_missing_imports = true
 check_untyped_defs = true
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+extend-exclude = [".venv", "dist"]
+
+[tool.ruff.lint]
+select = [
+  "E",    # pycodestyle errors
+  "W",    # pycodestyle warnings
+  "F",    # pyflakes
+  "I",    # isort
+  "B",    # flake8-bugbear
+  "UP",   # pyupgrade
+  "C4",   # flake8-comprehensions
+  "SIM",  # flake8-simplify
+  "RUF",  # ruff-specific
+]
+ignore = [
+  "E501",  # line-too-long — handled by formatter
+  "B008",  # do not perform function call in argument defaults — common with FastAPI Depends
+]
+
+[tool.ruff.lint.per-file-ignores]
+"app/db/init_db.py" = ["F401"]  # imports for SQLAlchemy metadata registration
+"app/services/scene_manager.py" = ["RUF006"]  # fix in Phase 3 LangGraph rewrite
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
 
 [build-system]
 requires = ["poetry-core"]

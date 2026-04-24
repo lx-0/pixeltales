@@ -1,8 +1,9 @@
-from typing import Optional, Literal
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
-from app.models.llm import LLMConfig
 from app.models.base import Direction, Position
+from app.models.llm import LLMConfig
 
 
 class CharacterBase(BaseModel):
@@ -29,21 +30,15 @@ class CharacterBase(BaseModel):
         min_length=10,
         max_length=5000,
         description="Character's role and personality description (10-5000 characters)",
-        json_schema_extra={
-            "examples": ["A friendly shopkeeper who loves to tell stories..."]
-        },
+        json_schema_extra={"examples": ["A friendly shopkeeper who loves to tell stories..."]},
     )
     visual: str = Field(
         min_length=10,
         max_length=500,
         description="Character's visual appearance description (10-500 characters)",
-        json_schema_extra={
-            "examples": ["A tall person with short brown hair and glasses..."]
-        },
+        json_schema_extra={"examples": ["A tall person with short brown hair and glasses..."]},
     )
-    llm_config: LLMConfig = Field(
-        description="Configuration for the character's language model"
-    )
+    llm_config: LLMConfig = Field(description="Configuration for the character's language model")
 
 
 CharacterAction = Literal[
@@ -75,7 +70,7 @@ class CharacterState(CharacterBase):
     current_mood: str = "neutral"  # Free-form mood description
     action: CharacterAction
     action_started_at: float  # Unix timestamp (Epoch time)
-    action_estimated_duration: Optional[float] = None  # seconds
+    action_estimated_duration: float | None = None  # seconds
     end_conversation_requested: bool = False
-    end_conversation_requested_at: Optional[float] = None  # Unix timestamp (Epoch time)
-    end_conversation_requested_validity_duration: Optional[float] = None  # seconds
+    end_conversation_requested_at: float | None = None  # Unix timestamp (Epoch time)
+    end_conversation_requested_validity_duration: float | None = None  # seconds

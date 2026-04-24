@@ -3,8 +3,8 @@ import logging
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
-from app.db.models import DBSceneStateSnapshot
 from app.db.database import async_session
+from app.db.models import DBSceneStateSnapshot
 from app.models.scene import Scene, SceneConfig, SceneState
 
 # Set up logger
@@ -28,7 +28,7 @@ class SceneStateSnapshotService:
                 session.add(snapshot)
                 await session.commit()
         except Exception as e:
-            raise Exception(f"Error saving state snapshot: {str(e)}")
+            raise Exception(f"Error saving state snapshot: {e!s}") from e
 
     async def _get_latest_snapshot(self) -> DBSceneStateSnapshot | None:
         """Get the latest snapshot of the scene state."""
@@ -45,7 +45,7 @@ class SceneStateSnapshotService:
                 return result.scalar_one_or_none()
 
         except Exception as e:
-            raise Exception(f"Error loading latest state snapshot: {str(e)}")
+            raise Exception(f"Error loading latest state snapshot: {e!s}") from e
 
     async def get_latest_snapshot(self) -> Scene | None:
         """Get the latest snapshot of the scene state."""

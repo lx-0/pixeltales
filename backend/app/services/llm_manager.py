@@ -1,16 +1,17 @@
-from typing import Dict, List, Optional, Union, Sequence, cast
+from collections.abc import Sequence
+from typing import cast
 
-from pydantic import BaseModel, Field
 from langchain_anthropic import ChatAnthropic
-from langchain_openai import ChatOpenAI
+from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
 from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.runnables import Runnable, RunnableSerializable
+from langchain_openai import ChatOpenAI
+from pydantic import BaseModel, Field
 
+from app.core.config import settings
 from app.models.llm import LLMConfig
 from app.models.scene import SceneConfig
-from app.core.config import settings
 
 
 # Character response schema
@@ -21,7 +22,7 @@ class CharacterResponse(BaseModel):
     reaction_on_previous_message: str | None = Field(
         description="A single unicode emoji that best represents your reaction on the previous message. Formatting instructions: Use unicode emoji."
     )
-    conversation_rating: Optional[int] = Field(
+    conversation_rating: int | None = Field(
         description="How would you rate the conversation until now, from 1 to 10? You can use this to emphasize your feelings about the conversation."
     )
     mood: str = Field(
@@ -33,7 +34,7 @@ class CharacterResponse(BaseModel):
     thoughts: str = Field(
         description="Your thoughts about the conversation. Formatting instructions: To express your mood in the thoughts, use casual formatting style, including casual CAPS for emphasis, dramatic punctuation, but ABSOLUTELY NO emojis!"
     )
-    content: Optional[str] = Field(
+    content: str | None = Field(
         description="Your spoken response. Formatting instructions: To express your mood in the spoken response, use casual formatting style, including casual CAPS for emphasis, dramatic punctuation, but ABSOLUTELY NO emojis!"
     )
     end_conversation: bool = Field(
@@ -49,11 +50,11 @@ class CharacterResponse(BaseModel):
 
 LLMConfigHash = int
 LLMRunnable = Runnable[
-    Union[ChatPromptTemplate, str, Sequence[BaseMessage]],  # Input type(s)
+    ChatPromptTemplate | str | Sequence[BaseMessage],  # Input type(s)
     CharacterResponse,  # Output type
 ]
 
-SystemPromptTemplateVars = Dict[str, str | List[HumanMessage | AIMessage]]
+SystemPromptTemplateVars = dict[str, str | list[HumanMessage | AIMessage]]
 
 
 class LLMManager:
@@ -62,23 +63,23 @@ class LLMManager:
     def __init__(self) -> None:
         """Initialize the LLM manager."""
 
-        self.llms: Dict[LLMConfigHash, LLMRunnable] | None = None
+        self.llms: dict[LLMConfigHash, LLMRunnable] | None = None
         self.prompt: ChatPromptTemplate | None = None
         self.chains: (
-            Dict[
+            dict[
                 LLMConfigHash,
                 RunnableSerializable[SystemPromptTemplateVars, CharacterResponse],
             ]
             | None
         ) = None
-        self.llm_configs: Dict[LLMConfigHash, LLMConfig] | None = None
-        self.external_id_to_llm_hash_map: Dict[str, LLMConfigHash] | None = None
+        self.llm_configs: dict[LLMConfigHash, LLMConfig] | None = None
+        self.external_id_to_llm_hash_map: dict[str, LLMConfigHash] | None = None
 
     def init_scene(self, scene_config: SceneConfig) -> None:
         """Initialize the LLMs for the scene."""
         llm_configs_by_external_id = {
             char_id: scene_config.characters_config[char_id].llm_config
-            for char_id in scene_config.characters_config.keys()
+            for char_id in scene_config.characters_config
         }
         # Map characters to LLMs via `llm_config` hash
         # self.external_id_to_llm_map =
@@ -95,10 +96,7 @@ class LLMManager:
         """Reduce the LLM configs to a reduced LLM config map."""
         return (
             {hash(llm_config): llm_config for llm_config in llm_configs_by_id.values()},
-            {
-                char_id: hash(llm_config)
-                for char_id, llm_config in llm_configs_by_id.items()
-            },
+            {char_id: hash(llm_config) for char_id, llm_config in llm_configs_by_id.items()},
         )
 
     def _init_llms(self) -> None:
@@ -111,13 +109,11 @@ class LLMManager:
         self.llms = {
             llm_config_hash: cast(
                 LLMRunnable,
-                self._get_model_instance(
-                    self.llm_configs[llm_config_hash]
-                ).with_structured_output(  # type: ignore
+                self._get_model_instance(self.llm_configs[llm_config_hash]).with_structured_output(  # type: ignore
                     schema=CharacterResponse, method="function_calling", strict=True
                 ),
             )
-            for llm_config_hash in self.llm_configs.keys()
+            for llm_config_hash in self.llm_configs
         }
 
     def init_conversation_chain(self, system_prompt: str) -> None:
@@ -145,7 +141,7 @@ class LLMManager:
         # Configure chains for each llm
         self.chains = {
             llm_config_hash: (self.prompt | self.llms[llm_config_hash])
-            for llm_config_hash in self.llm_configs.keys()
+            for llm_config_hash in self.llm_configs
         }
 
     def _get_model_instance(self, config: LLMConfig) -> ChatOpenAI | ChatAnthropic:

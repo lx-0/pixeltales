@@ -1,5 +1,4 @@
-from typing import Dict
-
+from app.config import TILE_SIZE
 from app.models.base import Position
 from app.models.llm import LLMConfig
 from app.models.scene import (
@@ -7,13 +6,12 @@ from app.models.scene import (
     CreateSceneConfig,
     SceneConfigStatus,
 )
-from app.config import TILE_SIZE
 
 # from app.core.config import settings
 
 # Default scene configuration
 
-characters: Dict[str, CharacterConfig] = {
+characters: dict[str, CharacterConfig] = {
     "bob": CharacterConfig(
         id="bob",
         name="Claude",

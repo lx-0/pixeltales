@@ -3,12 +3,12 @@ import logging
 import os
 import re
 
-from sqlalchemy.ext.asyncio import AsyncEngine
 from sqlalchemy import text
+from sqlalchemy.ext.asyncio import AsyncEngine
 
-from app.db.database import engine, Base
-from app.db.models import DBScene, DBSceneConfig, DBSceneStateSnapshot
 from app.core.config import settings
+from app.db.database import Base, engine
+from app.db.models import DBScene, DBSceneConfig, DBSceneStateSnapshot
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -22,9 +22,7 @@ def sanitize_db_url(url: str) -> str:
     # For PostgreSQL URLs
     if url.startswith("postgresql"):
         # Replace password in format postgresql://user:password@host:port/db
-        sanitized = re.sub(
-            r"(postgresql(?:\+\w+)?:\/\/[^:]+:)[^@]+(@.*)", r"\1*****\2", url
-        )
+        sanitized = re.sub(r"(postgresql(?:\+\w+)?:\/\/[^:]+:)[^@]+(@.*)", r"\1*****\2", url)
     # For SQLite URLs
     else:
         # Just return the SQLite URL as it doesn't contain sensitive info
@@ -69,24 +67,16 @@ async def init_db(db_engine: AsyncEngine, drop_schema: bool = False) -> None:
                 if drop_schema:
                     logger.info("Dropping existing schema (drop_schema=True)")
                     await conn.execute(
-                        text(
-                            f"DROP SCHEMA IF EXISTS {settings.POSTGRES_SCHEMA} CASCADE"
-                        )
+                        text(f"DROP SCHEMA IF EXISTS {settings.POSTGRES_SCHEMA} CASCADE")
                     )
                     logger.info(f"Dropped schema: {settings.POSTGRES_SCHEMA}")
 
                 # Create schema if it doesn't exist
-                await conn.execute(
-                    text(f"CREATE SCHEMA IF NOT EXISTS {settings.POSTGRES_SCHEMA}")
-                )
-                logger.info(
-                    f"Created schema (if not exists): {settings.POSTGRES_SCHEMA}"
-                )
+                await conn.execute(text(f"CREATE SCHEMA IF NOT EXISTS {settings.POSTGRES_SCHEMA}"))
+                logger.info(f"Created schema (if not exists): {settings.POSTGRES_SCHEMA}")
 
                 # Set search path
-                await conn.execute(
-                    text(f"SET search_path TO {settings.POSTGRES_SCHEMA}")
-                )
+                await conn.execute(text(f"SET search_path TO {settings.POSTGRES_SCHEMA}"))
                 logger.info(f"Set search path to: {settings.POSTGRES_SCHEMA}")
 
             # Create tables
@@ -101,9 +91,7 @@ async def init_db(db_engine: AsyncEngine, drop_schema: bool = False) -> None:
                 # Log SQLite database file information if it exists
                 if os.path.exists(db_path):
                     db_stat = os.stat(db_path)
-                    logger.info(
-                        f"Database file permissions: {oct(db_stat.st_mode)[-3:]}"
-                    )
+                    logger.info(f"Database file permissions: {oct(db_stat.st_mode)[-3:]}")
                     logger.info(f"Database file owner: {db_stat.st_uid}")
                 else:
                     logger.warning(f"Database file not found after creation: {db_path}")
@@ -111,7 +99,7 @@ async def init_db(db_engine: AsyncEngine, drop_schema: bool = False) -> None:
     except Exception as e:
         logger.error(f"Error during database initialization: {e}")
         logger.error(f"Error type: {type(e).__name__}")
-        logger.error(f"Error details: {str(e)}")
+        logger.error(f"Error details: {e!s}")
         raise
 
 

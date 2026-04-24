@@ -1,6 +1,6 @@
 from typing import Literal
-from pydantic import BaseModel
 
+from pydantic import BaseModel
 
 Direction = Literal["front", "right", "left", "back"]
 
