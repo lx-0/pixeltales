@@ -13,7 +13,7 @@ from pydantic import ValidationError
 from slowapi import Limiter  # type: ignore[import-untyped]
 from slowapi.util import get_remote_address  # type: ignore[import-untyped]
 
-from app.characters import load_all, write_character
+from app.agent.characters import load_all, write_character
 from app.models.character import CharacterIdentity
 from app.utils.error_handling import format_validation_errors
 

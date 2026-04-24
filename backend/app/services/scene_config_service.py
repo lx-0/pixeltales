@@ -5,7 +5,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.characters import load as load_character
+from app.agent.characters import load as load_character
 from app.config import SYSTEM_PROMPT
 from app.db.database import async_session
 from app.db.models import DBSceneConfig

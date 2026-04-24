@@ -6,7 +6,7 @@ full spec.
 
 Two source directories are scanned:
 
-- `app/characters/`              — versioned seeds shipped with the repo
+- `app/agent/characters/`        — versioned seeds shipped with the repo
 - `settings.CHARACTERS_DATA_DIR` — runtime dir for user-proposed characters
                                    (mounted as a volume in compose)
 
@@ -45,8 +45,8 @@ def _data_dir() -> Path:
     """Resolve the runtime data dir. Created lazily on first write."""
     p = Path(settings.CHARACTERS_DATA_DIR)
     if not p.is_absolute():
-        # Resolve relative to backend/ (parent of app/)
-        p = Path(__file__).resolve().parents[2] / p
+        # Resolve relative to backend/ (parents: characters→agent→app→backend)
+        p = Path(__file__).resolve().parents[3] / p
     return p
 
 

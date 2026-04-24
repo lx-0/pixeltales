@@ -12,10 +12,10 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from app.characters import load as load_character
+from app.agent.characters import load as load_character
+from app.agent.llm import LLMManager, SystemPromptTemplateVars
 from app.models.conversation import Conversation, Message
 from app.models.scene import Scene
-from app.services.llm_manager import LLMManager, SystemPromptTemplateVars
 
 logger = structlog.get_logger(__name__)
 

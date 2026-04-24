@@ -22,7 +22,7 @@ def _place(
     )
 
 
-# Identity (role / personality / sprite / llm) lives in app/characters/<id>/.
+# Identity (role / personality / sprite / llm) lives in app/agent/characters/<id>/.
 # Default scene just places library characters by id.
 characters: dict[str, CharacterPlacement] = {
     "bob": _place(
