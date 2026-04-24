@@ -87,7 +87,7 @@ class SocketIOClient:
             return
         await self._emit_to(None)
         # Don't log the event payload — messages contain free-form text.
-        logger.debug("client.scene_state.broadcast", event=type(event).__name__)
+        logger.debug("client.scene_state.broadcast", event_type=type(event).__name__)
 
     async def _emit_to(self, sid: str | None) -> None:
         """Emit ``scene_state`` to a single sid (or to all rooms if ``None``)."""

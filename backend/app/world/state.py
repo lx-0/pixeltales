@@ -98,7 +98,7 @@ class World:
                 if asyncio.iscoroutine(result):
                     await result
             except Exception:
-                logger.exception("world.subscriber_failed", event=type(event).__name__)
+                logger.exception("world.subscriber_failed", event_type=type(event).__name__)
 
     # ---------------------------------------------------------------- mutations
 
