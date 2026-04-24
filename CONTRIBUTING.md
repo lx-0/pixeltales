@@ -16,20 +16,20 @@ Thank you for considering contributing to PixelTales! This document outlines the
 
    ```bash
    # Backend
-   cd backend && poetry install
+   cd backend && uv sync
 
    # Frontend
-   cd frontend && npm install
+   cd frontend && pnpm install
    ```
 
 4. Start development servers:
 
    ```bash
    # Backend
-   cd backend && poetry run uvicorn app.main:socket_app --reload --port 8000
+   cd backend && uv run uvicorn app.main:socket_app --reload --port 8000
 
    # Frontend
-   cd frontend && npm run dev
+   cd frontend && pnpm dev
    ```
 
 ## Guidelines

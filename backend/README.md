@@ -7,7 +7,7 @@ FastAPI-based backend service with SQLite persistence and WebSocket support for 
 1. Install dependencies:
 
 ```bash
-poetry install
+uv sync
 ```
 
 2. Create `.env` file:
@@ -22,7 +22,7 @@ cp .env.example .env
 ```bash
 # Make sure you're in the backend directory
 cd backend  # if not already there
-poetry run python -m app.db.init_db
+uv run python -m app.db.init_db
 ```
 
 ## 🚀 Development
@@ -32,7 +32,7 @@ Start the development server:
 ```bash
 # Make sure you're in the backend directory
 cd backend  # if not already there
-poetry run uvicorn app.main:socket_app --reload --port 8000
+uv run uvicorn app.main:socket_app --reload --port 8000
 ```
 
 ## 💾 Database
@@ -60,7 +60,7 @@ If you need to reset the database:
 
 ```bash
 cd backend  # make sure you're in the backend directory
-poetry run python -m app.db.init_db
+uv run python -m app.db.init_db
 ```
 
 ### 🔧 Troubleshooting

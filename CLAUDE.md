@@ -32,23 +32,27 @@ Compose project names: `pixeltales-dev` / `pixeltales-prod`. Backend mounts `./d
 ```bash
 cd frontend
 npm install
-npm run dev          # Vite dev server on :5173, HMR
-npm run build        # tsc -p tsconfig.app.json && vite build
-npm run typecheck    # tsc --noEmit only
-npm run lint         # eslint with --max-warnings 0
-npm run preview      # preview production build
+pnpm dev             # Vite dev server on :5173, HMR
+pnpm build           # tsc -p tsconfig.app.json && vite build
+pnpm typecheck       # tsc --noEmit only
+pnpm lint            # biome check (errors + warnings fail)
+pnpm lint:fix        # biome check --write
+pnpm format          # biome format --write
+pnpm preview         # preview production build
 ```
 
-Path alias: `@/*` → `frontend/src/*`. Lint config is `eslint.config.js` (flat config, ESLint 9).
+Path alias: `@/*` → `frontend/src/*`. Lint+format is Biome 2 (`biome.json`, no ESLint/Prettier).
 
 ### Backend (local, without Docker)
 
 ```bash
 cd backend
-poetry install
-poetry run python -m app.db.init_db                      # create SQLite schema
-poetry run uvicorn app.main:socket_app --reload --port 8000
-poetry run mypy app                                       # strict typing
+uv sync
+uv run python -m app.db.init_db                          # create SQLite schema
+uv run uvicorn app.main:socket_app --reload --port 8000
+uv run mypy app                                          # strict typing
+uv run ruff check                                        # lint
+uv run ruff format                                       # format
 ```
 
 `mypy` is configured `strict_optional = true` + `check_untyped_defs` + `pydantic.mypy` plugin. The ASGI entrypoint is `app.main:socket_app` (the Socket.IO wrapper), **not** `app.main:app` — using the wrong one drops all WebSocket routing.

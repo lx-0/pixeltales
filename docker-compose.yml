@@ -38,7 +38,7 @@ services:
       - ./backend:/workspace
       # Persistent storage for SQLite database
       - ./data/sqlite:/data/sqlite:rw
-      # Keep poetry virtual environment
+      # Keep uv-managed virtual environment
       - backend-venv-dev:/opt/venv
     environment:
       - ENV=development
@@ -48,8 +48,8 @@ services:
       - DB_TYPE=${DB_TYPE:-sqlite}
       - SQLITE_URL=${SQLITE_URL:-sqlite+aiosqlite:////data/sqlite/pixeltales.db}
       - PYTHONPATH=/workspace
-      - VIRTUAL_ENV=/opt/venv/.venv
-      - PATH=/opt/venv/.venv/bin:${PATH}
+      - VIRTUAL_ENV=/opt/venv
+      - PATH=/opt/venv/bin:${PATH}
     env_file: .env.development
     networks:
       - app-network

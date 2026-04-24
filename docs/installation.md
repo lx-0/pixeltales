@@ -54,16 +54,16 @@ This guide will help you set up PixelTales on your local machine for development
    cd backend
    ```
 
-2. **Install Poetry**
+2. **Install uv**
 
    ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
 3. **Install Dependencies**
 
    ```bash
-   poetry install
+   uv sync
    ```
 
 4. **Configure Environment**
@@ -80,13 +80,13 @@ This guide will help you set up PixelTales on your local machine for development
    mkdir -p data/sqlite
 
    # Initialize database
-   poetry run python -m app.db.init_db
+   uv run python -m app.db.init_db
    ```
 
 6. **Start the Backend Server**
 
    ```bash
-   poetry run uvicorn app.main:socket_app --reload --port 8000
+   uv run uvicorn app.main:socket_app --reload --port 8000
    ```
 
 ### Frontend Setup
@@ -100,13 +100,13 @@ This guide will help you set up PixelTales on your local machine for development
 2. **Install Dependencies**
 
    ```bash
-   npm install
+   pnpm install
    ```
 
 3. **Start the Development Server**
 
    ```bash
-   npm run dev
+   pnpm dev
    ```
 
 ## Production Deployment

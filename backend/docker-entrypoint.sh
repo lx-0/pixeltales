@@ -99,7 +99,7 @@ if [ "$DB_TYPE" = "sqlite" ]; then
 
     if ! check_sqlite_tables "$DB_PATH"; then
         echo "Database not found or empty, initializing..."
-        PYTHONPATH=/workspace poetry run python -m app.db.init_db
+        PYTHONPATH=/workspace python -m app.db.init_db
     else
         echo "Database exists with tables, skipping initialization"
     fi
@@ -110,10 +110,10 @@ elif [ "$DB_TYPE" = "postgresql" ]; then
         echo "Schema not found or empty, initializing..."
         if [ "$ENV" = "development" ]; then
             echo "Development environment, initializing schema with drop..."
-            PYTHONPATH=/workspace poetry run python -m app.db.init_db --drop-schema
+            PYTHONPATH=/workspace python -m app.db.init_db --drop-schema
         else
             echo "Production environment, initializing schema..."
-            PYTHONPATH=/workspace poetry run python -m app.db.init_db
+            PYTHONPATH=/workspace python -m app.db.init_db
         fi
     else
         echo "Schema exists with tables, skipping initialization"
@@ -124,4 +124,4 @@ else
 fi
 
 # Start the application
-exec poetry run uvicorn app.main:socket_app --host 0.0.0.0 --reload --port 8000
+exec uvicorn app.main:socket_app --host 0.0.0.0 --reload --port 8000
