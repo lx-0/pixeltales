@@ -37,7 +37,9 @@ export default function ConversationHistory({
   const characterConfigs = sceneConfig.characters_config;
   const [isExpanded, setIsExpanded] = useState(isSideView);
   const [countdown, setCountdown] = useState<number>(0);
-  const conversationRef = useAutoScroll<HTMLDivElement>([scene.messages, scene.conversation_ended]);
+  const conversationRef = useAutoScroll<HTMLDivElement>(
+    `${scene.messages.length}-${scene.conversation_ended}`
+  );
 
   // Update expansion state when view mode changes
   useEffect(() => {
@@ -126,7 +128,7 @@ export default function ConversationHistory({
               : null;
             return (
               <div
-                key={`${index}-${scene.conversation_ended}`}
+                key={`${message.character}-${message.unix_timestamp}`}
                 className={`p-2 sm:p-3 rounded-lg bg-gray-700 relative text-sm sm:text-base ${
                   isLastMessage && character.action === 'speaking' && !scene.conversation_ended
                     ? 'animate-pulse'

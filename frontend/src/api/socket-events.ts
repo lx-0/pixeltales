@@ -9,9 +9,10 @@ export type ServerToClientEvents = {
   scene_state: (state: Schemas['SceneState']) => void;
 };
 
-export type ClientToServerEvents = {
-  // No client-emitted events yet. Add as Pydantic models in
-  // backend's ClientToServerEvents and regen.
-};
+// No client-emitted events yet. Add handlers here when the backend's
+// `ClientToServerEvents` Pydantic model gains its first field; the
+// `Record<never, never>` placeholder keeps `Socket<…>` typing happy
+// without using the banned `{}` empty-object type.
+export type ClientToServerEvents = Record<never, never>;
 
 export type SceneState = Schemas['SceneState'];

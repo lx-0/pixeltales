@@ -126,7 +126,9 @@ class SocketService {
   }
 
   private notifyListeners<K extends keyof EventData>(event: K, data: EventData[K]): void {
-    this.listeners.get(event)?.forEach((callback) => callback(data));
+    this.listeners.get(event)?.forEach((callback) => {
+      callback(data);
+    });
   }
 }
 

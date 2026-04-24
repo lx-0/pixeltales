@@ -165,7 +165,7 @@ export default function ConversationStatsChart({
                   const charProps = Object.values(props.payload.chars).pop() as DataPointCharProps;
                   if (value === null) return null;
                   return [
-                    <span className="text-pretty">
+                    <span key="value" className="text-pretty">
                       {value}/10
                       <div>
                         {charProps.mood} {charProps.moodEmoji}

@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import * as z from 'zod';
 import type { Schemas } from '@/api/client';
 import {
@@ -174,6 +174,10 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
       ],
     },
   });
+
+  // useFieldArray gives stable `field.id` per row so React keys are
+  // identity-based, not position-based (was the noArrayIndexKey lint).
+  const charactersField = useFieldArray({ control: form.control, name: 'characters' });
 
   useEffect(() => {
     setIsModalOpen(isOpen);
@@ -378,12 +382,12 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                 Pick from the library or set "Create new…" to define a fresh character. New
                 characters are saved to the library on submit and become reusable.
               </p>
-              {form.watch('characters').map((_, index) => {
+              {charactersField.fields.map((field, index) => {
                 const libraryId = form.watch(`characters.${index}.library_id`);
                 const isCreatingNew = !libraryId;
                 return (
                   <div
-                    key={index}
+                    key={field.id}
                     className="space-y-4 p-4 border border-gray-700 rounded-lg bg-gray-800/50"
                   >
                     <FormField

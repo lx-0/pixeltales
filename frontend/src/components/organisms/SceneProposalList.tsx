@@ -87,8 +87,9 @@ export function SceneProposalList({ trigger, setIsModalOpen }: SceneProposalList
                       <div>
                         <h3 className="text-lg font-semibold">{proposal.name}</h3>
                         <p className="text-sm text-gray-400">
-                          Proposed by {proposal.proposer_name} on{' '}
-                          {new Date(proposal.proposed_at!).toLocaleDateString()}
+                          Proposed by {proposal.proposer_name}
+                          {proposal.proposed_at &&
+                            ` on ${new Date(proposal.proposed_at).toLocaleDateString()}`}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -150,8 +151,11 @@ export function SceneProposalList({ trigger, setIsModalOpen }: SceneProposalList
                       <div className="mt-4">
                         <h4 className="text-sm font-medium mb-2">Comments</h4>
                         <div className="space-y-2">
-                          {proposal.comments.map((comment, i) => (
-                            <div key={i} className="text-sm bg-gray-700 rounded p-2">
+                          {proposal.comments.map((comment) => (
+                            <div
+                              key={`${comment.user}-${comment.timestamp}`}
+                              className="text-sm bg-gray-700 rounded p-2"
+                            >
                               <p className="text-gray-300">{comment.comment}</p>
                               <p className="text-xs text-gray-400 mt-1">
                                 {comment.user} - {new Date(comment.timestamp).toLocaleString()}
