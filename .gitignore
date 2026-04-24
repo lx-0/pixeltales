@@ -39,3 +39,6 @@ data/
 ~*/playwright-report/
 test-results/
 coverage/
+
+# Git worktrees (isolated branches for parallel refactor work)
+.worktrees/
