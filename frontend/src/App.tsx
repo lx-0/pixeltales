@@ -1,11 +1,9 @@
 import { SiGithub } from '@icons-pack/react-simple-icons';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Layout } from 'lucide-react';
 import { Game } from 'phaser';
 import { useEffect, useRef, useState } from 'react';
 import ConversationHistory from '@/components/organisms/ConversationHistory';
 import SceneInfo from '@/components/organisms/SceneInfo';
-import { Button } from '@/components/ui/button';
 import type { SceneState } from '@/types/scene';
 import { gameConfig } from './game/config';
 import type { MainSceneInitData } from './game/MainScene';
@@ -126,17 +124,6 @@ function AppShell() {
       </header>
 
       <main className="p-2 sm:p-4 space-y-3 sm:space-y-6">
-        {/* View Mode Toggle Button */}
-        <Button
-          variant="secondary"
-          size="icon"
-          className="fixed top-2 right-2 sm:top-4 sm:right-4 z-50 text-white bg-gray-700 hover:bg-gray-600"
-          onClick={toggleViewMode}
-        >
-          <Layout className="h-[1.2rem] w-[1.2rem]" />
-          <span className="sr-only">Toggle View Mode</span>
-        </Button>
-
         {/* Flexible Layout Container */}
         <div
           className={`grid gap-2 sm:gap-4 mx-auto h-auto sm:grid-cols-1 ${
@@ -155,6 +142,7 @@ function AppShell() {
               scene={sceneState}
               isSideView={isSideView}
               setIsModalOpen={setIsModalOpen}
+              onToggleViewMode={toggleViewMode}
             />
           )}
         </div>
@@ -173,6 +161,7 @@ function AppShell() {
               scene={sceneState}
               isSideView={isSideView}
               setIsModalOpen={setIsModalOpen}
+              onToggleViewMode={toggleViewMode}
             />
           </div>
         )}

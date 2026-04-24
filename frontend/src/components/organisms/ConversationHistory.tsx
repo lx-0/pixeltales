@@ -1,4 +1,4 @@
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Layout } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useAutoScroll } from '@/hooks/use-auto-scroll';
@@ -9,6 +9,7 @@ interface ConversationHistoryProps {
   scene: SceneState;
   isSideView: boolean;
   setIsModalOpen: (isOpen: boolean) => void;
+  onToggleViewMode: () => void;
 }
 
 const formatTime = (timestamp: number): string => {
@@ -27,6 +28,7 @@ export default function ConversationHistory({
   scene,
   isSideView,
   setIsModalOpen,
+  onToggleViewMode,
 }: ConversationHistoryProps) {
   const [isExpanded, setIsExpanded] = useState(isSideView);
   const [countdown, setCountdown] = useState<number>(0);
@@ -69,19 +71,35 @@ export default function ConversationHistory({
     >
       <div className="p-2 sm:p-4 flex items-center justify-between flex-shrink-0 border-b border-gray-700">
         <h2 className="text-lg sm:text-xl font-bold text-gray-100">Conversation History</h2>
-        <Button
-          variant="ghost"
-          size="icon"
-          className="text-gray-400 hover:text-white -mr-2"
-          onClick={() => setIsExpanded(!isExpanded)}
-        >
-          <ChevronDown
-            className={`h-5 w-5 sm:h-6 sm:w-6 transform transition-transform duration-200 ${
-              isExpanded ? 'rotate-180' : ''
-            }`}
-          />
-          <span className="sr-only">{isExpanded ? 'Collapse' : 'Expand'} Conversation History</span>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white"
+            onClick={onToggleViewMode}
+            title={isSideView ? 'Show below game canvas' : 'Show beside game canvas'}
+          >
+            <Layout className="h-5 w-5 sm:h-6 sm:w-6" />
+            <span className="sr-only">
+              {isSideView ? 'Show below game canvas' : 'Show beside game canvas'}
+            </span>
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white -mr-2"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            <ChevronDown
+              className={`h-5 w-5 sm:h-6 sm:w-6 transform transition-transform duration-200 ${
+                isExpanded ? 'rotate-180' : ''
+              }`}
+            />
+            <span className="sr-only">
+              {isExpanded ? 'Collapse' : 'Expand'} Conversation History
+            </span>
+          </Button>
+        </div>
       </div>
       {isExpanded && (
         <div
@@ -200,7 +218,7 @@ export default function ConversationHistory({
                 key={c.name}
                 className="mx-4 p-1 px-2 sm:px-4 pr-4 sm:pr-6 rounded-lg bg-gray-700 animate-pulse w-fit relative text-sm sm:text-base italic"
               >
-                <div className="flex items-baseline gap-1 cursor-default">
+                <div className="flex items-center gap-1 cursor-default">
                   <span className="font-bold" style={{ color: c.color }}>
                     {c.name}
                   </span>
