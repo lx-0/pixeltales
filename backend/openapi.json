@@ -2,7 +2,7 @@
   "components": {
     "schemas": {
       "CharacterConfig": {
-        "description": "Configuration for a character.",
+        "description": "Scene-level configuration: a CharacterIdentity placed into a scene\nwith starting position, facing, action and mood.",
         "properties": {
           "color": {
             "description": "Character's color in hex format (e.g., #FF0000)",

@@ -1,0 +1,10 @@
+id: doctor_1
+name: Dr. One
+color: "#10b981"
+sprite_id: doctor_1
+visual: A senior researcher in a white lab coat, salt-and-pepper hair, clipboard in hand.
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.7
+  max_tokens: 4096

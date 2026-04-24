@@ -53,14 +53,25 @@ CharacterAction = Literal[
 ]
 
 
-class CharacterConfig(CharacterBase):
-    """Configuration for a character."""
+class CharacterIdentity(CharacterBase):
+    """Library-level character identity — the part that travels with a
+    character across scenes. Lives on disk under app/characters/<id>/
+    (AGENTS.md + .character.yaml). Scene-specific placement (initial_*)
+    sits one layer further out in CharacterConfig.
+    """
 
     sprite_id: str = Field(
         default="bob",
         description="ID of a sprite from the backend asset catalog (GET /api/v1/config).",
         json_schema_extra={"examples": ["bob", "cleaner_girl", "doctor_1", "zombie"]},
     )
+
+
+class CharacterConfig(CharacterIdentity):
+    """Scene-level configuration: a CharacterIdentity placed into a scene
+    with starting position, facing, action and mood.
+    """
+
     initial_position: Position
     initial_direction: Direction
     initial_action: CharacterAction

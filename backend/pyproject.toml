@@ -25,6 +25,7 @@ dependencies = [
   "structlog>=25,<26",
   "slowapi>=0.1.9,<1",
   "prometheus-fastapi-instrumentator>=7.0,<8",
+  "pyyaml>=6.0,<7",
 ]
 
 [dependency-groups]
@@ -36,6 +37,7 @@ dev = [
   "httpx>=0.28,<1",
   "types-aiofiles>=24.1",
   "types-python-dateutil>=2.9",
+  "types-pyyaml>=6.0",
 ]
 
 [tool.mypy]

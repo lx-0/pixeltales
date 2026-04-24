@@ -1,0 +1,10 @@
+id: zombie
+name: Zombie
+color: "#84cc16"
+sprite_id: zombie
+visual: A recently reanimated humanoid with grey-green skin, ragged clothes, and an unsteady gait.
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.7
+  max_tokens: 4096

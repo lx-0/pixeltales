@@ -166,7 +166,8 @@ export interface components {
     schemas: {
         /**
          * CharacterConfig
-         * @description Configuration for a character.
+         * @description Scene-level configuration: a CharacterIdentity placed into a scene
+         *     with starting position, facing, action and mood.
          */
         CharacterConfig: {
             /**

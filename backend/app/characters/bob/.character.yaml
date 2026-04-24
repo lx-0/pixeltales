@@ -1,0 +1,10 @@
+id: bob
+name: Bob
+color: "#4A90E2"
+sprite_id: bob
+visual: A man in his 30s with a beard and glasses.
+llm:
+  provider: openai
+  model: gpt-4o-mini
+  temperature: 0.7
+  max_tokens: 4096

@@ -1,72 +1,42 @@
+from app.characters import load as load_character
 from app.config import TILE_SIZE
-from app.core.config import settings
 from app.models.base import Position
-from app.models.llm import LLMConfig
+from app.models.character import CharacterConfig, CharacterIdentity
 from app.models.scene import (
-    CharacterConfig,
     CreateSceneConfig,
     SceneConfigStatus,
 )
 
-# Default scene configuration
 
+def _place(
+    identity: CharacterIdentity,
+    *,
+    position: Position,
+    direction: str,
+) -> CharacterConfig:
+    """Combine a library identity with scene-specific placement."""
+    return CharacterConfig(
+        **identity.model_dump(),
+        initial_position=position,
+        initial_direction=direction,  # type: ignore[arg-type]
+        initial_action="idle",
+        initial_mood="neutral",
+    )
+
+
+# Library identities (role / personality / sprite / llm) live on disk in
+# app/characters/<id>/. Scene-specific placement (where they stand, which
+# way they face) is composed here.
 characters: dict[str, CharacterConfig] = {
-    "bob": CharacterConfig(
-        id="bob",
-        name="Bob",
-        color="#4A90E2",  # Professional blue
-        role="""You are Bob, a man in his 30s who is romantically interested in the woman in front of you.
-Key traits:
-- Enjoys life with a positive attitude, a sense of humor and a fancy ice cream bowl
-- Hopeful and optimistic about love
-- Respectful but persistent in showing interest
-- Works as a florist
-- Enjoys discussing flowers and gardening""",
-        # - You can only communicate in and understand in German language. No other languages - except the language of love :).
-        visual="A man in his 30s with a beard and glasses.",
-        llm_config=LLMConfig(
-            provider="openai",
-            model_name=settings.DEFAULT_MODEL,
-            temperature=0.7,
-            max_tokens=4096,
-        ),
-        sprite_id="bob",
-        initial_position=Position(
-            x=TILE_SIZE * 7.5,
-            y=TILE_SIZE * 7.5,
-        ),
-        initial_direction="right",
-        initial_action="idle",
-        initial_mood="neutral",
+    "bob": _place(
+        load_character("bob"),
+        position=Position(x=TILE_SIZE * 7.5, y=TILE_SIZE * 7.5),
+        direction="right",
     ),
-    "alice": CharacterConfig(
-        id="alice",
-        name="Alice",
-        color="#E24A8F",  # Professional pink
-        role="""You are Alice, a woman in her 20s who is focused on her career.
-Key traits:
-- Works as a research scientist
-- Passionate about scientific discoveries
-- Independent and career-driven
-- Pragmatic and cynical
-- Very busy and doesn't have time for socializing
-- Has an important online meeting in five minutes and just wants to quickly grab an ice coffee
-- Not interested in romantic relationships and not interested in love""",
-        visual="A woman in her 20s with long hair and blue eyes.",
-        llm_config=LLMConfig(
-            provider="openai",
-            model_name=settings.DEFAULT_MODEL,
-            temperature=0.7,
-            max_tokens=4096,
-        ),
-        sprite_id="cleaner_girl",
-        initial_position=Position(
-            x=TILE_SIZE * 9.5,
-            y=TILE_SIZE * 7.5,
-        ),
-        initial_direction="front",
-        initial_action="idle",
-        initial_mood="neutral",
+    "alice": _place(
+        load_character("alice"),
+        position=Position(x=TILE_SIZE * 9.5, y=TILE_SIZE * 7.5),
+        direction="front",
     ),
 }
 
