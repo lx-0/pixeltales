@@ -117,6 +117,13 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 ### Frontend
 
+- [ ] **Phaser 3.87 → 3.90** — safe minor bump within the v3 line. Bug fixes + small features, no API churn.
+  *Why deferred:* low effort, low value-add — bundle in next dependency sweep.
+
+- [ ] **Phaser 3 → 4 major upgrade** — v4.0.0 is now `latest` on npm. New WebGL render-node architecture (~30% faster on quads), `SpriteGPULayer` ("100×" for mass sprite scenes), `TilemapGPULayer` (whole layer as one quad), unified Filter system (FX + Masks merged), overhauled Tint system with explicit modes via `setTintMode()`. Breaking: `Point`, `Mesh`, `BitmapMask` removed; Shader API changed; lighting simplified. Official migration guide exists; **not** a drop-in replacement.
+  *PixelTales API surface:* `Phaser.GameObjects.{Container,Graphics,Sprite,Text}`, `Phaser.Input.Keyboard.*`, `Phaser.Scale.{FIT,CENTER}`, `Phaser.Scenes.Events.*`, `Phaser.Tweens.Tween`, `Phaser.AUTO`. **None of the removed classes are used.** Tint usage in `UIControlsFactory.animateButton` (`setTint(0xcccccc)`) is the most likely friction point — check if `setTint` still works without explicit `setTintMode()`.
+  *Why deferred:* not a blocker — current 3.87 runs fine, performance isn't a complaint. Pick up when (a) we need the perf wins (e.g. way more sprites/tiles) or (b) bundling Phaser 4 saves enough bundle size to matter. Pair with bundle-splitting task.
+
 - [ ] **shadcn/ui refresh** — re-init with `npx shadcn@latest init`, diff `components/ui/*` against the new baseline (current files predate React 19 + Tailwind 4).
   *Why deferred:* current components work. shadcn `forwardRef` usage is deprecated in R19 but not removed. Re-do when something visually breaks or when adding a new shadcn primitive.
 
