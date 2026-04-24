@@ -137,8 +137,7 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 - [x] ~~**Coverage floors in CI**~~ — pytest-cov + vitest `@vitest/coverage-v8` wired into CI, HTML/XML reports uploaded as artifacts. Backend floor at 55% (current 62.63%); frontend has no gate yet because the 5-test baseline only covers `format.ts` (~1% overall) — set a floor once components/hooks tests exist.
 
-- [ ] **Playwright in CI** — workflow boots compose stack, runs `pnpm test:e2e`.
-  *Why deferred:* needs compose setup in the workflow file + chromium install + secrets for `OPENAI_API_KEY`. Wait until E2E suite has more than the smoke test.
+- [x] ~~**Playwright in CI**~~ — new `e2e` job in `ci.yml` boots backend (uvicorn) + frontend (vite preview) natively as background processes (no compose, lighter than docker), waits on health checks, runs the existing 2-test smoke suite, uploads `playwright-report` artifact on failure. Browser cache keyed on `pnpm-lock.yaml`. Smoke uses `OPENAI_API_KEY=sk-ci-placeholder` since it doesn't trigger LLM calls.
 
 - [x] ~~Substantive backend tests~~ — done as part of Phase 5.
 
