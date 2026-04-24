@@ -66,7 +66,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"app/services/scene_manager.py" = ["RUF006"]  # fix in Phase 3b LangGraph rewrite
+"app/harness/orchestrator.py" = ["RUF006"]  # resolved in Phase D (Client extraction)
 
 [tool.ruff.format]
 quote-style = "double"

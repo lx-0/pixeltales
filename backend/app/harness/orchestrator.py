@@ -6,27 +6,33 @@ from socket import SocketIO
 import structlog
 
 from app.core.metrics import messages_total
+from app.harness.conversation import ConversationManager, Message
+from app.harness.scene_config_loader import SceneConfigService
+from app.harness.scene_loader import SceneService
 from app.models.character import CharacterAction
 from app.models.scene import (
     Scene,
     SceneConfig,
     SceneState,
 )
-from app.services.conversation_manager import ConversationManager, Message
 from app.services.llm_manager import LLMManager
-from app.services.scene_config_service import SceneConfigService
-from app.services.scene_service import SceneService
 from app.world import World
 from app.world.persistence.snapshots import SceneStateSnapshotService
 
 logger = structlog.get_logger(__name__)
 
 
-class SceneManager:
-    """Scene manager."""
+class Harness:
+    """Per-scene orchestrator: owns the agentic loop.
+
+    Drives turn-taking, paces character output, persists snapshots,
+    retries on transient errors. Reads from :class:`World` for
+    perception; writes back through :class:`World` mutation methods.
+    Channel-agnostic — the Socket.IO bridge lives in ``app/client/``.
+    """
 
     def __init__(self) -> None:
-        """Initialize the scene manager."""
+        """Initialize the harness."""
 
         # Configs
         self.base_pause_time = (
@@ -34,7 +40,7 @@ class SceneManager:
         )
         self.new_conversation_cooldown = 600.0  # 10 minutes in seconds
 
-        # World owns scene state + fires events; SceneManager mutates
+        # World owns scene state + fires events; the Harness mutates
         # state through World rather than poking attributes directly.
         self.world = World()
         self.scene_service = SceneService()
@@ -106,7 +112,7 @@ class SceneManager:
         await self.scene_state_snapshot_service.create_snapshot(scene.state)
 
     async def _load_and_run(self) -> None:
-        """Initialize the scene manager."""
+        """Initialize the harness."""
         # Wait for self.sio to be set
         while self.sio is None:
             await asyncio.sleep(1)

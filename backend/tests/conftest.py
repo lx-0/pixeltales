@@ -47,8 +47,8 @@ async def session_factory(test_engine: Any, monkeypatch: pytest.MonkeyPatch) -> 
     factory = async_sessionmaker(test_engine, expire_on_commit=False)
     monkeypatch.setattr(database, "async_session", factory)
     for module_path in (
-        "app.services.scene_config_service",
-        "app.services.scene_service",
+        "app.harness.scene_config_loader",
+        "app.harness.scene_loader",
         "app.world.persistence.snapshots",
     ):
         import importlib

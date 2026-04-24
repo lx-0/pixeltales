@@ -10,8 +10,8 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
+from app.harness.conversation import ConversationManager
 from app.models.scene import Scene
-from app.services.conversation_manager import ConversationManager
 from app.services.llm_manager import LLMManager
 from tests.fixtures import make_message
 

@@ -14,24 +14,24 @@ from app.api.endpoints import characters, config, scenes, socket_events
 from app.core.config import settings
 from app.core.logging import configure_logging
 from app.core.metrics import visitors_active
-from app.services.scene_manager import SceneManager
+from app.harness import Harness
 
 configure_logging()
 logger = structlog.get_logger(__name__)
 
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
-# Scene manager is process-singleton: it owns in-memory scene state and the
+# Harness is process-singleton: it owns in-memory scene state and the
 # tick loop, so it must outlive every request. Lifespan binds the Socket.IO
 # server into it on startup.
-scene_manager = SceneManager()
+harness = Harness()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     sio = app.state.socket_server
-    await scene_manager.set_socket_instance(sio)
-    scene_manager.start()
+    await harness.set_socket_instance(sio)
+    harness.start()
     logger.info("app.startup", env=settings.ENV, db_type=settings.DB_TYPE)
     yield
     logger.info("app.shutdown")
@@ -71,14 +71,14 @@ socket_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
 async def connect(sid: str, environ: dict[str, Any]):
     logger.info("socket.connect", sid=sid)
     visitors_active.inc()
-    await scene_manager.add_visitor(sid)
+    await harness.add_visitor(sid)
 
 
 @sio.event  # type: ignore
 async def disconnect(sid: str):
     logger.info("socket.disconnect", sid=sid)
     visitors_active.dec()
-    await scene_manager.remove_visitor(sid)
+    await harness.remove_visitor(sid)
 
 
 @app.get("/health")
