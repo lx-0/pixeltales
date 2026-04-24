@@ -1,8 +1,12 @@
 """Shared pytest fixtures.
 
-Each test gets a fresh in-memory SQLite database, schema applied via
-SQLAlchemy create_all (faster than alembic for tests). The production
-async_session is monkey-patched to point at the test engine.
+DB fixtures: each test gets a fresh in-memory SQLite database. The
+production `async_session` is monkey-patched in every importing module
+(not just database.py) because `from … import async_session` captures a
+reference per module.
+
+Object fixtures: see tests/fixtures.py. Re-exported here so pytest
+discovers them without import gymnastics.
 """
 
 from collections.abc import AsyncGenerator
@@ -13,6 +17,13 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.db import database
 from app.db.database import Base
+from tests.fixtures import (  # noqa: F401  (re-exported for pytest discovery)
+    alice_config,
+    bob_config,
+    mock_llm_manager,
+    scene,
+    scene_config,
+)
 
 
 @pytest.fixture

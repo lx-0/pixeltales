@@ -139,30 +139,22 @@ class ConversationManager:
 
             except Exception as e:
                 retry_count += 1
-                error_type = type(e).__name__
-
-                # Log structured error information
                 logger.error(
                     "Error generating message",
-                    extra={
-                        "error_type": error_type,
-                        "attempt": retry_count,
-                        "max_retries": max_retries,
-                        "character": characterId,
-                        "raw_response": last_raw_response,
-                        "error_details": str(e),
-                    },
+                    error_type=type(e).__name__,
+                    attempt=retry_count,
+                    max_retries=max_retries,
+                    character=characterId,
+                    raw_response=last_raw_response,
+                    error_details=str(e),
                 )
 
                 if retry_count >= max_retries:
                     logger.warning(
                         "All retries failed",
-                        str(e),
-                        extra={
-                            "character": characterId,
-                            "last_error": str(e),
-                            "last_raw_response": last_raw_response,
-                        },
+                        character=characterId,
+                        last_error=str(e),
+                        last_raw_response=last_raw_response,
                     )
                     break
 

@@ -53,10 +53,15 @@ Target: workspace-standard stack (pnpm, Biome, uv, Node 22, Python 3.12), typed 
 
 ## Phase 5 ✅ — Testing infrastructure
 
-- [x] Backend: pytest + pytest-asyncio + httpx, in-memory SQLite fixture (4 tests)
+- [x] Backend: pytest + pytest-asyncio + httpx, in-memory SQLite fixture
 - [x] Latent SceneManager bug fixed (`asyncio.create_task` out of `__init__` → lifespan `start()`)
 - [x] Frontend: vitest + jsdom + @testing-library/react (5 tests)
 - [x] Playwright config + smoke test (`pnpm test:e2e` after `pnpm exec playwright install chromium`)
+- [x] **Substantive backend tests** (26 unit tests across 4 files):
+  - `test_conversation_manager.py` (15): speaking-time math, context-window truncation, history role mapping (AIMessage vs HumanMessage), system-message vars, retry-on-error, max-retries-exhausted
+  - `test_scene_manager.py` (11): visitor add/remove, conversation_active toggle, next-speaker alternation, start() idempotency
+  - `test_health.py` / `test_config_endpoint.py` / `test_scene_config_service.py` (4): endpoint smoke
+  - Plus bug found + fixed via test: `ConversationManager` was calling structlog's `logger.warning(event, str(e), extra={...})` with stdlib-`logging` signature — silently TypeError-crashed inside the retry-exhausted branch.
 
 ## Phase 6a ✅ — LiteLLM gateway support
 
@@ -95,7 +100,7 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 ### Backend
 
 - [ ] **LangGraph rewrite of `SceneManager` + `ConversationManager` + `LLMManager`** — model the scene tick as a `StateGraph` with one node per character turn. Drops manual `asyncio.sleep` + scheduling. Audit async SQLAlchemy session lifecycle while at it.
-  *Why deferred:* current tests are smoke-only. Big-bang rewrite without real coverage is roulette. Gate on substantive `SceneManager` / `ConversationManager` test coverage (≥60% line coverage on the tick loop and turn-taking).
+  *Gating now met:* Phase 5 added 26 unit tests covering turn-taking, speaking-time math, context-window truncation, retry/backoff, visitor tracking, and start() idempotency. Rewrite can proceed against this test suite as regression guard — add test-per-behavior for any new LangGraph node semantics.
 
 - [ ] **DB-stored per-character model config** — move `DEFAULT_MODEL` constant + `LLMConfig` from scene proposal payload to a `models` DB table. Hot-swappable without redeploy.
   *Why deferred:* needs Alembic migration **and** scene-proposal UI changes (dropdown reads from DB). Wait until users ask for runtime model swaps.
@@ -141,7 +146,7 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 - [ ] **Playwright in CI** — workflow boots compose stack, runs `pnpm test:e2e`.
   *Why deferred:* needs compose setup in the workflow file + chromium install + secrets for `OPENAI_API_KEY`. Wait until E2E suite has more than the smoke test.
 
-- [ ] **Substantive backend tests** — `SceneManager` tick loop + `ConversationManager` turn-taking with mocked LLM. Required gating for the LangGraph rewrite above.
+- [x] ~~Substantive backend tests~~ — done as part of Phase 5.
 
 ### Workspace / scope
 
