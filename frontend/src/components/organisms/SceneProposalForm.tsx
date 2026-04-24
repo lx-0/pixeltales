@@ -67,6 +67,7 @@ const proposalFormSchema = z.object({
     .string()
     .min(2, 'Proposer name must be at least 2 characters')
     .max(50, 'Proposer name must not exceed 50 characters'),
+  room_id: z.string().min(1, 'Room is required'),
   characters: z
     .array(
       z.object({
@@ -80,6 +81,7 @@ const proposalFormSchema = z.object({
           .min(10, 'Visual description must be at least 10 characters')
           .max(500, 'Visual description must not exceed 500 characters'),
         color: z.string().min(1, 'Color is required'),
+        sprite_id: z.string().min(1, 'Sprite is required'),
         llm_config: z.object({
           provider: z.string().min(1, 'Provider is required'),
           model_name: z.string().min(1, 'Model is required'),
@@ -110,12 +112,14 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
       sceneName: '',
       sceneDescription: '',
       proposerName: '',
+      room_id: 'room',
       characters: [
         {
           name: '',
           role: '',
           visual: '',
           color: 'blue',
+          sprite_id: 'bob',
           llm_config: {
             provider: 'openai',
             model_name: 'gpt-4o-mini-2024-07-18',
@@ -128,6 +132,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
           role: '',
           visual: '',
           color: 'pink',
+          sprite_id: 'cleaner_girl',
           llm_config: {
             provider: 'openai',
             model_name: 'gpt-4o-mini-2024-07-18',
@@ -164,8 +169,7 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
         votes: null,
         proposer_name: values.proposerName,
         start_character_id: kebabCase(values.characters[0].name),
-        // sprite_id / room_id stay at backend defaults until phase-3 dropdowns land.
-        room_id: 'room',
+        room_id: values.room_id,
         characters_config: values.characters.reduce(
           (acc, char, index) => {
             // Find the color option to get the hex code
@@ -182,7 +186,6 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                 ...char.llm_config,
                 provider: char.llm_config.provider as LLMConfig['provider'],
               },
-              sprite_id: 'bob',
               // Add required initial state fields
               initial_position: {
                 x: TILE_SIZE * (7.5 + index), // Start at x=7.5 tiles, increment by 1 tile
@@ -292,6 +295,34 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
               )}
             />
 
+            <FormField
+              control={form.control}
+              name="room_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel className="text-gray-200">Room</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl>
+                      <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                        <SelectValue placeholder="Select room" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent className="bg-gray-800 border-gray-700">
+                      {(config?.rooms ?? []).map((room) => (
+                        <SelectItem key={room.id} value={room.id} className="text-gray-200">
+                          {room.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormDescription className="text-gray-400">
+                    Background scene where the conversation plays out.
+                  </FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-4">
               <h4 className="text-sm font-medium text-gray-200">Characters</h4>
               {form.watch('characters').map((_, index) => (
@@ -336,6 +367,38 @@ export function SceneProposalForm({ trigger, setIsModalOpen }: SceneProposalForm
                       )}
                     />
                   </div>
+
+                  <FormField
+                    control={form.control}
+                    name={`characters.${index}.sprite_id`}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-gray-200">Sprite</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger className="bg-gray-800 border-gray-700 text-gray-200">
+                              <SelectValue placeholder="Select sprite" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent className="bg-gray-800 border-gray-700">
+                            {(config?.sprites ?? []).map((sprite) => (
+                              <SelectItem
+                                key={sprite.id}
+                                value={sprite.id}
+                                className="text-gray-200"
+                              >
+                                {sprite.name}
+                                {!sprite.has_idle_anim && (
+                                  <span className="ml-2 text-xs text-gray-400">(static)</span>
+                                )}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
                   <FormField
                     control={form.control}
