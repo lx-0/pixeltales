@@ -107,6 +107,155 @@
         "title": "CharacterConfig",
         "type": "object"
       },
+      "CharacterState": {
+        "description": "A character in the scene.",
+        "properties": {
+          "action": {
+            "enum": [
+              "thinking",
+              "thinking:love",
+              "thinking:anger",
+              "thinking:sadness",
+              "thinking:surprise",
+              "thinking:fear",
+              "speaking",
+              "idle"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "action_estimated_duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Action Estimated Duration"
+          },
+          "action_started_at": {
+            "title": "Action Started At",
+            "type": "number"
+          },
+          "color": {
+            "description": "Character's color in hex format (e.g., #FF0000)",
+            "examples": [
+              "#FF0000",
+              "#00FF00"
+            ],
+            "pattern": "^#[0-9a-fA-F]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "current_mood": {
+            "default": "neutral",
+            "title": "Current Mood",
+            "type": "string"
+          },
+          "direction": {
+            "enum": [
+              "front",
+              "right",
+              "left",
+              "back"
+            ],
+            "title": "Direction",
+            "type": "string"
+          },
+          "end_conversation_requested": {
+            "default": false,
+            "title": "End Conversation Requested",
+            "type": "boolean"
+          },
+          "end_conversation_requested_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Conversation Requested At"
+          },
+          "end_conversation_requested_validity_duration": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Conversation Requested Validity Duration"
+          },
+          "id": {
+            "description": "Unique identifier for the character",
+            "examples": [
+              "bob",
+              "alice"
+            ],
+            "maxLength": 50,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "llm_config": {
+            "$ref": "#/components/schemas/LLMConfig",
+            "description": "Configuration for the character's language model"
+          },
+          "name": {
+            "description": "Character's display name (2-50 characters)",
+            "examples": [
+              "Bob",
+              "Alice"
+            ],
+            "maxLength": 50,
+            "minLength": 2,
+            "title": "Name",
+            "type": "string"
+          },
+          "position": {
+            "$ref": "#/components/schemas/Position"
+          },
+          "role": {
+            "description": "Character's role and personality description (10-5000 characters)",
+            "examples": [
+              "A friendly shopkeeper who loves to tell stories..."
+            ],
+            "maxLength": 5000,
+            "minLength": 10,
+            "title": "Role",
+            "type": "string"
+          },
+          "visual": {
+            "description": "Character's visual appearance description (10-500 characters)",
+            "examples": [
+              "A tall person with short brown hair and glasses..."
+            ],
+            "maxLength": 500,
+            "minLength": 10,
+            "title": "Visual",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "role",
+          "visual",
+          "llm_config",
+          "position",
+          "direction",
+          "action",
+          "action_started_at"
+        ],
+        "title": "CharacterState",
+        "type": "object"
+      },
       "ColorOption": {
         "description": "Color option configuration.",
         "properties": {
@@ -430,6 +579,93 @@
         "title": "LLMProvider",
         "type": "object"
       },
+      "Message": {
+        "description": "A message in the conversation.",
+        "properties": {
+          "calculated_speaking_time": {
+            "title": "Calculated Speaking Time",
+            "type": "number"
+          },
+          "character": {
+            "title": "Character",
+            "type": "string"
+          },
+          "content": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Content"
+          },
+          "conversation_rating": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversation Rating"
+          },
+          "end_conversation": {
+            "title": "End Conversation",
+            "type": "boolean"
+          },
+          "mood": {
+            "title": "Mood",
+            "type": "string"
+          },
+          "mood_emoji": {
+            "title": "Mood Emoji",
+            "type": "string"
+          },
+          "reaction_on_previous_message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reaction On Previous Message"
+          },
+          "recipient": {
+            "title": "Recipient",
+            "type": "string"
+          },
+          "thoughts": {
+            "title": "Thoughts",
+            "type": "string"
+          },
+          "timestamp": {
+            "title": "Timestamp",
+            "type": "string"
+          },
+          "unix_timestamp": {
+            "title": "Unix Timestamp",
+            "type": "number"
+          }
+        },
+        "required": [
+          "character",
+          "recipient",
+          "thoughts",
+          "mood",
+          "mood_emoji",
+          "timestamp",
+          "unix_timestamp",
+          "calculated_speaking_time",
+          "end_conversation"
+        ],
+        "title": "Message",
+        "type": "object"
+      },
       "Position": {
         "description": "A position in the scene.",
         "properties": {
@@ -588,6 +824,85 @@
         ],
         "title": "SceneConfigStatus",
         "type": "string"
+      },
+      "SceneState": {
+        "description": "State of the scene.",
+        "properties": {
+          "characters": {
+            "additionalProperties": {
+              "$ref": "#/components/schemas/CharacterState"
+            },
+            "title": "Characters",
+            "type": "object"
+          },
+          "conversation_active": {
+            "title": "Conversation Active",
+            "type": "boolean"
+          },
+          "conversation_ended": {
+            "title": "Conversation Ended",
+            "type": "boolean"
+          },
+          "ended_at": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ended At"
+          },
+          "messages": {
+            "items": {
+              "$ref": "#/components/schemas/Message"
+            },
+            "title": "Messages",
+            "type": "array"
+          },
+          "scene_config_id": {
+            "title": "Scene Config Id",
+            "type": "integer"
+          },
+          "scene_id": {
+            "title": "Scene Id",
+            "type": "integer"
+          },
+          "started_at": {
+            "title": "Started At",
+            "type": "number"
+          },
+          "visitor_count": {
+            "title": "Visitor Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "scene_id",
+          "scene_config_id",
+          "characters",
+          "messages",
+          "started_at",
+          "conversation_active",
+          "conversation_ended",
+          "visitor_count"
+        ],
+        "title": "SceneState",
+        "type": "object"
+      },
+      "ServerToClientEvents": {
+        "description": "Events the server emits over Socket.IO.",
+        "properties": {
+          "scene_state": {
+            "$ref": "#/components/schemas/SceneState"
+          }
+        },
+        "required": [
+          "scene_state"
+        ],
+        "title": "ServerToClientEvents",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
@@ -920,6 +1235,27 @@
         "summary": "Vote Scene",
         "tags": [
           "scenes"
+        ]
+      }
+    },
+    "/api/v1/socket-events/server-to-client": {
+      "get": {
+        "operationId": "socket_events_catalog_api_v1_socket_events_server_to_client_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServerToClientEvents"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Socket.IO server\u2192client event catalog (codegen only)",
+        "tags": [
+          "socket-events"
         ]
       }
     },

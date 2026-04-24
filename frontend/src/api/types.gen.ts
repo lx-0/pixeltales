@@ -4,706 +4,868 @@
  */
 
 export interface paths {
-  '/api/v1/config': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Get Config Options
+         * @description Get available configuration options.
+         */
+        get: operations["get_config_options_api_v1_config_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /**
-     * Get Config Options
-     * @description Get available configuration options.
-     */
-    get: operations['get_config_options_api_v1_config_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/scenes/propose': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/scenes/propose": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Propose Scene */
+        post: operations["propose_scene_api_v1_scenes_propose_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Propose Scene */
-    post: operations['propose_scene_api_v1_scenes_propose_post'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/scenes/proposed': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/scenes/proposed": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Proposed Scenes */
+        get: operations["get_proposed_scenes_api_v1_scenes_proposed_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Proposed Scenes */
-    get: operations['get_proposed_scenes_api_v1_scenes_proposed_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/scenes/{scene_config_id}': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/scenes/{scene_config_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Get Scene Config */
+        get: operations["get_scene_config_api_v1_scenes__scene_config_id__get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get Scene Config */
-    get: operations['get_scene_config_api_v1_scenes__scene_config_id__get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/scenes/{scene_config_id}/comment': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/scenes/{scene_config_id}/comment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Add Comment */
+        post: operations["add_comment_api_v1_scenes__scene_config_id__comment_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Add Comment */
-    post: operations['add_comment_api_v1_scenes__scene_config_id__comment_post'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/scenes/{scene_config_id}/reject': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/scenes/{scene_config_id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Reject Scene */
+        post: operations["reject_scene_api_v1_scenes__scene_config_id__reject_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Reject Scene */
-    post: operations['reject_scene_api_v1_scenes__scene_config_id__reject_post'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/v1/scenes/{scene_config_id}/vote': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/scenes/{scene_config_id}/vote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Vote Scene */
+        post: operations["vote_scene_api_v1_scenes__scene_config_id__vote_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    get?: never;
-    put?: never;
-    /** Vote Scene */
-    post: operations['vote_scene_api_v1_scenes__scene_config_id__vote_post'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/health': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/v1/socket-events/server-to-client": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Socket.IO server→client event catalog (codegen only) */
+        get: operations["socket_events_catalog_api_v1_socket_events_server_to_client_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Health Check */
-    get: operations['health_check_health_get'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
+    "/health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Health Check */
+        get: operations["health_check_health_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    /**
-     * CharacterConfig
-     * @description Configuration for a character.
-     */
-    CharacterConfig: {
-      /**
-       * Color
-       * @description Character's color in hex format (e.g., #FF0000)
-       * @example #FF0000
-       * @example #00FF00
-       */
-      color: string;
-      /**
-       * Id
-       * @description Unique identifier for the character
-       * @example bob
-       * @example alice
-       */
-      id: string;
-      /**
-       * Initial Action
-       * @enum {string}
-       */
-      initial_action:
-        | 'thinking'
-        | 'thinking:love'
-        | 'thinking:anger'
-        | 'thinking:sadness'
-        | 'thinking:surprise'
-        | 'thinking:fear'
-        | 'speaking'
-        | 'idle';
-      /**
-       * Initial Direction
-       * @enum {string}
-       */
-      initial_direction: 'front' | 'right' | 'left' | 'back';
-      /** Initial Mood */
-      initial_mood: string;
-      initial_position: components['schemas']['Position'];
-      /** @description Configuration for the character's language model */
-      llm_config: components['schemas']['LLMConfig'];
-      /**
-       * Name
-       * @description Character's display name (2-50 characters)
-       * @example Bob
-       * @example Alice
-       */
-      name: string;
-      /**
-       * Role
-       * @description Character's role and personality description (10-5000 characters)
-       * @example A friendly shopkeeper who loves to tell stories...
-       */
-      role: string;
-      /**
-       * Visual
-       * @description Character's visual appearance description (10-500 characters)
-       * @example A tall person with short brown hair and glasses...
-       */
-      visual: string;
+    schemas: {
+        /**
+         * CharacterConfig
+         * @description Configuration for a character.
+         */
+        CharacterConfig: {
+            /**
+             * Color
+             * @description Character's color in hex format (e.g., #FF0000)
+             * @example #FF0000
+             * @example #00FF00
+             */
+            color: string;
+            /**
+             * Id
+             * @description Unique identifier for the character
+             * @example bob
+             * @example alice
+             */
+            id: string;
+            /**
+             * Initial Action
+             * @enum {string}
+             */
+            initial_action: "thinking" | "thinking:love" | "thinking:anger" | "thinking:sadness" | "thinking:surprise" | "thinking:fear" | "speaking" | "idle";
+            /**
+             * Initial Direction
+             * @enum {string}
+             */
+            initial_direction: "front" | "right" | "left" | "back";
+            /** Initial Mood */
+            initial_mood: string;
+            initial_position: components["schemas"]["Position"];
+            /** @description Configuration for the character's language model */
+            llm_config: components["schemas"]["LLMConfig"];
+            /**
+             * Name
+             * @description Character's display name (2-50 characters)
+             * @example Bob
+             * @example Alice
+             */
+            name: string;
+            /**
+             * Role
+             * @description Character's role and personality description (10-5000 characters)
+             * @example A friendly shopkeeper who loves to tell stories...
+             */
+            role: string;
+            /**
+             * Visual
+             * @description Character's visual appearance description (10-500 characters)
+             * @example A tall person with short brown hair and glasses...
+             */
+            visual: string;
+        };
+        /**
+         * CharacterState
+         * @description A character in the scene.
+         */
+        CharacterState: {
+            /**
+             * Action
+             * @enum {string}
+             */
+            action: "thinking" | "thinking:love" | "thinking:anger" | "thinking:sadness" | "thinking:surprise" | "thinking:fear" | "speaking" | "idle";
+            /** Action Estimated Duration */
+            action_estimated_duration?: number | null;
+            /** Action Started At */
+            action_started_at: number;
+            /**
+             * Color
+             * @description Character's color in hex format (e.g., #FF0000)
+             * @example #FF0000
+             * @example #00FF00
+             */
+            color: string;
+            /**
+             * Current Mood
+             * @default neutral
+             */
+            current_mood: string;
+            /**
+             * Direction
+             * @enum {string}
+             */
+            direction: "front" | "right" | "left" | "back";
+            /**
+             * End Conversation Requested
+             * @default false
+             */
+            end_conversation_requested: boolean;
+            /** End Conversation Requested At */
+            end_conversation_requested_at?: number | null;
+            /** End Conversation Requested Validity Duration */
+            end_conversation_requested_validity_duration?: number | null;
+            /**
+             * Id
+             * @description Unique identifier for the character
+             * @example bob
+             * @example alice
+             */
+            id: string;
+            /** @description Configuration for the character's language model */
+            llm_config: components["schemas"]["LLMConfig"];
+            /**
+             * Name
+             * @description Character's display name (2-50 characters)
+             * @example Bob
+             * @example Alice
+             */
+            name: string;
+            position: components["schemas"]["Position"];
+            /**
+             * Role
+             * @description Character's role and personality description (10-5000 characters)
+             * @example A friendly shopkeeper who loves to tell stories...
+             */
+            role: string;
+            /**
+             * Visual
+             * @description Character's visual appearance description (10-500 characters)
+             * @example A tall person with short brown hair and glasses...
+             */
+            visual: string;
+        };
+        /**
+         * ColorOption
+         * @description Color option configuration.
+         */
+        ColorOption: {
+            /** Group */
+            group: string;
+            /** Hex */
+            hex: string;
+            /** Id */
+            id: string;
+            /** Name */
+            name: string;
+        };
+        /**
+         * Comment
+         * @description Comment on a scene proposal.
+         */
+        Comment: {
+            /** Comment */
+            comment: string;
+            /** Timestamp */
+            timestamp: string;
+            /** User */
+            user: string;
+        };
+        /**
+         * ConfigOptions
+         * @description Available configuration options.
+         */
+        ConfigOptions: {
+            /** Colors */
+            colors: components["schemas"]["ColorOption"][];
+            /** Llm Providers */
+            llm_providers: components["schemas"]["LLMProvider"][];
+        };
+        /**
+         * CreateSceneConfig
+         * @description Scene configuration for creation without ID.
+         */
+        CreateSceneConfig: {
+            /**
+             * Characters Config
+             * @description Configuration for each character in the scene, keyed by character ID
+             */
+            characters_config: {
+                [key: string]: components["schemas"]["CharacterConfig"];
+            };
+            /**
+             * Comments
+             * @description List of comments on the scene proposal
+             */
+            comments?: components["schemas"]["Comment"][] | null;
+            /**
+             * Description
+             * @description Scene description (10-5000 characters)
+             * @example Two friends meet at a coffee shop and discuss their dreams...
+             */
+            description: string;
+            /**
+             * Name
+             * @description Scene name (3-50 characters)
+             * @example Coffee Shop Chat
+             * @example Park Meeting
+             */
+            name: string;
+            /**
+             * Proposed At
+             * @description ISO format datetime when the scene was proposed
+             */
+            proposed_at?: string | null;
+            /**
+             * Proposer Name
+             * @description Name of the person proposing the scene (2-50 characters)
+             * @example John Doe
+             * @example Jane Smith
+             */
+            proposer_name?: string | null;
+            /**
+             * Start Character Id
+             * @description ID of the character who starts the conversation
+             * @example bob
+             * @example alice
+             */
+            start_character_id: string;
+            /**
+             * @description Current status of the scene configuration (proposed, active, or rejected)
+             * @default proposed
+             */
+            status: components["schemas"]["SceneConfigStatus"];
+            /**
+             * Votes
+             * @description Number of votes the scene proposal has received
+             * @default 0
+             */
+            votes: number | null;
+        };
+        /** HTTPValidationError */
+        HTTPValidationError: {
+            /** Detail */
+            detail?: components["schemas"]["ValidationError"][];
+        };
+        /**
+         * LLMConfig
+         * @description LLM configuration for the character.
+         */
+        LLMConfig: {
+            /**
+             * Max Tokens
+             * @description Maximum number of tokens to generate (1-32000)
+             */
+            max_tokens: number;
+            /**
+             * Model Name
+             * @description The name of the model to use
+             * @example gpt-4o-mini
+             * @example claude-3-5-sonnet-20241022
+             */
+            model_name: string;
+            /**
+             * Provider
+             * @description The LLM provider (openai or anthropic)
+             * @enum {string}
+             */
+            provider: "openai" | "anthropic";
+            /**
+             * Temperature
+             * @description Temperature controls randomness (0.0-2.0, default 0.7)
+             */
+            temperature: number;
+        };
+        /**
+         * LLMModel
+         * @description LLM model configuration.
+         */
+        LLMModel: {
+            /**
+             * Default Temperature
+             * @default 0.7
+             */
+            default_temperature: number;
+            /** Description */
+            description?: string | null;
+            /** Id */
+            id: string;
+            /** Max Tokens */
+            max_tokens: number;
+            /** Name */
+            name: string;
+        };
+        /**
+         * LLMProvider
+         * @description LLM provider configuration.
+         */
+        LLMProvider: {
+            /**
+             * Id
+             * @enum {string}
+             */
+            id: "openai" | "anthropic";
+            /** Models */
+            models: components["schemas"]["LLMModel"][];
+            /** Name */
+            name: string;
+        };
+        /**
+         * Message
+         * @description A message in the conversation.
+         */
+        Message: {
+            /** Calculated Speaking Time */
+            calculated_speaking_time: number;
+            /** Character */
+            character: string;
+            /** Content */
+            content?: string | null;
+            /** Conversation Rating */
+            conversation_rating?: number | null;
+            /** End Conversation */
+            end_conversation: boolean;
+            /** Mood */
+            mood: string;
+            /** Mood Emoji */
+            mood_emoji: string;
+            /** Reaction On Previous Message */
+            reaction_on_previous_message?: string | null;
+            /** Recipient */
+            recipient: string;
+            /** Thoughts */
+            thoughts: string;
+            /** Timestamp */
+            timestamp: string;
+            /** Unix Timestamp */
+            unix_timestamp: number;
+        };
+        /**
+         * Position
+         * @description A position in the scene.
+         */
+        Position: {
+            /** X */
+            x: number;
+            /** Y */
+            y: number;
+        };
+        /**
+         * SceneConfig
+         * @description Scene configuration.
+         */
+        SceneConfig: {
+            /**
+             * Characters Config
+             * @description Configuration for each character in the scene, keyed by character ID
+             */
+            characters_config: {
+                [key: string]: components["schemas"]["CharacterConfig"];
+            };
+            /**
+             * Comments
+             * @description List of comments on the scene proposal
+             */
+            comments?: components["schemas"]["Comment"][] | null;
+            /**
+             * Description
+             * @description Scene description (10-5000 characters)
+             * @example Two friends meet at a coffee shop and discuss their dreams...
+             */
+            description: string;
+            /** Id */
+            id: number;
+            /**
+             * Name
+             * @description Scene name (3-50 characters)
+             * @example Coffee Shop Chat
+             * @example Park Meeting
+             */
+            name: string;
+            /**
+             * Proposed At
+             * @description ISO format datetime when the scene was proposed
+             */
+            proposed_at?: string | null;
+            /**
+             * Proposer Name
+             * @description Name of the person proposing the scene (2-50 characters)
+             * @example John Doe
+             * @example Jane Smith
+             */
+            proposer_name?: string | null;
+            /**
+             * Start Character Id
+             * @description ID of the character who starts the conversation
+             * @example bob
+             * @example alice
+             */
+            start_character_id: string;
+            /**
+             * @description Current status of the scene configuration (proposed, active, or rejected)
+             * @default proposed
+             */
+            status: components["schemas"]["SceneConfigStatus"];
+            /**
+             * System Prompt
+             * @description System prompt that sets the context and rules (10-1000 characters)
+             * @example You are in a cozy coffee shop on a rainy afternoon...
+             */
+            system_prompt: string;
+            /**
+             * Votes
+             * @description Number of votes the scene proposal has received
+             * @default 0
+             */
+            votes: number | null;
+        };
+        /**
+         * SceneConfigStatus
+         * @description Scene config status enum.
+         * @enum {string}
+         */
+        SceneConfigStatus: "proposed" | "active" | "rejected";
+        /**
+         * SceneState
+         * @description State of the scene.
+         */
+        SceneState: {
+            /** Characters */
+            characters: {
+                [key: string]: components["schemas"]["CharacterState"];
+            };
+            /** Conversation Active */
+            conversation_active: boolean;
+            /** Conversation Ended */
+            conversation_ended: boolean;
+            /** Ended At */
+            ended_at?: number | null;
+            /** Messages */
+            messages: components["schemas"]["Message"][];
+            /** Scene Config Id */
+            scene_config_id: number;
+            /** Scene Id */
+            scene_id: number;
+            /** Started At */
+            started_at: number;
+            /** Visitor Count */
+            visitor_count: number;
+        };
+        /**
+         * ServerToClientEvents
+         * @description Events the server emits over Socket.IO.
+         */
+        ServerToClientEvents: {
+            scene_state: components["schemas"]["SceneState"];
+        };
+        /** ValidationError */
+        ValidationError: {
+            /** Location */
+            loc: (string | number)[];
+            /** Message */
+            msg: string;
+            /** Error Type */
+            type: string;
+        };
+        /** VotePayload */
+        VotePayload: {
+            /** Vote */
+            vote: number;
+        };
     };
-    /**
-     * ColorOption
-     * @description Color option configuration.
-     */
-    ColorOption: {
-      /** Group */
-      group: string;
-      /** Hex */
-      hex: string;
-      /** Id */
-      id: string;
-      /** Name */
-      name: string;
-    };
-    /**
-     * Comment
-     * @description Comment on a scene proposal.
-     */
-    Comment: {
-      /** Comment */
-      comment: string;
-      /** Timestamp */
-      timestamp: string;
-      /** User */
-      user: string;
-    };
-    /**
-     * ConfigOptions
-     * @description Available configuration options.
-     */
-    ConfigOptions: {
-      /** Colors */
-      colors: components['schemas']['ColorOption'][];
-      /** Llm Providers */
-      llm_providers: components['schemas']['LLMProvider'][];
-    };
-    /**
-     * CreateSceneConfig
-     * @description Scene configuration for creation without ID.
-     */
-    CreateSceneConfig: {
-      /**
-       * Characters Config
-       * @description Configuration for each character in the scene, keyed by character ID
-       */
-      characters_config: {
-        [key: string]: components['schemas']['CharacterConfig'];
-      };
-      /**
-       * Comments
-       * @description List of comments on the scene proposal
-       */
-      comments?: components['schemas']['Comment'][] | null;
-      /**
-       * Description
-       * @description Scene description (10-5000 characters)
-       * @example Two friends meet at a coffee shop and discuss their dreams...
-       */
-      description: string;
-      /**
-       * Name
-       * @description Scene name (3-50 characters)
-       * @example Coffee Shop Chat
-       * @example Park Meeting
-       */
-      name: string;
-      /**
-       * Proposed At
-       * @description ISO format datetime when the scene was proposed
-       */
-      proposed_at?: string | null;
-      /**
-       * Proposer Name
-       * @description Name of the person proposing the scene (2-50 characters)
-       * @example John Doe
-       * @example Jane Smith
-       */
-      proposer_name?: string | null;
-      /**
-       * Start Character Id
-       * @description ID of the character who starts the conversation
-       * @example bob
-       * @example alice
-       */
-      start_character_id: string;
-      /**
-       * @description Current status of the scene configuration (proposed, active, or rejected)
-       * @default proposed
-       */
-      status: components['schemas']['SceneConfigStatus'];
-      /**
-       * Votes
-       * @description Number of votes the scene proposal has received
-       * @default 0
-       */
-      votes: number | null;
-    };
-    /** HTTPValidationError */
-    HTTPValidationError: {
-      /** Detail */
-      detail?: components['schemas']['ValidationError'][];
-    };
-    /**
-     * LLMConfig
-     * @description LLM configuration for the character.
-     */
-    LLMConfig: {
-      /**
-       * Max Tokens
-       * @description Maximum number of tokens to generate (1-32000)
-       */
-      max_tokens: number;
-      /**
-       * Model Name
-       * @description The name of the model to use
-       * @example gpt-4o-mini
-       * @example claude-3-5-sonnet-20241022
-       */
-      model_name: string;
-      /**
-       * Provider
-       * @description The LLM provider (openai or anthropic)
-       * @enum {string}
-       */
-      provider: 'openai' | 'anthropic';
-      /**
-       * Temperature
-       * @description Temperature controls randomness (0.0-2.0, default 0.7)
-       */
-      temperature: number;
-    };
-    /**
-     * LLMModel
-     * @description LLM model configuration.
-     */
-    LLMModel: {
-      /**
-       * Default Temperature
-       * @default 0.7
-       */
-      default_temperature: number;
-      /** Description */
-      description?: string | null;
-      /** Id */
-      id: string;
-      /** Max Tokens */
-      max_tokens: number;
-      /** Name */
-      name: string;
-    };
-    /**
-     * LLMProvider
-     * @description LLM provider configuration.
-     */
-    LLMProvider: {
-      /**
-       * Id
-       * @enum {string}
-       */
-      id: 'openai' | 'anthropic';
-      /** Models */
-      models: components['schemas']['LLMModel'][];
-      /** Name */
-      name: string;
-    };
-    /**
-     * Position
-     * @description A position in the scene.
-     */
-    Position: {
-      /** X */
-      x: number;
-      /** Y */
-      y: number;
-    };
-    /**
-     * SceneConfig
-     * @description Scene configuration.
-     */
-    SceneConfig: {
-      /**
-       * Characters Config
-       * @description Configuration for each character in the scene, keyed by character ID
-       */
-      characters_config: {
-        [key: string]: components['schemas']['CharacterConfig'];
-      };
-      /**
-       * Comments
-       * @description List of comments on the scene proposal
-       */
-      comments?: components['schemas']['Comment'][] | null;
-      /**
-       * Description
-       * @description Scene description (10-5000 characters)
-       * @example Two friends meet at a coffee shop and discuss their dreams...
-       */
-      description: string;
-      /** Id */
-      id: number;
-      /**
-       * Name
-       * @description Scene name (3-50 characters)
-       * @example Coffee Shop Chat
-       * @example Park Meeting
-       */
-      name: string;
-      /**
-       * Proposed At
-       * @description ISO format datetime when the scene was proposed
-       */
-      proposed_at?: string | null;
-      /**
-       * Proposer Name
-       * @description Name of the person proposing the scene (2-50 characters)
-       * @example John Doe
-       * @example Jane Smith
-       */
-      proposer_name?: string | null;
-      /**
-       * Start Character Id
-       * @description ID of the character who starts the conversation
-       * @example bob
-       * @example alice
-       */
-      start_character_id: string;
-      /**
-       * @description Current status of the scene configuration (proposed, active, or rejected)
-       * @default proposed
-       */
-      status: components['schemas']['SceneConfigStatus'];
-      /**
-       * System Prompt
-       * @description System prompt that sets the context and rules (10-1000 characters)
-       * @example You are in a cozy coffee shop on a rainy afternoon...
-       */
-      system_prompt: string;
-      /**
-       * Votes
-       * @description Number of votes the scene proposal has received
-       * @default 0
-       */
-      votes: number | null;
-    };
-    /**
-     * SceneConfigStatus
-     * @description Scene config status enum.
-     * @enum {string}
-     */
-    SceneConfigStatus: 'proposed' | 'active' | 'rejected';
-    /** ValidationError */
-    ValidationError: {
-      /** Location */
-      loc: (string | number)[];
-      /** Message */
-      msg: string;
-      /** Error Type */
-      type: string;
-    };
-    /** VotePayload */
-    VotePayload: {
-      /** Vote */
-      vote: number;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  get_config_options_api_v1_config_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_config_options_api_v1_config_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConfigOptions"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    propose_scene_api_v1_scenes_propose_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['ConfigOptions'];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSceneConfig"];
+            };
         };
-      };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneConfig"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-  };
-  propose_scene_api_v1_scenes_propose_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    get_proposed_scenes_api_v1_scenes_proposed_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneConfig"][];
+                };
+            };
+        };
     };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CreateSceneConfig'];
-      };
+    get_scene_config_api_v1_scenes__scene_config_id__get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_config_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneConfig"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    add_comment_api_v1_scenes__scene_config_id__comment_post: {
+        parameters: {
+            query: {
+                user: string;
+                comment: string;
+            };
+            header?: never;
+            path: {
+                scene_config_id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['SceneConfig'];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
     };
-  };
-  get_proposed_scenes_api_v1_scenes_proposed_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    reject_scene_api_v1_scenes__scene_config_id__reject_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_config_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    vote_scene_api_v1_scenes__scene_config_id__vote_post: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                scene_config_id: string;
+            };
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['SceneConfig'][];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VotePayload"];
+            };
         };
-      };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SceneConfig"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
     };
-  };
-  get_scene_config_api_v1_scenes__scene_config_id__get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scene_config_id: string;
-      };
-      cookie?: never;
+    socket_events_catalog_api_v1_socket_events_server_to_client_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ServerToClientEvents"];
+                };
+            };
+        };
     };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    health_check_health_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['SceneConfig'];
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": unknown;
+                };
+            };
         };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
     };
-  };
-  add_comment_api_v1_scenes__scene_config_id__comment_post: {
-    parameters: {
-      query: {
-        user: string;
-        comment: string;
-      };
-      header?: never;
-      path: {
-        scene_config_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
-    };
-  };
-  reject_scene_api_v1_scenes__scene_config_id__reject_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scene_config_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': unknown;
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
-    };
-  };
-  vote_scene_api_v1_scenes__scene_config_id__vote_post: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path: {
-        scene_config_id: string;
-      };
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['VotePayload'];
-      };
-    };
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['SceneConfig'];
-        };
-      };
-      /** @description Validation Error */
-      422: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['HTTPValidationError'];
-        };
-      };
-    };
-  };
-  health_check_health_get: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description Successful Response */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': unknown;
-        };
-      };
-    };
-  };
 }

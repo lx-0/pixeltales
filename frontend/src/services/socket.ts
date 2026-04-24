@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import type { ClientToServerEvents, ServerToClientEvents } from '@/api/socket-events';
 import type { SceneState } from '@/types/scene';
 import { Logger } from '../utils/logger';
 
@@ -9,9 +10,11 @@ type EventData = {
   connect_error: Error;
 };
 
+type TypedSocket = Socket<ServerToClientEvents, ClientToServerEvents>;
+
 class SocketService {
   private static instance: SocketService;
-  private socket: Socket | null = null;
+  private socket: TypedSocket | null = null;
   private listeners: Map<keyof EventData, Set<(data: unknown) => void>> = new Map();
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
@@ -94,14 +97,12 @@ class SocketService {
       }
     });
 
-    this.socket.on('error', (error) => {
-      Logger.error(this.constructor.name, `Socket error: ${error}`);
-      this.isConnecting = false;
-    });
-
-    this.socket.on('scene_state', (state: SceneState) => {
+    this.socket.on('scene_state', (state) => {
       Logger.info(this.constructor.name, 'Received scene state update');
-      this.notifyListeners('scene_state', state);
+      // Bridge: generated SceneState has all fields optional (Pydantic
+      // fields with defaults), the in-app SceneState marks them required
+      // because the server always populates them. Safe at runtime.
+      this.notifyListeners('scene_state', state as unknown as SceneState);
     });
   }
 

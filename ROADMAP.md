@@ -59,11 +59,11 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [x] `use-config.ts` + `use-scenes.ts` migrated to typed client
 - [x] `SceneProposalForm` uses generated `CreateSceneConfig` + `CharacterConfig`
 
-## Phase 4b — Socket.IO event typing (deferred)
+## Phase 4b ✅ — Socket.IO event typing
 
-- [ ] Pydantic models for each Socket.IO event payload, dumped as JSON Schema
-- [ ] TS types codegenned via `json-schema-to-typescript`
-- [ ] Replace ad-hoc `Socket<any>` in `services/socket.ts` with typed events
+- [x] Backend `app/api/endpoints/socket_events.py` — schemas-only catalog endpoint exposes `ServerToClientEvents` (Pydantic) so OpenAPI codegen picks up `SceneState`.
+- [x] Frontend `src/api/socket-events.ts` — `ServerToClientEvents` + `ClientToServerEvents` map types from generated schemas.
+- [x] `services/socket.ts` — `Socket<ServerToClientEvents, ClientToServerEvents>` typing. Bridge cast on the receiving side keeps consumers on the existing hand-typed `SceneState` (slightly stricter than the generated type).
 
 ## Phase 5 ✅ — Testing infrastructure
 
