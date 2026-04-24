@@ -69,6 +69,14 @@ class CharacterIdentity(CharacterBase):
         description="ID of a sprite from the backend asset catalog (GET /api/v1/config).",
         json_schema_extra={"examples": ["bob", "cleaner_girl", "doctor_1", "zombie"]},
     )
+    skills: list[str] = Field(
+        default_factory=list,
+        description=(
+            "Names of agentskills.io SKILL.md folders the agent can invoke "
+            "as tools. Resolved from app/agent/skills/<name>/."
+        ),
+        json_schema_extra={"examples": [["recall_about_npc"], []]},
+    )
 
 
 class CharacterPlacement(BaseModel):

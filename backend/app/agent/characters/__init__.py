@@ -74,9 +74,13 @@ def _validate_yaml(path: Path, raw: dict[str, Any]) -> None:
     if missing:
         raise ValueError(f"{path}: missing required keys: {sorted(missing)}")
 
-    extra = keys - _REQUIRED_KEYS - {"llm"}
+    extra = keys - _REQUIRED_KEYS - {"llm", "skills"}
     if extra:
         raise ValueError(f"{path}: unknown keys: {sorted(extra)}")
+
+    skills_value = raw.get("skills", [])
+    if not isinstance(skills_value, list) or not all(isinstance(s, str) for s in skills_value):
+        raise ValueError(f"{path}: `skills` must be a list of strings")
 
     if "llm" not in raw:
         raise ValueError(f"{path}: missing required `llm` block")
@@ -149,6 +153,7 @@ def _load_one(char_dir: Path) -> CharacterIdentity:
         sprite_id=raw["sprite_id"],
         visual=raw["visual"],
         role=role,
+        skills=list(raw.get("skills", [])),
         llm_config=LLMConfig(
             provider=provider,
             model_name=model_name,

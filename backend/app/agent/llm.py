@@ -7,6 +7,8 @@ from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.providers.openai import OpenAIProvider
 from pydantic_ai.settings import ModelSettings
 
+from app.agent.characters import load as load_character
+from app.agent.skills import Skill, load_skill
 from app.core.config import settings
 from app.core.metrics import llm_response_seconds
 from app.models.llm import LLMConfig
@@ -40,52 +42,53 @@ class CharacterResponse(BaseModel):
 
 
 # Type aliases
-LLMConfigHash = int
 SystemPromptTemplateVars = dict[str, str]
 
 
 class LLMManager:
     """LLM manager backed by pydantic-ai.
 
-    One Agent per unique LLMConfig (deduped by hash) so two characters with
-    the same model+temperature+max_tokens share a single client. The system
-    prompt template is per-scene; instructions are formatted with the
-    per-call vars and passed to agent.run() each turn.
+    One Agent per character (no LLMConfig dedup — skills differ per character,
+    and 2-7 Agent instances per scene is trivial memory). The system prompt
+    template is per-scene; instructions are formatted with the per-call vars
+    and passed to agent.run() each turn. Per-character skills loaded from
+    `app/agent/skills/` are registered as PydanticAI tools at agent build time.
     """
 
     def __init__(self) -> None:
-        self.agents: dict[LLMConfigHash, Agent[None, CharacterResponse]] | None = None
-        self.llm_configs: dict[LLMConfigHash, LLMConfig] | None = None
-        self.external_id_to_llm_hash_map: dict[str, LLMConfigHash] | None = None
+        self.agents: dict[str, Agent[None, CharacterResponse]] | None = None
+        self.character_configs: dict[str, LLMConfig] | None = None
         self.system_prompt_template: str | None = None
 
     def init_scene(self, scene_config: SceneConfig) -> None:
-        """Initialize agents for the scene's character set."""
-        llm_configs_by_external_id = {
+        """Initialize one Agent per character in the scene.
+
+        Each character's identity is loaded from the library so its `skills:`
+        list flows through to tool registration. The placement-level
+        LLMConfig (model, temperature, max_tokens) wins over the library
+        identity's LLMConfig — placements may override.
+        """
+        self.system_prompt_template = scene_config.system_prompt
+        self.character_configs = {
             char_id: scene_config.characters_config[char_id].llm_config
             for char_id in scene_config.characters_config
         }
-        (
-            self.llm_configs,
-            self.external_id_to_llm_hash_map,
-        ) = self._reduce_llm_config(llm_configs_by_external_id)
-        self.system_prompt_template = scene_config.system_prompt
-        self.agents = {h: self._build_agent(self.llm_configs[h]) for h in self.llm_configs}
+        self.agents = {
+            char_id: self._build_agent(
+                self.character_configs[char_id],
+                skills=tuple(load_skill(s) for s in load_character(char_id).skills),
+            )
+            for char_id in self.character_configs
+        }
 
-    def _reduce_llm_config(
-        self, llm_configs_by_id: dict[str, LLMConfig]
-    ) -> tuple[dict[LLMConfigHash, LLMConfig], dict[str, LLMConfigHash]]:
-        """Dedupe LLM configs across characters, mapping each character to a hash."""
-        return (
-            {hash(c): c for c in llm_configs_by_id.values()},
-            {char_id: hash(c) for char_id, c in llm_configs_by_id.items()},
-        )
-
-    def _build_agent(self, config: LLMConfig) -> Agent[None, CharacterResponse]:
-        """Build a pydantic-ai Agent for one LLMConfig.
+    def _build_agent(
+        self, config: LLMConfig, skills: tuple[Skill, ...] = ()
+    ) -> Agent[None, CharacterResponse]:
+        """Build a pydantic-ai Agent for one character.
 
         Routes through the LiteLLM gateway when configured, else direct
-        to the upstream provider.
+        to the upstream provider. Each skill is registered as a tool
+        with the SKILL.md description as the LLM-facing tool description.
         """
         model_settings: ModelSettings = {
             "temperature": config.temperature,
@@ -95,7 +98,7 @@ class LLMManager:
         if settings.use_gateway:
             assert settings.LITELLM_BASE_URL is not None
             assert settings.LITELLM_API_KEY is not None
-            return Agent(
+            agent: Agent[None, CharacterResponse] = Agent(
                 OpenAIChatModel(
                     config.model_name,
                     provider=OpenAIProvider(
@@ -107,11 +110,10 @@ class LLMManager:
                 retries=3,
                 model_settings=model_settings,
             )
-
-        if config.provider == "openai":
+        elif config.provider == "openai":
             if settings.OPENAI_API_KEY is None:
                 raise ValueError("OPENAI_API_KEY is not set (and LITELLM gateway not configured)")
-            return Agent(
+            agent = Agent(
                 OpenAIChatModel(
                     config.model_name,
                     provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY.get_secret_value()),
@@ -120,13 +122,12 @@ class LLMManager:
                 retries=3,
                 model_settings=model_settings,
             )
-
-        if config.provider == "anthropic":
+        elif config.provider == "anthropic":
             if settings.ANTHROPIC_API_KEY is None:
                 raise ValueError(
                     "ANTHROPIC_API_KEY is not set (and LITELLM gateway not configured)"
                 )
-            return Agent(
+            agent = Agent(
                 AnthropicModel(
                     config.model_name,
                     provider=AnthropicProvider(
@@ -137,8 +138,15 @@ class LLMManager:
                 retries=3,
                 model_settings=model_settings,
             )
+        else:
+            raise ValueError(f"Unsupported provider: {config.provider}")
 
-        raise ValueError(f"Unsupported provider: {config.provider}")
+        for skill in skills:
+            # Two-step: kwargs-form returns a decorator, then we apply it to
+            # the callable. PydanticAI's tool_plain has separate overloads for
+            # positional and kwargs forms — mixing them confuses the typer.
+            agent.tool_plain(name=skill.name, description=skill.description)(skill.callable)
+        return agent
 
     async def generate_response(
         self,
@@ -149,20 +157,17 @@ class LLMManager:
         """Generate a structured response for one character on its turn."""
         if (
             self.agents is None
-            or self.external_id_to_llm_hash_map is None
-            or self.llm_configs is None
+            or self.character_configs is None
             or self.system_prompt_template is None
         ):
             raise ValueError("init_scene not called")
 
         instructions = self.system_prompt_template.format(**system_vars)
         user_prompt = system_vars["input"]
-
-        llm_config_hash = self.external_id_to_llm_hash_map[external_id]
-        cfg = self.llm_configs[llm_config_hash]
+        cfg = self.character_configs[external_id]
 
         with llm_response_seconds.labels(provider=cfg.provider, model=cfg.model_name).time():
-            result = await self.agents[llm_config_hash].run(
+            result = await self.agents[external_id].run(
                 user_prompt,
                 instructions=instructions,
                 message_history=history,
