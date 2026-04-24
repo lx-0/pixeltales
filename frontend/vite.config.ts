@@ -11,6 +11,32 @@ export default defineConfig({
       '@': path.resolve(__dirname, 'src'),
     },
   },
+  build: {
+    // Split the production bundle by dependency cluster so the largest
+    // libs cache independently and parse in parallel. Without this
+    // everything lands in one ~2.5 MB JS file. Function form catches
+    // sub-paths (e.g. react-dom/client) that the array form misses.
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes('node_modules')) return;
+          if (id.includes('node_modules/phaser')) return 'phaser';
+          if (id.includes('node_modules/recharts')) return 'recharts';
+          if (
+            id.includes('node_modules/react/') ||
+            id.includes('node_modules/react-dom/') ||
+            id.includes('node_modules/scheduler/')
+          ) {
+            return 'react-vendor';
+          }
+          if (id.includes('node_modules/@tanstack/') || id.includes('node_modules/openapi-fetch')) {
+            return 'query-vendor';
+          }
+          return 'vendor';
+        },
+      },
+    },
+  },
   server: {
     host: true,
     proxy: {
