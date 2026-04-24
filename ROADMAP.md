@@ -155,25 +155,24 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 ---
 
-## Next Up (post-modernization)
+## ✅ Shipped: Post-modernization track (2026-04-24)
 
-Brainstormed 2026-04-24. Spec: `docs/superpowers/specs/2026-04-24-scene-content-ux-refactor-design.md`.
+Brainstormed 2026-04-24. Spec: `docs/superpowers/specs/2026-04-24-scene-content-ux-refactor-design.md`. All three clusters landed plus a bonus character-library SSOT refactor.
 
-Three clusters picked by the user:
+- **Scene Content (b)** — dynamic character sprites + rooms from a backend-served catalog.
+  1. [x] Backend asset catalog in `app/config.py`, `CharacterConfig.sprite_id`, `SceneConfig.room_id` (`08b4d5f`)
+  2. [x] Frontend `CharacterManager` + `MainScene` dynamic sprite/room loading (`252b3ab`)
+  3. [x] Scene-proposal form: sprite + room dropdowns (`b119c26`)
 
-- **Scene Content (b)** — dynamic character sprites + rooms from a backend-served catalog. Assets already copied into `frontend/public/assets/` (Doctor_1, Doctor_2, Zombie, the-lab, the-lab-w-docs).
-  1. [ ] Backend asset catalog in `app/config.py`, `CharacterConfig.sprite_id`, `SceneConfig.room_id`
-  2. [ ] Frontend `CharacterManager` + `MainScene` dynamic sprite/room loading
-  3. [ ] Scene-proposal form: sprite + room dropdowns
+- **Visitor UX Polish (a, cautious)**:
+  4. [x] V-align "is thinking" text in `ConversationHistory` (`1d47744`)
+  5. [x] Move side-view toggle into `ConversationHistory` toolbar (`1d47744`)
 
-- **Visitor UX Polish (a, cautious)** — two highest-rated items from `.private/.notes/PROMPTS.md`:
-  4. [ ] V-align "is thinking" text in `ConversationHistory` (`[++]`)
-  5. [ ] Move side-view toggle into `ConversationHistory` toolbar (`[+]`)
+- **Tech Refactoring (e)**:
+  6. [x] Split `SceneConfig` data out of `SceneState` snapshots (`605dd19`)
 
-- **Tech Refactoring (e)** — scope-limited cleanup:
-  6. [ ] Split `SceneConfig` data out of `SceneState` snapshots (dedupe, smaller snapshots)
-
-Explicitly deferred *this round*: visitor engagement (Email, CSV, SSO, translation), platform (Twitch, gather.town), Spritesheet Builder, LangGraph rewrite, Phaser 4.
+- **Bonus — Character library SSOT** (not in original spec, emerged from conversation):
+  7. [x] AGENTS.md + .character.yaml per character, 3-model split (Identity / Placement / Config) (`b46b482` + `b9ddf22`)
 
 ## Wishlist — Parking Lot (from `.private/.notes/PROMPTS.md`)
 
