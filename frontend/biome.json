@@ -62,7 +62,7 @@
       }
     },
     {
-      "includes": ["src/services/socket.ts", "src/utils/logger.ts"],
+      "includes": ["src/services/socket.ts"],
       "linter": {
         "rules": {
           "complexity": {
