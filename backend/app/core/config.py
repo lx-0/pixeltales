@@ -24,6 +24,12 @@ class Settings(BaseSettings):
     # scanned in addition to this dir.
     CHARACTERS_DATA_DIR: str = "data/characters"
 
+    # Scene state snapshot retention. Only `_get_latest_snapshot()` is read,
+    # so older snapshots are dead weight; we keep a small recent window for
+    # debugging. Each new snapshot prunes anything beyond the latest N for
+    # its scene_id. 0 disables pruning entirely (not recommended in prod).
+    SCENE_SNAPSHOT_RETENTION: int = 10
+
     # PostgreSQL settings
     POSTGRES_USER: str | None = None
     POSTGRES_PASSWORD: str | None = None
