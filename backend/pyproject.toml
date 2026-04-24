@@ -87,15 +87,14 @@ filterwarnings = [
 
 [tool.coverage.run]
 source = ["app"]
-# Skip app-bootstrap + migration code: Alembic migrations, the main FastAPI
-# wiring, and DB entrypoints aren't exercised by unit tests and shouldn't
-# drag the floor down. Revisit once E2E tests cover startup paths.
+# Skip app-bootstrap code that unit tests don't exercise — FastAPI wiring,
+# DB engine setup, logging/metrics plumbing. Everything else counts,
+# including default scene data.
 omit = [
   "app/main.py",
   "app/db/database.py",
   "app/core/logging.py",
   "app/core/metrics.py",
-  "app/default_scene*.py",
 ]
 
 [tool.coverage.report]

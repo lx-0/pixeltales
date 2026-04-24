@@ -1,5 +1,5 @@
 from app.config import TILE_SIZE
-from app.models.base import Position
+from app.models.base import Direction, Position
 from app.models.character import CharacterPlacement
 from app.models.scene import (
     CreateSceneConfig,
@@ -11,12 +11,12 @@ def _place(
     char_id: str,
     *,
     position: Position,
-    direction: str,
+    direction: Direction,
 ) -> CharacterPlacement:
     return CharacterPlacement(
         id=char_id,
         initial_position=position,
-        initial_direction=direction,  # type: ignore[arg-type]
+        initial_direction=direction,
         initial_action="idle",
         initial_mood="neutral",
     )
