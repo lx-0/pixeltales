@@ -1,13 +1,11 @@
-from collections.abc import Sequence
-from typing import cast
-
-from langchain_anthropic import ChatAnthropic
-from langchain_core.messages import AIMessage, BaseMessage, HumanMessage
-from langchain_core.output_parsers import PydanticOutputParser
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.runnables import Runnable, RunnableSerializable
-from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+from pydantic_ai.messages import ModelMessage
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.anthropic import AnthropicProvider
+from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
 
 from app.core.config import settings
 from app.core.metrics import llm_response_seconds
@@ -38,164 +36,135 @@ class CharacterResponse(BaseModel):
     content: str | None = Field(
         description="Your spoken response. Formatting instructions: To express your mood in the spoken response, use casual formatting style, including casual CAPS for emphasis, dramatic punctuation, but ABSOLUTELY NO emojis!"
     )
-    end_conversation: bool = Field(
-        description="Your response ends the conversation"
-        # description="Do you want to end the conversation to focus on other things?"
-    )
-    # prefer_to_continue_conversation: bool = Field(
-    #     description="Do you want to continue the conversation?"
-    # )
+    end_conversation: bool = Field(description="Your response ends the conversation")
 
 
 # Type aliases
-
 LLMConfigHash = int
-LLMRunnable = Runnable[
-    ChatPromptTemplate | str | Sequence[BaseMessage],  # Input type(s)
-    CharacterResponse,  # Output type
-]
-
-SystemPromptTemplateVars = dict[str, str | list[HumanMessage | AIMessage]]
+SystemPromptTemplateVars = dict[str, str]
 
 
 class LLMManager:
-    """LLM manager."""
+    """LLM manager backed by pydantic-ai.
+
+    One Agent per unique LLMConfig (deduped by hash) so two characters with
+    the same model+temperature+max_tokens share a single client. The system
+    prompt template is per-scene; instructions are formatted with the
+    per-call vars and passed to agent.run() each turn.
+    """
 
     def __init__(self) -> None:
-        """Initialize the LLM manager."""
-
-        self.llms: dict[LLMConfigHash, LLMRunnable] | None = None
-        self.prompt: ChatPromptTemplate | None = None
-        self.chains: (
-            dict[
-                LLMConfigHash,
-                RunnableSerializable[SystemPromptTemplateVars, CharacterResponse],
-            ]
-            | None
-        ) = None
+        self.agents: dict[LLMConfigHash, Agent[None, CharacterResponse]] | None = None
         self.llm_configs: dict[LLMConfigHash, LLMConfig] | None = None
         self.external_id_to_llm_hash_map: dict[str, LLMConfigHash] | None = None
+        self.system_prompt_template: str | None = None
 
     def init_scene(self, scene_config: SceneConfig) -> None:
-        """Initialize the LLMs for the scene."""
+        """Initialize agents for the scene's character set."""
         llm_configs_by_external_id = {
             char_id: scene_config.characters_config[char_id].llm_config
             for char_id in scene_config.characters_config
         }
-        # Map characters to LLMs via `llm_config` hash
-        # self.external_id_to_llm_map =
         (
             self.llm_configs,
             self.external_id_to_llm_hash_map,
         ) = self._reduce_llm_config(llm_configs_by_external_id)
-        self._init_llms()
-        self.init_conversation_chain(scene_config.system_prompt)
+        self.system_prompt_template = scene_config.system_prompt
+        self.agents = {h: self._build_agent(self.llm_configs[h]) for h in self.llm_configs}
 
     def _reduce_llm_config(
         self, llm_configs_by_id: dict[str, LLMConfig]
     ) -> tuple[dict[LLMConfigHash, LLMConfig], dict[str, LLMConfigHash]]:
-        """Reduce the LLM configs to a reduced LLM config map."""
+        """Dedupe LLM configs across characters, mapping each character to a hash."""
         return (
-            {hash(llm_config): llm_config for llm_config in llm_configs_by_id.values()},
-            {char_id: hash(llm_config) for char_id, llm_config in llm_configs_by_id.items()},
+            {hash(c): c for c in llm_configs_by_id.values()},
+            {char_id: hash(c) for char_id, c in llm_configs_by_id.items()},
         )
 
-    def _init_llms(self) -> None:
-        """Initialize the LLMs for the scene."""
+    def _build_agent(self, config: LLMConfig) -> Agent[None, CharacterResponse]:
+        """Build a pydantic-ai Agent for one LLMConfig.
 
-        if self.llm_configs is None:
-            raise ValueError("LLM configs not initialized")
-
-        # Initialize LLMs for each character with structured output support
-        self.llms = {
-            llm_config_hash: cast(
-                LLMRunnable,
-                self._get_model_instance(self.llm_configs[llm_config_hash]).with_structured_output(  # type: ignore
-                    schema=CharacterResponse, method="function_calling", strict=True
-                ),
-            )
-            for llm_config_hash in self.llm_configs
+        Routes through the LiteLLM gateway when configured, else direct
+        to the upstream provider.
+        """
+        model_settings: ModelSettings = {
+            "temperature": config.temperature,
+            "max_tokens": config.max_tokens,
         }
 
-    def init_conversation_chain(self, system_prompt: str) -> None:
-        """Initialize the conversation chain for the scene."""
-
-        if self.llm_configs is None:
-            raise ValueError("LLM configs not initialized")
-
-        if self.llms is None:
-            raise ValueError("LLMs not initialized")
-
-        # Initialize conversation chain with improved format instructions
-        self.prompt = ChatPromptTemplate.from_messages(  # type: ignore
-            [
-                ("system", system_prompt),
-                MessagesPlaceholder(variable_name="history"),
-                ("human", "{input}"),
-            ]
-        ).partial(
-            format_instructions=PydanticOutputParser(
-                pydantic_object=CharacterResponse
-            ).get_format_instructions()
-        )
-
-        # Configure chains for each llm
-        self.chains = {
-            llm_config_hash: (self.prompt | self.llms[llm_config_hash])
-            for llm_config_hash in self.llm_configs
-        }
-
-    def _get_model_instance(self, config: LLMConfig) -> ChatOpenAI | ChatAnthropic:
-        # When the LiteLLM gateway is configured, route every provider through
-        # it via the OpenAI-compatible API. The gateway handles upstream
-        # routing (OpenAI, Anthropic, etc.) and credential management.
         if settings.use_gateway:
-            return ChatOpenAI(
-                model=config.model_name,
-                temperature=config.temperature,
-                base_url=settings.LITELLM_BASE_URL,
-                api_key=settings.LITELLM_API_KEY,
-                max_completion_tokens=config.max_tokens,
+            assert settings.LITELLM_BASE_URL is not None
+            assert settings.LITELLM_API_KEY is not None
+            return Agent(
+                OpenAIChatModel(
+                    config.model_name,
+                    provider=OpenAIProvider(
+                        base_url=settings.LITELLM_BASE_URL,
+                        api_key=settings.LITELLM_API_KEY.get_secret_value(),
+                    ),
+                ),
+                output_type=CharacterResponse,
+                retries=3,
+                model_settings=model_settings,
             )
 
         if config.provider == "openai":
             if settings.OPENAI_API_KEY is None:
                 raise ValueError("OPENAI_API_KEY is not set (and LITELLM gateway not configured)")
-            return ChatOpenAI(
-                model=config.model_name,
-                temperature=config.temperature,
-                api_key=settings.OPENAI_API_KEY,
-                max_completion_tokens=config.max_tokens,
+            return Agent(
+                OpenAIChatModel(
+                    config.model_name,
+                    provider=OpenAIProvider(api_key=settings.OPENAI_API_KEY.get_secret_value()),
+                ),
+                output_type=CharacterResponse,
+                retries=3,
+                model_settings=model_settings,
             )
+
         if config.provider == "anthropic":
             if settings.ANTHROPIC_API_KEY is None:
                 raise ValueError(
                     "ANTHROPIC_API_KEY is not set (and LITELLM gateway not configured)"
                 )
-            return ChatAnthropic(
-                model=config.model_name,
-                temperature=config.temperature,
-                api_key=settings.ANTHROPIC_API_KEY,
-                max_tokens_to_sample=config.max_tokens,
-                timeout=None,
-                stop=None,
+            return Agent(
+                AnthropicModel(
+                    config.model_name,
+                    provider=AnthropicProvider(
+                        api_key=settings.ANTHROPIC_API_KEY.get_secret_value()
+                    ),
+                ),
+                output_type=CharacterResponse,
+                retries=3,
+                model_settings=model_settings,
             )
+
         raise ValueError(f"Unsupported provider: {config.provider}")
 
     async def generate_response(
-        self, external_id: str, input: SystemPromptTemplateVars
+        self,
+        external_id: str,
+        system_vars: SystemPromptTemplateVars,
+        history: list[ModelMessage],
     ) -> CharacterResponse:
-        """Generate a response for the scene."""
-        if self.chains is None:
-            raise ValueError("Chains not initialized")
+        """Generate a structured response for one character on its turn."""
+        if (
+            self.agents is None
+            or self.external_id_to_llm_hash_map is None
+            or self.llm_configs is None
+            or self.system_prompt_template is None
+        ):
+            raise ValueError("init_scene not called")
 
-        if self.external_id_to_llm_hash_map is None:
-            raise ValueError("External ID to LLM hash map not initialized")
+        instructions = self.system_prompt_template.format(**system_vars)
+        user_prompt = system_vars["input"]
 
         llm_config_hash = self.external_id_to_llm_hash_map[external_id]
-        if self.llm_configs is None:
-            raise ValueError("LLM configs not initialized")
         cfg = self.llm_configs[llm_config_hash]
 
         with llm_response_seconds.labels(provider=cfg.provider, model=cfg.model_name).time():
-            return await self.chains[llm_config_hash].ainvoke(input)
+            result = await self.agents[llm_config_hash].run(
+                user_prompt,
+                instructions=instructions,
+                message_history=history,
+            )
+        return result.output

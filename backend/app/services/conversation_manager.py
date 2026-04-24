@@ -4,7 +4,13 @@ import time
 from datetime import datetime
 
 import structlog
-from langchain.schema import AIMessage, HumanMessage
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 
 from app.characters import load as load_character
 from app.models.conversation import Conversation, Message
@@ -35,18 +41,21 @@ class ConversationManager:
     def get_end_conversation_request_validity(self) -> float:
         return self.end_conversation_request_validity
 
-    def _prepare_conversation_history(self, characterId: str) -> list[HumanMessage | AIMessage]:
-        """Prepare the conversation history."""
+    def _prepare_conversation_history(self, characterId: str) -> list[ModelMessage]:
+        """Prepare the conversation history for pydantic-ai.
+
+        Map this character's own past messages to ModelResponse (assistant
+        side) and the other characters' to ModelRequest (user side).
+        """
         if self.conversation is None:
             raise ValueError("Conversation not set")
-        history: list[HumanMessage | AIMessage] = []
-        for msg in self.conversation.messages[
-            -self.context_window :
-        ]:  # Last N messages for context
+        history: list[ModelMessage] = []
+        for msg in self.conversation.messages[-self.context_window :]:
+            content = msg.content or "..."
             if msg.character != characterId:
-                history.append(HumanMessage(content=msg.content or "..."))
+                history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
             else:
-                history.append(AIMessage(content=msg.content or "..."))
+                history.append(ModelResponse(parts=[TextPart(content=content)]))
         return history
 
     def _prepare_scene_description(
@@ -112,10 +121,8 @@ class ConversationManager:
                 # Generate response with structured output
                 response = await self.llm_manager.generate_response(
                     characterId,
-                    {
-                        **system_vars,
-                        "history": history,
-                    },
+                    system_vars,
+                    history,
                 )
 
                 # Calculate speaking time

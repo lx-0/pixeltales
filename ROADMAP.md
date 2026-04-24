@@ -99,8 +99,11 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 ### Backend
 
-- [ ] **LangGraph rewrite of `SceneManager` + `ConversationManager` + `LLMManager`** — model the scene tick as a `StateGraph` with one node per character turn. Drops manual `asyncio.sleep` + scheduling. Audit async SQLAlchemy session lifecycle while at it.
-  *Gating now met:* Phase 5 added 26 unit tests covering turn-taking, speaking-time math, context-window truncation, retry/backoff, visitor tracking, and start() idempotency. Rewrite can proceed against this test suite as regression guard — add test-per-behavior for any new LangGraph node semantics.
+- [ ] **PydanticAI migration of the LLM layer** (replaces an earlier "LangGraph rewrite" entry — see note below).
+  *Scope:* `LLMManager` and `ConversationManager._prepare_conversation_history` only. `SceneManager`'s tick loop stays — its `asyncio.sleep`s are user-visible animation pacing (speaking-time, engagement pause, cooldowns), not workflow scheduling. A graph framework wouldn't help and the old roadmap entry was wrong about "drops manual sleeps".
+  *Why PydanticAI over LangGraph:* (1) Pydantic-native — `CharacterResponse` is already Pydantic, drops the `with_structured_output(method="function_calling", strict=True)` + `PydanticOutputParser` dance. (2) Lighter dep surface — drops 5 `langchain-*` packages (~150 MB container). (3) Per-NPC `Agent` instance scales better than per-NPC `StateGraph` instance for any future MMORPG-NPC direction. (4) Tools (`@agent.tool`) and streaming are first-class — when we want them.
+  *Gating met:* 38 backend tests pin the contract (15 `ConversationManager` + 11 `SceneManager` + 8 `extra="forbid"` + 4 misc).
+  *Out of scope, deferred until concrete need:* per-character tools (no NPC needs to call APIs yet), streaming (no typing-animation feature pending), multi-NPC orchestration (we have 2 characters), `SceneManager` rewrite (works fine).
 
 - [ ] **DB-stored per-character model config** — move `DEFAULT_MODEL` constant + `LLMConfig` from scene proposal payload to a `models` DB table. Hot-swappable without redeploy.
   *Why deferred:* needs Alembic migration **and** scene-proposal UI changes (dropdown reads from DB). Wait until users ask for runtime model swaps.

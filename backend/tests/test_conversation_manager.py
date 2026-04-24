@@ -3,7 +3,12 @@
 from unittest.mock import AsyncMock
 
 import pytest
-from langchain.schema import AIMessage, HumanMessage
+from pydantic_ai.messages import (
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 
 from app.models.scene import Scene
 from app.services.conversation_manager import ConversationManager
@@ -53,9 +58,10 @@ class TestSpeakingTime:
 
 
 class TestConversationHistory:
-    """_prepare_conversation_history maps own messages to AIMessage, others to HumanMessage."""
+    """_prepare_conversation_history maps own messages to ModelResponse,
+    others to ModelRequest."""
 
-    def test_own_messages_are_ai(self, mock_llm_manager: LLMManager):
+    def test_own_messages_are_assistant(self, mock_llm_manager: LLMManager):
         cm = ConversationManager(mock_llm_manager)
         cm.init_conversation(
             [
@@ -66,9 +72,14 @@ class TestConversationHistory:
         )
         history = cm._prepare_conversation_history("alice")
         assert len(history) == 3
-        assert isinstance(history[0], AIMessage)  # alice's "hi"
-        assert isinstance(history[1], HumanMessage)  # bob's "hello"
-        assert isinstance(history[2], AIMessage)  # alice's "how are you"
+        assert isinstance(history[0], ModelResponse)  # alice's "hi"
+        assert isinstance(history[1], ModelRequest)  # bob's "hello"
+        assert isinstance(history[2], ModelResponse)  # alice's "how are you"
+        # Spot-check parts contain the expected content
+        assert isinstance(history[0].parts[0], TextPart)
+        assert history[0].parts[0].content == "hi"
+        assert isinstance(history[1].parts[0], UserPromptPart)
+        assert history[1].parts[0].content == "hello"
 
     def test_context_window_truncates(self, mock_llm_manager: LLMManager):
         cm = ConversationManager(mock_llm_manager)
@@ -82,7 +93,11 @@ class TestConversationHistory:
         cm = ConversationManager(mock_llm_manager)
         cm.init_conversation([make_message("alice", "")])
         history = cm._prepare_conversation_history("alice")
-        assert history[0].content == "..."
+        # alice speaks → ModelResponse(TextPart)
+        assert isinstance(history[0], ModelResponse)
+        part = history[0].parts[0]
+        assert isinstance(part, TextPart)
+        assert part.content == "..."
 
     def test_raises_without_init(self, mock_llm_manager: LLMManager):
         cm = ConversationManager(mock_llm_manager)
