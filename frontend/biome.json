@@ -60,39 +60,6 @@
   },
   "overrides": [
     {
-      "includes": ["src/main.tsx", "src/components/organisms/SceneProposalList.tsx"],
-      "linter": {
-        "rules": {
-          "style": {
-            "noNonNullAssertion": "warn"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["src/services/socket.ts"],
-      "linter": {
-        "rules": {
-          "complexity": {
-            "noStaticOnlyClass": "warn"
-          },
-          "suspicious": {
-            "useIterableCallbackReturn": "warn"
-          }
-        }
-      }
-    },
-    {
-      "includes": ["src/components/organisms/ConversationStatsChart.tsx"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "useJsxKeyInIterable": "warn"
-          }
-        }
-      }
-    },
-    {
       "includes": ["scripts/**"],
       "linter": {
         "rules": {
