@@ -155,6 +155,44 @@ Items that were intentionally deferred. Each has a "Why deferred" line so future
 
 ---
 
+## Next Up (post-modernization)
+
+Brainstormed 2026-04-24. Spec: `docs/superpowers/specs/2026-04-24-scene-content-ux-refactor-design.md`.
+
+Three clusters picked by the user:
+
+- **Scene Content (b)** — dynamic character sprites + rooms from a backend-served catalog. Assets already copied into `frontend/public/assets/` (Doctor_1, Doctor_2, Zombie, the-lab, the-lab-w-docs).
+  1. [ ] Backend asset catalog in `app/config.py`, `CharacterConfig.sprite_id`, `SceneConfig.room_id`
+  2. [ ] Frontend `CharacterManager` + `MainScene` dynamic sprite/room loading
+  3. [ ] Scene-proposal form: sprite + room dropdowns
+
+- **Visitor UX Polish (a, cautious)** — two highest-rated items from `.private/.notes/PROMPTS.md`:
+  4. [ ] V-align "is thinking" text in `ConversationHistory` (`[++]`)
+  5. [ ] Move side-view toggle into `ConversationHistory` toolbar (`[+]`)
+
+- **Tech Refactoring (e)** — scope-limited cleanup:
+  6. [ ] Split `SceneConfig` data out of `SceneState` snapshots (dedupe, smaller snapshots)
+
+Explicitly deferred *this round*: visitor engagement (Email, CSV, SSO, translation), platform (Twitch, gather.town), Spritesheet Builder, LangGraph rewrite, Phaser 4.
+
+## Wishlist — Parking Lot (from `.private/.notes/PROMPTS.md`)
+
+Alex's ratings: `[++]` high → `[--]` very low. Pick from here when next planning.
+
+- [ ] `[++]` Zoom in/out on conversation rating chart
+- [ ] `[o]` Proper context windowing (smarter than last-20-messages)
+- [ ] `[o]` Conversation summary email to proposer on scene end
+- [ ] `[o]` Download conversation summary as CSV / JSON (research dataset)
+- [ ] `[o]` SSO (Google, GitHub)
+- [ ] `[o]` Mobile orientational split-screen (game canvas / conversation history)
+- [ ] `[o]` Fullscreen mode (sticky btn in game canvas)
+- [ ] `[o]` Language Selection (Top Languages + free-text dialect, translated system prompts hashed + cached in DB)
+- [ ] `[-]` New Scene Templates (Tiled `.tmx` rendering, not just PNG backgrounds)
+- [ ] `[--]` Character Sprites Builder (multi-step LLM workflow — prompt → base → animation-sheet → coord-extraction → per-sprite-regen, big lift, see PROMPTS.md for full spec)
+- [ ] `[--]` PydanticAI substitute for LangChain (testing)
+- [ ] `[--]` Twitch streaming of the scene
+- [ ] `[--]` Research gather.town features
+
 ## Execution log
 
-Phases shipped in order: 0 → 1 → 2 → 3a → 4a → 5 → 6a → 7 → 8 → 9 → 4b → 6b. 13 commits between `021f5dd` and `4bb3574`.
+Phases shipped in order: 0 → 1 → 2 → 3a → 4a → 5 → 6a → 7 → 8 → 9 → 4b → 6b, then substantive tests + quick-wins bundle. Commits `021f5dd` … `d567dcd`.
