@@ -1,3 +1,4 @@
+/// <reference types="vitest" />
 import path from 'node:path';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
@@ -52,6 +53,36 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
       },
+    },
+  },
+  // Vitest config — co-located here so vite plugins (react, tailwindcss) +
+  // resolve aliases apply identically to test runs and the dev/prod build.
+  test: {
+    globals: true,
+    environment: 'jsdom',
+    setupFiles: ['./src/test/setup.ts'],
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    exclude: ['node_modules', 'dist', 'tests-e2e'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      // Report on every source file, not just transitively imported ones.
+      // Without this the report only shows files the (currently tiny) test
+      // suite happens to touch — a misleading view of what's covered.
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/api/types.gen.ts',
+        'src/test/**',
+        'src/**/*.test.{ts,tsx}',
+        'src/**/*.spec.{ts,tsx}',
+        // Phaser scenes need a real GL context; skip until we have a Phaser
+        // mock in the test setup.
+        'src/game/**',
+        '**/*.config.*',
+        '**/main.tsx',
+      ],
+      // No threshold gate yet — the current baseline is too thin to hold
+      // a line on. Set a floor once components/hooks tests exist.
     },
   },
 });
