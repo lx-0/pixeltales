@@ -1,0 +1,25 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome
+      glob: "frontend/**/*.{ts,tsx,js,jsx,json,jsonc}"
+      run: pnpm exec biome check --write --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      root: frontend/
+      stage_fixed: true
+
+    - name: ruff-check
+      glob: "backend/**/*.py"
+      run: uv run --no-sync ruff check --fix {staged_files}
+      root: backend/
+      stage_fixed: true
+
+    - name: ruff-format
+      glob: "backend/**/*.py"
+      run: uv run --no-sync ruff format {staged_files}
+      root: backend/
+      stage_fixed: true
+
+    - name: mypy
+      glob: "backend/**/*.py"
+      run: uv run --no-sync mypy app
+      root: backend/
