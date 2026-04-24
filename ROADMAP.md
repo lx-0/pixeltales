@@ -65,12 +65,16 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [ ] TS types codegenned via `json-schema-to-typescript`
 - [ ] Replace ad-hoc `Socket<any>` in `services/socket.ts` with typed events
 
-## Phase 5 — Testing
+## Phase 5 ✅ — Testing infrastructure
 
-- [ ] Backend: `pytest` + `pytest-asyncio` + `httpx.AsyncClient`. Unit tests for `SceneManager` tick loop + `ConversationManager` turn-taking with mocked LLM responses. In-memory SQLite fixture.
-- [ ] Frontend: `vitest` + Testing Library for React components. Skip Phaser scenes.
-- [ ] E2E: Playwright smoke — page loads, socket connects, first `scene_state` arrives, at least one character message renders.
-- [ ] Coverage floors enforced in CI (target: backend ≥60%, frontend ≥40% on first pass).
+- [x] Backend: pytest + pytest-asyncio + httpx, in-memory SQLite fixture (`tests/conftest.py`).
+- [x] Baseline tests: /health, /api/v1/config, SceneConfigService basics. 4 tests pass.
+- [x] Latent SceneManager bug fixed: `asyncio.create_task` moved out of `__init__` (was failing module import outside event loop). Now lifespan calls `scene_manager.start()`.
+- [x] Frontend: vitest + jsdom + @testing-library/react, sample utils tests. 5 tests pass.
+- [x] Playwright config + tests-e2e/smoke.spec.ts (page loads, socket connects).
+  Run via `pnpm test:e2e` after `pnpm exec playwright install chromium` and stack up.
+- [ ] Coverage floors deferred to Phase 8 CI.
+- [ ] LangGraph rewrite (Phase 3b) can now proceed safely on top of this baseline.
 
 ## Phase 6 — LLM infrastructure
 

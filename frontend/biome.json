@@ -6,7 +6,15 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["**/*.{ts,tsx,js,jsx,json,jsonc}", "!dist", "!node_modules", "!src/components/ui"]
+    "includes": [
+      "**/*.{ts,tsx,js,jsx,json,jsonc}",
+      "!dist",
+      "!node_modules",
+      "!src/components/ui",
+      "!src/api/types.gen.ts",
+      "!playwright-report",
+      "!test-results"
+    ]
   },
   "formatter": {
     "enabled": true,

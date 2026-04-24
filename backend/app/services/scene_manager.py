@@ -45,9 +45,12 @@ class SceneManager:
 
         # Technical
         self.sio: SocketIO | None = None  # Will be set by the socket manager
+        self._loop_task: asyncio.Task[None] | None = None
 
-        # Start the conversation loop
-        asyncio.create_task(self._load_and_run())
+    def start(self) -> None:
+        """Start the conversation tick loop. Must be called from a running event loop."""
+        if self._loop_task is None or self._loop_task.done():
+            self._loop_task = asyncio.create_task(self._load_and_run())
 
     async def get_next_scene_config(self) -> SceneConfig:
         """Get the next scene config."""

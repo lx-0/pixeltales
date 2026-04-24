@@ -24,6 +24,7 @@ scene_manager = SceneManager()
 async def lifespan(app: FastAPI):
     sio = app.state.socket_server
     await scene_manager.set_socket_instance(sio)
+    scene_manager.start()
     logger.info("app.startup", env=settings.ENV, db_type=settings.DB_TYPE)
     yield
     logger.info("app.shutdown")
