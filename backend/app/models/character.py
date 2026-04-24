@@ -55,7 +55,7 @@ CharacterAction = Literal[
 
 class CharacterIdentity(CharacterBase):
     """Library-level character identity — the part that travels with a
-    character across scenes. Lives on disk under app/characters/<id>/ or
+    character across scenes. Lives on disk under app/agent/characters/<id>/ or
     data/characters/<id>/ (AGENTS.md + .character.yaml).
 
     Strict on unknown keys — typos in `.character.yaml` or in a

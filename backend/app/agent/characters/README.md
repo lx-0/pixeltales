@@ -8,10 +8,10 @@ This file is the spec the loader and writer enforce. If you're adding code that 
 
 Characters live in two directories. Both are scanned at boot:
 
-- **`backend/app/characters/`** — versioned seeds shipped with the repo (bob, alice, doctor_1, doctor_2, zombie, claude, chatgpt). Read-only at runtime.
+- **`backend/app/agent/characters/`** — versioned seeds shipped with the repo (bob, alice, doctor_1, doctor_2, zombie, claude, chatgpt). Read-only at runtime.
 - **`backend/data/characters/`** — user-proposed characters written by the backend at runtime via `POST /api/v1/characters`. Mounted as a docker volume so it survives container restarts.
 
-If the same id exists in both, the **seed wins** and a warning is logged. (Promote a user character to a seed by `mv data/characters/<id> app/characters/<id>` and committing.)
+If the same id exists in both, the **seed wins** and a warning is logged. (Promote a user character to a seed by `mv data/characters/<id> app/agent/characters/<id>` and committing.)
 
 Every character is a directory:
 
@@ -62,7 +62,7 @@ At runtime, `load(id)` raises `KeyError` if a scene references a character that'
 ## Programmatic API
 
 ```python
-from app.characters import load, load_all, write_character
+from app.agent.characters import load, load_all, write_character
 
 load("bob")              # → CharacterIdentity, raises KeyError if missing
 load_all()               # → dict[str, CharacterIdentity], cached, both dirs merged

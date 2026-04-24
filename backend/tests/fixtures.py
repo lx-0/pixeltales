@@ -8,7 +8,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from app.characters import load as load_character
+from app.agent.characters import load as load_character
+from app.agent.llm import CharacterResponse, LLMManager
 from app.models.base import Position
 from app.models.character import (
     CharacterConfig,
@@ -18,7 +19,6 @@ from app.models.character import (
 )
 from app.models.conversation import Message
 from app.models.scene import Scene, SceneConfig, SceneConfigStatus, SceneState
-from app.services.llm_manager import CharacterResponse, LLMManager
 
 
 def _placement_for(identity: CharacterIdentity) -> CharacterPlacement:

@@ -5,6 +5,7 @@ from socket import SocketIO
 
 import structlog
 
+from app.agent.llm import LLMManager
 from app.core.metrics import messages_total
 from app.models.character import CharacterAction
 from app.models.scene import (
@@ -13,7 +14,6 @@ from app.models.scene import (
     SceneState,
 )
 from app.services.conversation_manager import ConversationManager, Message
-from app.services.llm_manager import LLMManager
 from app.services.scene_config_service import SceneConfigService
 from app.services.scene_service import SceneService
 from app.services.scene_state_snapshot_service import SceneStateSnapshotService

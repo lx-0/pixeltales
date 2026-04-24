@@ -10,9 +10,9 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
+from app.agent.llm import LLMManager
 from app.models.scene import Scene
 from app.services.conversation_manager import ConversationManager
-from app.services.llm_manager import LLMManager
 from tests.fixtures import make_message
 
 
@@ -111,7 +111,7 @@ class TestSystemMessage:
         vars = cm._prepare_system_message(scene, "alice", message_recipient="bob")
         assert vars["character_name"] == "Alice"
         role = vars["character_role"]
-        # Role now comes from app/characters/alice/AGENTS.md (the library);
+        # Role now comes from app/agent/characters/alice/AGENTS.md (the library);
         # verify identity flowed through, not the exact prose.
         assert isinstance(role, str)
         assert "Alice" in role

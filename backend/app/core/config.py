@@ -20,7 +20,7 @@ class Settings(BaseSettings):
 
     # Character library — runtime data dir for user-proposed characters.
     # Container mounts /data/characters; local dev defaults to data/characters
-    # relative to backend/. The seed library at app/characters/ is always
+    # relative to backend/. The seed library at app/agent/characters/ is always
     # scanned in addition to this dir.
     CHARACTERS_DATA_DIR: str = "data/characters"
 
