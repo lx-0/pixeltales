@@ -81,8 +81,15 @@ export default defineConfig({
         '**/*.config.*',
         '**/main.tsx',
       ],
-      // No threshold gate yet — the current baseline is too thin to hold
-      // a line on. Set a floor once components/hooks tests exist.
+      // First-pass floor — set after the E15 hooks/components test pass
+      // brought coverage from ~1% to ~16%. Ratchet up as the suite grows;
+      // ratchet down never. Trips CI if a regression drops coverage below.
+      thresholds: {
+        statements: 15,
+        branches: 9,
+        functions: 8,
+        lines: 15,
+      },
     },
   },
 });

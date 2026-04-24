@@ -41,7 +41,7 @@ import {
 } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
-import { TILE_SIZE } from '@/game/config';
+import { TILE_SIZE } from '@/game/constants';
 import { useCharacters, useCreateCharacter } from '@/hooks/use-characters';
 import { getModelOptions, useConfig } from '@/hooks/use-config';
 import { useSceneProposal } from '@/hooks/use-scenes';

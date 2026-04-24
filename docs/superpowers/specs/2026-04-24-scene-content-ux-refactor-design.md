@@ -124,10 +124,10 @@ Backend container rebuild after 1 and 5. Frontend hot-reload handles 2-4.
 - `uv run --no-sync ruff check` + `mypy app`
 - Manual browser: propose a scene with Doctor_1 + Zombie in the-lab room, verify chars render, conversation flows, scene proposal in list shows correct metadata.
 
-## Open Questions
+## Resolved Open Questions
 
-- Character-Sprite fallback for `has_idle_anim=false` — single static frame vs. generate animation from one frame? Default: single static frame displayed, no Phaser animation played. Revisit if it looks dead compared to animated characters.
-- Where to store the asset catalog? Currently `app/config.py`. Could move to a `backend/assets.json` file checked in separately so non-code contributors can add sprites. Keep in config.py for now; extract only if friction appears.
+- **Character-Sprite fallback for `has_idle_anim=false`** → single-frame "pseudo-animation": load as a 48×48 spritesheet with `endFrame: 0` and generate a 1-frame anim per direction so `sprite.play(...)` stays uniform. Implemented in `CharacterManager.preload()` + `createAnimations()` (`252b3ab`). Static sprites (Doctor_1, Doctor_2, Zombie) render visually shorter than animated ones (48 vs 96 px tall) — accepted for MVP, revisit if it bothers viewers.
+- **Where to store the asset catalog** → kept in `backend/app/config.py` (`AVAILABLE_SPRITES`, `AVAILABLE_ROOMS`). Served via `GET /api/v1/config`. Extract to a JSON file only if a non-code contributor actually asks to add a sprite without touching Python.
 
 ## Status — Shipped 2026-04-24
 
