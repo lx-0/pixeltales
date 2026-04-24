@@ -1,6 +1,7 @@
-import { MessageSquare } from 'lucide-react';
-import { useMemo } from 'react';
+import { MessageSquare, ZoomOut } from 'lucide-react';
+import { useMemo, useState } from 'react';
 import {
+  Brush,
   CartesianGrid,
   Label,
   Legend,
@@ -11,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { SceneConfig, SceneState } from '@/types/scene';
 import { formatTime } from '@/utils/format';
@@ -76,6 +78,15 @@ export default function ConversationStatsChart({
     [scene.messages]
   );
 
+  // Brush controls — uncontrolled until the user drags, then controlled
+  // so the "Reset zoom" button can snap back to the full range.
+  const [zoom, setZoom] = useState<{ start?: number; end?: number }>({});
+  const isZoomed =
+    zoom.start !== undefined &&
+    zoom.end !== undefined &&
+    (zoom.start !== 0 || zoom.end !== Math.max(0, characterDatasets.length - 1));
+  const resetZoom = () => setZoom({});
+
   return (
     <Card className="p-2 sm:p-4 bg-gray-800 rounded-lg shadow-lg border border-gray-700">
       <CardHeader className="p-0">
@@ -85,15 +96,17 @@ export default function ConversationStatsChart({
             <h2 className="text-lg sm:text-xl font-bold text-gray-100">Conversation Ratings</h2>
           </div>
           <div className="flex gap-2">
-            {/* <Button
+            <Button
               variant="outline"
               size="sm"
               onClick={resetZoom}
-              className="text-gray-400 hover:text-gray-100"
-              disabled={!zoomState.data.length && zoomState.zoomLevel === 1}
+              className="text-gray-400 hover:text-gray-100 disabled:opacity-40"
+              disabled={!isZoomed}
+              title="Reset zoom — show full timeline"
             >
               <ZoomOut className="w-4 h-4" />
-            </Button> */}
+              <span className="sr-only">Reset zoom</span>
+            </Button>
           </div>
         </div>
       </CardHeader>
@@ -237,6 +250,21 @@ export default function ConversationStatsChart({
                   />
                 );
               })}
+              <Brush
+                dataKey="timestamp"
+                height={26}
+                travellerWidth={8}
+                stroke="#6b7280"
+                fill="#1f2937"
+                tickFormatter={(unix) => formatTime(unix, { hour: '2-digit', minute: '2-digit' })}
+                startIndex={zoom.start}
+                endIndex={zoom.end}
+                onChange={(range) => {
+                  if (range && range.startIndex !== undefined && range.endIndex !== undefined) {
+                    setZoom({ start: range.startIndex, end: range.endIndex });
+                  }
+                }}
+              />
             </LineChart>
           </ResponsiveContainer>
         </div>

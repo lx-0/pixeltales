@@ -174,7 +174,7 @@ Brainstormed 2026-04-24. Spec: `docs/superpowers/specs/2026-04-24-scene-content-
 
 Alex's ratings: `[++]` high → `[--]` very low. Pick from here when next planning.
 
-- [ ] `[++]` Zoom in/out on conversation rating chart
+- [x] ~~`[++]` Zoom in/out on conversation rating chart~~ — `recharts` `Brush` component below the LineChart for drag-to-zoom + scroll. "Reset zoom" `<ZoomOut/>` button next to the chart heading; disabled when at full extent.
 - [ ] `[o]` Proper context windowing (smarter than last-20-messages)
 - [ ] `[o]` Conversation summary email to proposer on scene end
 - [ ] `[o]` Download conversation summary as CSV / JSON (research dataset)
