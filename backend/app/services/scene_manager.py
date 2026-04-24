@@ -187,7 +187,11 @@ class SceneManager:
             characterId
         ].action_estimated_duration = message.calculated_speaking_time
 
-        self.scene.state.messages.append(message)  ## TODO use conversation manager
+        # SceneState.messages is the source of truth; ConversationManager
+        # reads it via `self.conversation.messages = scene.state.messages`
+        # at the top of generate_message() each turn, so appending here
+        # is fine.
+        self.scene.state.messages.append(message)
         messages_total.labels(character=characterId).inc()
 
         # Emit update to all visitors
