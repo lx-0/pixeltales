@@ -1,7 +1,6 @@
 import asyncio
 import random
 import time
-from socket import SocketIO
 
 import structlog
 
@@ -29,6 +28,9 @@ class Harness:
     retries on transient errors. Reads from :class:`World` for
     perception; writes back through :class:`World` mutation methods.
     Channel-agnostic — the Socket.IO bridge lives in ``app/client/``.
+    Every World mutation fires a :class:`WorldEvent` that subscribed
+    Clients translate into wire-format broadcasts; the Harness itself
+    knows nothing about who's listening.
     """
 
     def __init__(self) -> None:
@@ -52,9 +54,10 @@ class Harness:
         # Internal states
         self.active_visitors: set[str] = set()
 
-        # Technical
-        self.sio: SocketIO | None = None  # Will be set by the socket manager
+        # Background tasks — held as attributes to satisfy RUF006 and so
+        # `start()` is idempotent (no double-spawn).
         self._loop_task: asyncio.Task[None] | None = None
+        self._conversation_task: asyncio.Task[None] | None = None
 
     # Compatibility shim — existing callers + tests read/write `sm.scene`.
     # Reads delegate to the World; writes propagate to the World too so
@@ -108,15 +111,10 @@ class Harness:
                 raise ValueError(f"Scene config with id {scene_config_id} not found")
         self.scene = await self.scene_service.create_scene(scene_config, len(self.active_visitors))
         self.conversation_manager.init_conversation()
-        scene = self.world.require_scene()
-        await self.scene_state_snapshot_service.create_snapshot(scene.state)
+        await self._persist_state()
 
     async def _load_and_run(self) -> None:
         """Initialize the harness."""
-        # Wait for self.sio to be set
-        while self.sio is None:
-            await asyncio.sleep(1)
-
         # Load latest scene state snapshot
         latest_snapshot = await self._load_latest_scene_state_snapshot()
         if latest_snapshot is None:
@@ -127,20 +125,20 @@ class Harness:
         # Initialize LLMs for the scene
         self.llm_manager.init_scene(scene.config)
 
-        # Start the conversation loop
-        asyncio.create_task(self._conversation_loop())
+        # Start the conversation loop (held as attribute so the task is
+        # not garbage-collected mid-flight — see RUF006).
+        self._conversation_task = asyncio.create_task(self._conversation_loop())
 
-    async def set_socket_instance(self, sio: SocketIO) -> None:
-        """Set the socket instance for emitting updates."""
-        self.sio = sio
+    async def _persist_state(self) -> None:
+        """Snapshot the current scene state. Pure persistence — no broadcast.
 
-    async def emit_scene_update(self, sid: str | None = None, save_snapshot: bool = True) -> None:
-        """Emit scene state update to all connected visitors."""
-        state = self.get_scene_state()
-        if save_snapshot:
-            await self.scene_state_snapshot_service.create_snapshot(state)
-        if self.sio:
-            await self.sio.emit("scene_state", state.model_dump(), room=sid)  # type: ignore
+        Broadcast is handled by Client adapters subscribed to the World;
+        the Harness's only Client-facing concern is "make sure the latest
+        state is durable so a fresh viewer sees the right thing on join."
+        """
+        if self.world.scene is None:
+            return
+        await self.scene_state_snapshot_service.create_snapshot(self.world.scene.state)
 
     def get_scene_state(self) -> SceneState:
         """Get the current state of the scene."""
@@ -161,14 +159,14 @@ class Harness:
         self.active_visitors.add(sid)
         if self.world.scene is not None:
             await self.world.set_visitor_count(len(self.active_visitors))
-            await self.emit_scene_update(sid)
+            await self._persist_state()
 
     async def remove_visitor(self, sid: str) -> None:
         """Remove a visitor from the scene."""
         self.active_visitors.remove(sid)
         if self.world.scene is not None:
             await self.world.set_visitor_count(len(self.active_visitors))
-            await self.emit_scene_update(sid)
+            await self._persist_state()
 
     def _get_other_character(self, characterId: str) -> str:
         """Get another random character."""
@@ -191,7 +189,7 @@ class Harness:
         await self.world.set_character_action(
             characterId, action, estimated_duration=estimated_duration
         )
-        await self.emit_scene_update()
+        await self._persist_state()
 
     async def _set_character_speaking(self, characterId: str, recipient: str | None = None) -> None:
         """Set the character to speaking."""
@@ -204,8 +202,7 @@ class Harness:
         await self.world.add_message(message)
         messages_total.labels(character=characterId).inc()
 
-        # Emit update to all visitors
-        await self.emit_scene_update()
+        await self._persist_state()
 
         # Simulate speaking pause
         await asyncio.sleep(message.calculated_speaking_time)
@@ -256,11 +253,12 @@ class Harness:
                 scene.state.conversation_ended
                 and (scene.state.ended_at or 0) + self.new_conversation_cooldown < time.time()
             ):
-                # Load new scene (same scene config)
+                # Load new scene (same scene config) — load_new_scene
+                # snapshots the fresh state itself, so no extra persist
+                # call here.
                 logger.info(f"[{time.time()}]: Loading new scene")
                 await self.load_new_scene()
                 scene = self.world.require_scene()
-                await self.emit_scene_update(save_snapshot=False)
 
             if scene.state.conversation_active and not scene.state.conversation_ended:
                 try:
@@ -331,6 +329,6 @@ class Harness:
             await self.world.end_conversation()
             is_changed = True
             logger.info("All characters agreed to end conversation")
-        # Emit update if state changed
+        # Persist if state changed
         if is_changed:
-            await self.emit_scene_update()
+            await self._persist_state()

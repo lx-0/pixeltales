@@ -65,9 +65,6 @@ ignore = [
   "B008",  # do not perform function call in argument defaults — common with FastAPI Depends
 ]
 
-[tool.ruff.lint.per-file-ignores]
-"app/harness/orchestrator.py" = ["RUF006"]  # resolved in Phase D (Client extraction)
-
 [tool.ruff.format]
 quote-style = "double"
 indent-style = "space"

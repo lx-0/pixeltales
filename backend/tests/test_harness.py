@@ -16,11 +16,16 @@ from tests.fixtures import make_message
 
 @pytest.fixture
 def sm(scene: Scene) -> Harness:
-    """Harness with its active scene pre-populated (skips DB load)."""
+    """Harness with its active scene pre-populated (skips DB load).
+
+    Snapshot persistence is stubbed so visitor/action mutations don't
+    hit the database in unit tests. Broadcast no longer lives on the
+    Harness (it moved to ``app/client/socketio.py`` in Phase D), so
+    there's nothing else to stub.
+    """
     m = Harness()
     m.scene = scene
-    # Stub emit_scene_update — no socket server in tests
-    m.emit_scene_update = AsyncMock()  # type: ignore[method-assign]
+    m._persist_state = AsyncMock()  # type: ignore[method-assign]
     return m
 
 

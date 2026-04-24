@@ -1,5 +1,4 @@
 from contextlib import asynccontextmanager
-from typing import Any
 
 import socketio  # type: ignore
 import structlog
@@ -11,9 +10,9 @@ from slowapi.errors import RateLimitExceeded  # type: ignore[import-untyped]
 from slowapi.util import get_remote_address  # type: ignore[import-untyped]
 
 from app.api.endpoints import characters, config, scenes, socket_events
+from app.client import SocketIOClient
 from app.core.config import settings
 from app.core.logging import configure_logging
-from app.core.metrics import visitors_active
 from app.harness import Harness
 
 configure_logging()
@@ -22,15 +21,12 @@ logger = structlog.get_logger(__name__)
 limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
 
 # Harness is process-singleton: it owns in-memory scene state and the
-# tick loop, so it must outlive every request. Lifespan binds the Socket.IO
-# server into it on startup.
+# tick loop, so it must outlive every request.
 harness = Harness()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    sio = app.state.socket_server
-    await harness.set_socket_instance(sio)
     harness.start()
     logger.info("app.startup", env=settings.ENV, db_type=settings.DB_TYPE)
     yield
@@ -66,19 +62,10 @@ sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=settings.cors
 app.state.socket_server = sio
 socket_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
 
-
-@sio.event  # type: ignore
-async def connect(sid: str, environ: dict[str, Any]):
-    logger.info("socket.connect", sid=sid)
-    visitors_active.inc()
-    await harness.add_visitor(sid)
-
-
-@sio.event  # type: ignore
-async def disconnect(sid: str):
-    logger.info("socket.disconnect", sid=sid)
-    visitors_active.dec()
-    await harness.remove_visitor(sid)
+# Wire the Client layer: the SocketIOClient subscribes to World events
+# and registers Socket.IO connect/disconnect handlers internally. Held
+# at module scope so the registration outlives this import.
+socketio_client = SocketIOClient(sio, harness.world, harness)
 
 
 @app.get("/health")
