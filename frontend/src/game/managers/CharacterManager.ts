@@ -1,4 +1,5 @@
 import type { Scene } from 'phaser';
+import type { Schemas } from '@/api/client';
 import type { CharacterAction, CharacterState, SceneState } from '@/types/scene';
 import { Logger } from '../../utils/logger';
 import { TILE_SIZE } from '../config';
@@ -9,8 +10,12 @@ interface Character {
   sprite: Phaser.GameObjects.Sprite;
   activeTween: Phaser.Tweens.Tween | null;
   thinkingSprite: Phaser.GameObjects.Sprite | null;
-  color?: string; // Optional color property for character styling
+  color?: string;
 }
+
+type SpriteOption = Schemas['SpriteOption'];
+type SceneConfig = Schemas['SceneConfig'];
+type ConfigOptions = Schemas['ConfigOptions'];
 
 export class CharacterManager {
   private readonly ACTIVE_TINT = 0xffffff;
@@ -21,24 +26,51 @@ export class CharacterManager {
 
   private characters: Map<string, Character> = new Map();
   private animationsCreated = false;
+  /** sprite_id → SpriteOption for every sprite required by the active scene */
+  private sprites: Map<string, SpriteOption> = new Map();
+  private sceneConfig: SceneConfig | null = null;
 
   constructor(private scene: Scene) {}
 
-  preload(): void {
-    // Load character sprites (48x96 because each frame uses two vertical tiles)
-    this.scene.load.spritesheet('bob', '/assets/characters/Bob_idle_anim_48x48.png', {
-      frameWidth: TILE_SIZE,
-      frameHeight: TILE_SIZE * 2,
-      startFrame: 0,
-      endFrame: 23,
-    });
+  /** Tell the manager which scene + asset catalog drive this run. Call before preload(). */
+  setSceneContext(catalog: ConfigOptions, sceneConfig: SceneConfig): void {
+    this.sceneConfig = sceneConfig;
+    this.sprites.clear();
+    for (const character of Object.values(sceneConfig.characters_config)) {
+      if (this.sprites.has(character.sprite_id)) continue;
+      const sprite = catalog.sprites.find((s) => s.id === character.sprite_id);
+      if (!sprite) {
+        Logger.warn(this.constructor.name, `Sprite "${character.sprite_id}" not in catalog`);
+        continue;
+      }
+      this.sprites.set(character.sprite_id, sprite);
+    }
+  }
 
-    this.scene.load.spritesheet('alice', '/assets/characters/Cleaner_girl_idle_anim_48x48.png', {
-      frameWidth: TILE_SIZE,
-      frameHeight: TILE_SIZE * 2,
-      startFrame: 0,
-      endFrame: 23,
-    });
+  preload(): void {
+    if (!this.sceneConfig) {
+      throw new Error('CharacterManager.preload() called before setSceneContext()');
+    }
+    // Load each unique character sprite. Animated sheets are 24 frames of 48×96
+    // (4 directions × 6 idle frames). Static stills load as a 48×48 single-frame
+    // sheet so the play()/animation pipeline below stays uniform.
+    for (const sprite of this.sprites.values()) {
+      if (sprite.has_idle_anim) {
+        this.scene.load.spritesheet(sprite.id, sprite.path, {
+          frameWidth: TILE_SIZE,
+          frameHeight: TILE_SIZE * 2,
+          startFrame: 0,
+          endFrame: 23,
+        });
+      } else {
+        this.scene.load.spritesheet(sprite.id, sprite.path, {
+          frameWidth: TILE_SIZE,
+          frameHeight: TILE_SIZE,
+          startFrame: 0,
+          endFrame: 0,
+        });
+      }
+    }
 
     // Load thinking animation spritesheet
     this.scene.load.spritesheet('thinking', '/assets/ui/ui_thinking_48x96.png', {
@@ -91,23 +123,26 @@ export class CharacterManager {
   private createAnimations(): void {
     Logger.info(this.constructor.name, 'Creating character animations');
     const directions = ['right', 'back', 'left', 'front'] as const;
-    const characters = ['bob', 'alice'] as const;
 
-    characters.forEach((char) => {
+    this.sprites.forEach((sprite) => {
       directions.forEach((dir, index) => {
-        const animKey = `${char}_idle_${dir}`;
-        if (!this.scene.anims.exists(animKey)) {
-          Logger.debug(this.constructor.name, `Creating animation: ${animKey}`);
-          this.scene.anims.create({
-            key: animKey,
-            frames: this.scene.anims.generateFrameNumbers(char, {
+        const animKey = `${sprite.id}_idle_${dir}`;
+        if (this.scene.anims.exists(animKey)) return;
+        Logger.debug(this.constructor.name, `Creating animation: ${animKey}`);
+        // Animated sheets: 6 frames per direction starting at index*6.
+        // Static sheets: single frame 0 used for every direction.
+        const frames = sprite.has_idle_anim
+          ? this.scene.anims.generateFrameNumbers(sprite.id, {
               start: index * 6,
               end: index * 6 + 5,
-            }),
-            frameRate: 8,
-            repeat: -1,
-          });
-        }
+            })
+          : this.scene.anims.generateFrameNumbers(sprite.id, { start: 0, end: 0 });
+        this.scene.anims.create({
+          key: animKey,
+          frames,
+          frameRate: 8,
+          repeat: -1,
+        });
       });
     });
 
@@ -149,13 +184,24 @@ export class CharacterManager {
     });
   }
 
+  private resolveSpriteId(characterId: string): string | null {
+    const config = this.sceneConfig?.characters_config[characterId];
+    if (!config) {
+      Logger.warn(this.constructor.name, `No scene config for character "${characterId}"`);
+      return null;
+    }
+    return config.sprite_id;
+  }
+
   updateCharacters(state: SceneState): void {
     Object.entries(state.characters).forEach(([id, charData]) => {
       let character = this.characters.get(id);
+      const spriteId = this.resolveSpriteId(id);
+      if (!spriteId) return;
 
       if (!character) {
         // Create new character if it doesn't exist
-        const sprite = this.scene.add.sprite(charData.position.x, charData.position.y, id);
+        const sprite = this.scene.add.sprite(charData.position.x, charData.position.y, spriteId);
         character = {
           id,
           state: charData,
@@ -172,7 +218,7 @@ export class CharacterManager {
 
       // Update character position and animation
       character.sprite.setPosition(charData.position.x, charData.position.y);
-      character.sprite.play(`${id}_idle_${charData.direction}`, true);
+      character.sprite.play(`${spriteId}_idle_${charData.direction}`, true);
 
       // Update character tint and thinking state based on action
       this.updateCharacterState(character, charData);

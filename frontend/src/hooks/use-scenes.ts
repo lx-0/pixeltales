@@ -58,6 +58,21 @@ export function useProposedScenes() {
   });
 }
 
+export function useScene(sceneConfigId: number | null) {
+  return useQuery({
+    queryKey: ['scenes', sceneConfigId],
+    enabled: sceneConfigId !== null,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/scenes/{scene_config_id}', {
+        params: { path: { scene_config_id: String(sceneConfigId) } },
+      });
+      if (error) throw new Error(`Failed to fetch scene ${sceneConfigId}`);
+      return data;
+    },
+    staleTime: Number.POSITIVE_INFINITY, // SceneConfig only changes on new active scene
+  });
+}
+
 export function useSceneProposal() {
   const queryClient = useQueryClient();
 

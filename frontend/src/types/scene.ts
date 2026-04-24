@@ -72,6 +72,7 @@ export interface SceneState {
 }
 
 export interface CharacterConfig extends CharacterBase {
+  sprite_id: string; // ID into AVAILABLE_SPRITES catalog (GET /api/v1/config)
   initial_position?: Position;
   initial_direction?: Direction;
   initial_action?: CharacterAction;
@@ -84,6 +85,7 @@ export interface SceneConfig {
   description: string;
   start_character_id: string;
   characters_config: Record<string, CharacterConfig>;
+  room_id: string; // ID into AVAILABLE_ROOMS catalog (GET /api/v1/config)
   system_prompt: string;
   status: 'proposed' | 'active' | 'rejected';
 
