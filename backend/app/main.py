@@ -2,29 +2,33 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import socketio  # type: ignore
+import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.endpoints import config, scenes
 from app.core.config import settings
+from app.core.logging import configure_logging
 from app.services.scene_manager import SceneManager
 
-# Initialize scene manager
+configure_logging()
+logger = structlog.get_logger(__name__)
+
+# Scene manager is process-singleton: it owns in-memory scene state and the
+# tick loop, so it must outlive every request. Lifespan binds the Socket.IO
+# server into it on startup.
 scene_manager = SceneManager()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Lifespan context manager for FastAPI app."""
-    # Startup
     sio = app.state.socket_server
     await scene_manager.set_socket_instance(sio)
+    logger.info("app.startup", env=settings.ENV, db_type=settings.DB_TYPE)
     yield
-    # Shutdown
-    # Add cleanup code here if needed
+    logger.info("app.shutdown")
 
 
-# Create FastAPI app
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
@@ -32,46 +36,34 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Configure CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With"],
 )
 
-# Include routers
 app.include_router(config.router, prefix=settings.API_V1_STR, tags=["config"])
 app.include_router(scenes.router, prefix=settings.API_V1_STR, tags=["scenes"])
 
-# Create Socket.IO server
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=settings.cors_origins)
-
-# Store socket server in app state
 app.state.socket_server = sio
-
-# Create Socket.IO app
 socket_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
 
 
-# Socket.IO event handlers
 @sio.event  # type: ignore
 async def connect(sid: str, environ: dict[str, Any]):
-    """Handle client connection"""
-    print(f"Client connected: {sid}")
-    # Inform scene manager about new visitor
+    logger.info("socket.connect", sid=sid)
     await scene_manager.add_visitor(sid)
 
 
 @sio.event  # type: ignore
 async def disconnect(sid: str):
-    """Handle client disconnection"""
-    print(f"Client disconnected: {sid}")
+    logger.info("socket.disconnect", sid=sid)
     await scene_manager.remove_visitor(sid)
 
 
-# Health check endpoint
 @app.get("/health")
 async def health_check():
     return {"status": "healthy"}

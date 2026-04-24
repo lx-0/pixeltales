@@ -1,17 +1,16 @@
 import asyncio
-import logging
 import random
 import time
 from datetime import datetime
 
+import structlog
 from langchain.schema import AIMessage, HumanMessage
 
 from app.models.conversation import Conversation, Message
 from app.models.scene import Scene
 from app.services.llm_manager import LLMManager, SystemPromptTemplateVars
 
-# Set up logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ConversationManager:

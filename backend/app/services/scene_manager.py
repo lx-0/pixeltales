@@ -1,8 +1,9 @@
 import asyncio
-import logging
 import random
 import time
 from socket import SocketIO
+
+import structlog
 
 from app.models.character import CharacterAction
 from app.models.scene import (
@@ -16,8 +17,7 @@ from app.services.scene_config_service import SceneConfigService
 from app.services.scene_service import SceneService
 from app.services.scene_state_snapshot_service import SceneStateSnapshotService
 
-# Set up logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SceneManager:

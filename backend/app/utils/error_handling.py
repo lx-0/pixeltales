@@ -1,10 +1,9 @@
-import logging
 from typing import Any, TypedDict
 
+import structlog
 from pydantic import ValidationError
 
-# Set up logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class ErrorDict(TypedDict):

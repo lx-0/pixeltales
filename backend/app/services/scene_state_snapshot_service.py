@@ -1,5 +1,4 @@
-import logging
-
+import structlog
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
 
@@ -7,8 +6,7 @@ from app.db.database import async_session
 from app.db.models import DBSceneStateSnapshot
 from app.models.scene import Scene, SceneConfig, SceneState
 
-# Set up logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SceneStateSnapshotService:

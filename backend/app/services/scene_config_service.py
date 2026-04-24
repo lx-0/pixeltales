@@ -1,6 +1,6 @@
-import logging
 from datetime import UTC, datetime
 
+import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -16,8 +16,7 @@ from app.models.scene import (
     SceneConfigStatus,
 )
 
-# Set up logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 class SceneConfigService:

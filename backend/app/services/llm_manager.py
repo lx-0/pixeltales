@@ -158,8 +158,8 @@ class LLMManager:
             if settings.ANTHROPIC_API_KEY is None:
                 raise ValueError("ANTHROPIC_API_KEY is not set")
             return ChatAnthropic(
+                model=config.model_name,
                 temperature=config.temperature,
-                model_name=config.model_name,
                 api_key=settings.ANTHROPIC_API_KEY,
                 max_tokens_to_sample=config.max_tokens,
                 timeout=None,

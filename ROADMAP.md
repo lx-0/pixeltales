@@ -33,15 +33,23 @@ Target: Workspace-standard stack (pnpm, Biome, uv, Node 22, Python 3.12), typed 
 - [ ] Confirm state strategy: `useState` + React Query only (Redux already dropped). Extract socket state into a single subscription hook if prop drilling grows.
 - [ ] Type Socket.IO events: deferred to Phase 4 (handled as part of cross-stack codegen).
 
-## Phase 3 — Backend modernization
+## Phase 3a ✅ — Backend mechanical modernization
 
-- [ ] FastAPI + uvicorn + Pydantic minor-version bumps.
-- [ ] LangChain → LangGraph rewrite. Model scene tick as explicit state machine (nodes per character turn), drop manual `asyncio.sleep` + scheduling in `SceneManager`. Slimmer `ConversationManager` / `LLMManager`.
-- [ ] Remove module-level service singletons (`scene_config_service = SceneConfigService()` in endpoints). Use FastAPI `Depends` + lifespan context.
-- [ ] Structured logging via `structlog` (JSON in prod, pretty in dev). Replace `print(…)` in socket handlers.
-- [ ] Introduce Alembic for migrations. Retire `init_db.py` (`create_all()`) — irreversible on schema changes.
-- [ ] Audit async SQLAlchemy session lifecycle. Ensure one session per request/tick, no module-level globals.
-- [ ] Decide Redis: introduce (multi-instance scene sync) or drop dependency.
+- [x] FastAPI 0.115 → 0.118+, Pydantic 2.10 → 2.11.
+- [x] structlog (dev: pretty console, prod: JSON). All `print()` and `logging.getLogger` migrated.
+- [x] Module-level singleton in `endpoints/scenes.py` → FastAPI `Depends` (`@lru_cache` factory).
+- [x] Alembic introduced. Initial migration auto-generated. Entrypoint stamps pre-Alembic DBs and runs `alembic upgrade head`.
+- [x] CORS tightened: explicit methods + headers (no more `["*"]`).
+- [x] pre-existing mypy bug fixed (`ChatAnthropic` missing `model` arg).
+- [x] Redis dropped (Phase 0).
+
+## Phase 3b — LangGraph rewrite (deferred to after Phase 5)
+
+Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManager` + `LLMManager` is too risky.
+
+- [ ] Model scene tick as LangGraph `StateGraph` (nodes per character turn).
+- [ ] Drop manual `asyncio.sleep` + scheduling in `SceneManager`.
+- [ ] Audit async SQLAlchemy session lifecycle (will mostly be touched here).
 
 ## Phase 4 — Cross-stack type safety
 

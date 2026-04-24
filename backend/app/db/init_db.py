@@ -1,17 +1,18 @@
 import asyncio
-import logging
 import os
 import re
 
+import structlog
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncEngine
 
 from app.core.config import settings
+from app.core.logging import configure_logging
 from app.db.database import Base, engine
 from app.db.models import DBScene, DBSceneConfig, DBSceneStateSnapshot
 
-# Set up logger
-logger = logging.getLogger(__name__)
+configure_logging()
+logger = structlog.get_logger(__name__)
 
 
 def sanitize_db_url(url: str) -> str:
@@ -116,14 +117,7 @@ async def main() -> None:
         )
         args = parser.parse_args()
 
-        # Configure logging
-        logging.basicConfig(
-            level=logging.INFO,
-            format="%(asctime)s | %(levelname)s | %(message)s",
-            datefmt="%H:%M:%S",
-        )
-
-        logger.info(f"Starting database initialization... (type: {settings.DB_TYPE})")
+        logger.info("db.init.start", db_type=settings.DB_TYPE)
         await init_db(engine, drop_schema=args.drop_schema)
         logger.info("Database initialization completed successfully!")
     except Exception as e:

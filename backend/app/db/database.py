@@ -1,15 +1,14 @@
-import logging
 from collections.abc import AsyncGenerator
 from typing import Any
 
+import structlog
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.schema import CreateSchema
 
 from app.core.config import settings
 
-# Set up logger
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 # Configure engine args based on database type
 engine_args: dict[str, Any] = {

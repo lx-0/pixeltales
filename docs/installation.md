@@ -79,8 +79,8 @@ This guide will help you set up PixelTales on your local machine for development
    # Create SQLite directory
    mkdir -p data/sqlite
 
-   # Initialize database
-   uv run python -m app.db.init_db
+   # Apply migrations
+   uv run alembic upgrade head
    ```
 
 6. **Start the Backend Server**

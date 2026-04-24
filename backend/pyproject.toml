@@ -6,31 +6,36 @@ authors = [{ name = "Alex" }]
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "fastapi>=0.115.6,<0.116",
-  "uvicorn[standard]>=0.34.0,<0.35",
-  "langchain>=0.3.0,<0.4",
+  "fastapi>=0.118,<0.120",
+  "uvicorn[standard]>=0.34,<1",
+  "langchain>=0.3,<0.4",
   "langchain-core>=0.3,<0.4",
   "langchain-community>=0.3,<0.4",
-  "langchain-openai>=0.2,<0.3",
+  "langchain-openai>=0.2,<0.4",
   "langchain-anthropic>=0.3.1,<0.4",
-  "pydantic>=2.10.4,<3",
-  "pydantic-settings>=2.1.0,<3",
-  "python-socketio>=5.12.1,<6",
+  "pydantic>=2.11,<3",
+  "pydantic-settings>=2.6,<3",
+  "python-socketio>=5.12,<6",
   "sqlalchemy>=2.0.36,<3",
-  "aiosqlite>=0.20.0,<1",
-  "asyncpg>=0.30.0,<1",
-  "greenlet>=3.0.3,<4",
-  "python-jose[cryptography]>=3.3.0,<4",
+  "alembic>=1.14,<2",
+  "aiosqlite>=0.20,<1",
+  "asyncpg>=0.30,<1",
+  "greenlet>=3.0,<4",
+  "python-jose[cryptography]>=3.3,<4",
   "passlib[bcrypt]>=1.7.4,<2",
   "python-multipart>=0.0.20,<1",
+  "structlog>=25,<26",
 ]
 
 [dependency-groups]
 dev = [
-  "mypy>=1.14.1,<2",
-  "ruff>=0.8.0,<1",
-  "types-aiofiles>=24.1.0.20241221",
-  "types-python-dateutil>=2.9.0.20241206",
+  "mypy>=1.14,<2",
+  "ruff>=0.8,<1",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.24,<1",
+  "httpx>=0.28,<1",
+  "types-aiofiles>=24.1",
+  "types-python-dateutil>=2.9",
 ]
 
 [tool.mypy]

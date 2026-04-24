@@ -48,11 +48,12 @@ Path alias: `@/*` → `frontend/src/*`. Lint+format is Biome 2 (`biome.json`, no
 ```bash
 cd backend
 uv sync
-uv run python -m app.db.init_db                          # create SQLite schema
+uv run alembic upgrade head                              # create/migrate DB schema
 uv run uvicorn app.main:socket_app --reload --port 8000
 uv run mypy app                                          # strict typing
 uv run ruff check                                        # lint
 uv run ruff format                                       # format
+uv run alembic revision --autogenerate -m "..."          # new schema migration
 ```
 
 `mypy` is configured `strict_optional = true` + `check_untyped_defs` + `pydantic.mypy` plugin. The ASGI entrypoint is `app.main:socket_app` (the Socket.IO wrapper), **not** `app.main:app` — using the wrong one drops all WebSocket routing.
