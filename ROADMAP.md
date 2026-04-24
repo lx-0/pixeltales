@@ -200,7 +200,51 @@ All gaps from the prior open section closed in one commit (B1 path chosen):
 - [x] `app/characters/README.md` documents the loader contract (required yaml keys, slug rules, error behavior, programmatic API).
 - [x] B1 chosen: `backend/data/characters/` mounted as a compose volume; `POST /api/v1/characters` writes `<id>/AGENTS.md + .character.yaml` there. Slug-collision handling: `409 Conflict` returned, surfaced in the form.
 
-## Execution log
+## Open: Tech debt + cleanup
+
+Honest inventory of gaps I've been hand-waving past during the
+post-modernization track. Same discipline as the character library
+section: don't ship more feature work until this is closed.
+
+### A — Dead code & drift
+
+- [ ] **`backend/app/default_scene.branding.py` is unused.** No importer (`grep -rn` confirms). It got migrated alongside the main scene during library work but nothing selects it. Either toggle via env var (`DEFAULT_SCENE=branding|default`) or delete.
+- [ ] **`# Pydantic validation debugging` block in `backend/app/models/scene.py:8-11`** — commented-out 2-line debug aid. Decide: delete or wire as a settings-toggled debug mode.
+- [ ] **`_ = None` placeholder in `SceneBase`** — `SceneBase` is empty after the refactors, kept around as a marker. Either inline (every subclass extends `BaseModel` directly) or document why it stays.
+
+### B — Anti-patterns I introduced today
+
+- [ ] **Coverage `omit` includes `default_scene*.py`** — exact pattern I criticized this morning (hide your own code from measurement). Remove from `[tool.coverage.run]` omit list (and re-evaluate floor).
+- [ ] **`# type: ignore[arg-type]` ×2 in `default_scene{,.branding}.py`** — my own `_place(direction: str)` helper. Type the parameter as `Direction` and drop the ignore.
+
+### C — Pre-existing biome warnings (9, all skipped since first commit today)
+
+- [ ] `noArrayIndexKey` ×3 (ConversationHistory, SceneProposalForm, SceneProposalList) — switch to stable keys (`message.unix_timestamp`, `character.id`, etc.).
+- [ ] `useJsxKeyInIterable` in ConversationStatsChart Tooltip formatter array.
+- [ ] `noNonNullAssertion` ×2 (`proposal.proposed_at!`, `document.getElementById('root')!`).
+- [ ] `noBannedTypes` — `{}` as type in `socket-events.ts` (`ClientToServerEvents` is empty until first client→server event).
+- [ ] `useExhaustiveDependencies` in `use-auto-scroll.ts`.
+- [ ] `useIterableCallbackReturn` in `services/socket.ts` (Map.forEach implicit return).
+
+### D — Pre-existing TODO comments
+
+- [ ] `scene_manager.py:190 ## TODO use conversation manager` — stale per current architecture (scene state is SoT for messages, ConversationManager mirrors via `init_conversation()` + per-call rebind). Delete the comment.
+- [ ] `index.css:152 /* TODO use bg-background instead of bg-gray-800 */` — small CSS cleanup, switch to the design-token utility.
+
+### E — Operational debt
+
+- [ ] **DB is 1.3 GB.** Phase 5 slimmed *new* snapshots but legacy fat snapshots stay. Two pieces:
+  1. One-shot migration script that rewrites `scene_state_snapshots.state` to the slim shape (drop CharacterBase fields per character entry). VACUUM after.
+  2. Snapshot retention policy in code — keep last N hours / max M snapshots per scene_id, delete older. Run on tick or via background task.
+- [ ] **Frontend coverage stuck at 1%.** Infrastructure exists; need 5–10 component/hook tests (SceneProposalForm submit happy path, useCharacters hook fetch, ConversationHistory render with mock scene). Then set a real floor (target ≥30% on first pass).
+- [ ] **Spec `2026-04-24-scene-content-ux-refactor-design.md` "Open Questions"** — both resolved during implementation but spec never updated. Trim or move to "Resolved" section.
+- [ ] **`vitest.config.ts` is a separate file** — Vitest 4 docs prefer merging the `test` field into `vite.config.ts` so vite plugins (e.g. tailwindcss) apply identically in test runs. Currently they don't.
+
+### F — Decisions taken implicitly that deserve revisiting
+
+- [ ] **Pydantic `extra="ignore"` is the default everywhere.** Good for legacy snapshot read tolerance, bad for typo detection on YAML/API boundaries. Should be `extra="forbid"` on `CharacterIdentity` (library YAML), `CreateSceneConfig` (API write), with explicit `extra="ignore"` annotations only on the read paths that actually need legacy compat (`SceneState`, `SceneConfig` storage hydration). Sweep + add tests for the rejected cases.
+
+
 
 Phases shipped in order: 0 → 1 → 2 → 3a → 4a → 5 → 6a → 7 → 8 → 9 → 4b → 6b, then substantive tests + quick-wins bundle. Commits `021f5dd` … `d567dcd`.
 
