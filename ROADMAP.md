@@ -103,10 +103,16 @@ Without test coverage, a big-bang rewrite of `SceneManager` + `ConversationManag
 - [ ] Playwright E2E in CI — deferred (needs docker compose setup in workflow + browser install).
 - [ ] Production deploy target confirmed (current demo: `pixeltales.0fo.de`).
 
-## Phase 9 — Observability (optional)
+## Phase 9 ✅ — Observability (Prometheus baseline)
 
-- [ ] `opentelemetry-instrumentation-fastapi` + `opentelemetry-instrumentation-sqlalchemy`.
-- [ ] Socket metrics as Prometheus gauges: visitor count, message rate, LLM latency p95.
+- [x] `prometheus-fastapi-instrumentator` exposes `/metrics` (HTTP request counters, latency histograms — out of the box)
+- [x] Custom metrics in `app/core/metrics.py`:
+  - `pixeltales_visitors_active` (gauge): currently connected Socket.IO clients
+  - `pixeltales_messages_total{character}` (counter): scaffolded for SceneManager to bump on each emitted message
+  - `pixeltales_llm_response_seconds{provider,model}` (histogram): scaffolded for LLMManager to time `ainvoke`
+- [x] Socket connect/disconnect handlers update `visitors_active`
+- [ ] Wire `messages_total` and `llm_response_seconds` increments inside SceneManager and LLMManager — easier under Phase 3b LangGraph rewrite when both files get touched anyway.
+- [ ] OpenTelemetry traces (FastAPI + SQLAlchemy instrumentation) — deferred until a collector target exists (Tempo/Grafana Cloud).
 - [ ] Export target: Grafana Cloud or self-hosted Loki/Tempo.
 
 ---

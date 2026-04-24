@@ -5,6 +5,7 @@ import socketio  # type: ignore
 import structlog
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_fastapi_instrumentator import Instrumentator
 from slowapi import Limiter, _rate_limit_exceeded_handler  # type: ignore[import-untyped]
 from slowapi.errors import RateLimitExceeded  # type: ignore[import-untyped]
 from slowapi.util import get_remote_address  # type: ignore[import-untyped]
@@ -12,6 +13,7 @@ from slowapi.util import get_remote_address  # type: ignore[import-untyped]
 from app.api.endpoints import config, scenes
 from app.core.config import settings
 from app.core.logging import configure_logging
+from app.core.metrics import visitors_active
 from app.services.scene_manager import SceneManager
 
 configure_logging()
@@ -56,6 +58,8 @@ app.add_middleware(
 app.include_router(config.router, prefix=settings.API_V1_STR, tags=["config"])
 app.include_router(scenes.router, prefix=settings.API_V1_STR, tags=["scenes"])
 
+Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+
 sio = socketio.AsyncServer(async_mode="asgi", cors_allowed_origins=settings.cors_origins)
 app.state.socket_server = sio
 socket_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
@@ -64,12 +68,14 @@ socket_app = socketio.ASGIApp(socketio_server=sio, other_asgi_app=app)
 @sio.event  # type: ignore
 async def connect(sid: str, environ: dict[str, Any]):
     logger.info("socket.connect", sid=sid)
+    visitors_active.inc()
     await scene_manager.add_visitor(sid)
 
 
 @sio.event  # type: ignore
 async def disconnect(sid: str):
     logger.info("socket.disconnect", sid=sid)
+    visitors_active.dec()
     await scene_manager.remove_visitor(sid)
 
 

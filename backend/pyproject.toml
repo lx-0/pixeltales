@@ -24,6 +24,7 @@ dependencies = [
   "python-multipart>=0.0.20,<1",
   "structlog>=25,<26",
   "slowapi>=0.1.9,<1",
+  "prometheus-fastapi-instrumentator>=7.0,<8",
 ]
 
 [dependency-groups]
