@@ -1,10 +1,7 @@
 import { ThumbsDown, ThumbsUp } from 'lucide-react';
 import type React from 'react';
 import { useEffect, useState } from 'react';
-import { useToast } from '@/hooks/use-toast';
-import type { SceneConfig } from '@/types/scene';
-import { useProposedScenes, useSceneVote, useVotedProposals } from '../hooks/use-scenes';
-import { Button } from './ui/button';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -12,9 +9,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog';
-import { ScrollArea } from './ui/scroll-area';
-import { Separator } from './ui/separator';
+} from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { useProposedScenes, useSceneVote, useVotedProposals } from '@/hooks/use-scenes';
+import { useToast } from '@/hooks/use-toast';
+import type { SceneConfig } from '@/types/scene';
 
 interface SceneProposalListProps {
   trigger?: React.ReactNode;

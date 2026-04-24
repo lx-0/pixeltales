@@ -1,9 +1,9 @@
 import { ChevronDown } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { useAutoScroll } from '../hooks/use-auto-scroll';
-import type { SceneState } from '../types/scene';
+import { Button } from '@/components/ui/button';
+import { useAutoScroll } from '@/hooks/use-auto-scroll';
+import type { SceneState } from '@/types/scene';
 import { SceneProposalForm } from './SceneProposalForm';
-import { Button } from './ui/button';
 
 interface ConversationHistoryProps {
   scene: SceneState;

@@ -3,15 +3,13 @@ import type React from 'react';
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import * as z from 'zod';
-import { TILE_SIZE } from '@/game/config';
-import type { CharacterConfig, LLMConfig, SceneConfig } from '@/types/scene';
-import { kebabCase } from '@/utils/format';
-import { Logger } from '@/utils/logger';
-import { getModelOptions, useConfig } from '../hooks/use-config';
-import { useSceneProposal } from '../hooks/use-scenes';
-import { ColorPalette } from './ColorPalette';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from './ui/accordion';
-import { Button } from './ui/button';
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from '@/components/ui/accordion';
+import { Button } from '@/components/ui/button';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from './ui/dialog';
+} from '@/components/ui/dialog';
 import {
   Form,
   FormControl,
@@ -29,8 +27,8 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from './ui/form';
-import { Input } from './ui/input';
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -39,9 +37,16 @@ import {
   SelectLabel,
   SelectTrigger,
   SelectValue,
-} from './ui/select';
-import { Slider } from './ui/slider';
-import { Textarea } from './ui/textarea';
+} from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
+import { Textarea } from '@/components/ui/textarea';
+import { TILE_SIZE } from '@/game/config';
+import { getModelOptions, useConfig } from '@/hooks/use-config';
+import { useSceneProposal } from '@/hooks/use-scenes';
+import type { CharacterConfig, LLMConfig, SceneConfig } from '@/types/scene';
+import { kebabCase } from '@/utils/format';
+import { Logger } from '@/utils/logger';
+import { ColorPalette } from './ColorPalette';
 
 // Form validation schema
 const proposalFormSchema = z.object({

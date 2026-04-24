@@ -11,9 +11,9 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import type { SceneState } from '@/types/scene';
 import { formatTime } from '@/utils/format';
-import { Card, CardContent, CardHeader } from './ui/card';
 
 interface ConversationStatsChartProps {
   scene: SceneState;

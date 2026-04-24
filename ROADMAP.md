@@ -4,40 +4,34 @@ Baseline: MVP commit `b91ae54` (April 2025). Python 3.11 + FastAPI + Poetry + La
 
 Target: Workspace-standard stack (pnpm, Biome, uv, Node 22, Python 3.12), typed cross-stack contracts, LangGraph-based multi-agent orchestration, test coverage, deployable via GitHub Actions.
 
-## Phase 0 — Dead code cleanup
+## Phase 0 ✅ — Dead code cleanup
 
-Scope: purge V1 scaffolding, fix stale workspace-root references, drop unused dependencies.
+- [x] `apps/`, `packages/`, `supabase-backup/` — user moved to `.archive/`
+- [x] `.project/V1/` — removed (backed up to `.archive/legacy/.project/V1/`)
+- [x] `frontend/package.json` — dropped `@reduxjs/toolkit`, `react-redux`, `@types/react-redux`, `@shadcn/ui`
+- [x] Backend `pyproject.toml` — dropped `redis`
+- [ ] Workspace-root `CLAUDE.md` pixeltales entry (out of project scope, deferred)
 
-- [ ] `apps/` (untracked, V1 NestJS/Turborepo leftover) — **user confirmation required**
-- [ ] `packages/` (untracked, V1 shared packages leftover) — **user confirmation required**
-- [ ] `.project/V1/project-summary.md` (gitignored, describes abandoned NestJS rewrite) — **user confirmation required**
-- [ ] `.archive/legacy/` — review and decide (tag `legacy-v0` or drop)
-- [ ] `supabase-backup/` untracked directory — clarify origin and destination
-- [ ] Workspace-root `CLAUDE.md` pixeltales entry — correct from "Turborepo. NestJS, Drizzle, React" to actual stack (**out of project scope, user confirmation required**)
-- [ ] `frontend/package.json` — drop `@reduxjs/toolkit`, `react-redux`, `@types/react-redux`, `@shadcn/ui` (0.0.4 — wrong package, CLI is `shadcn`)
-- [ ] Backend `pyproject.toml` — drop `redis` (installed but not imported anywhere)
+## Phase 1 ✅ — Tooling alignment
 
-## Phase 1 — Tooling alignment
-
-Bring repo to workspace standard: pnpm, Biome, uv, Node 22, Python 3.12.
-
-- [ ] Frontend: `npm` → `pnpm`. Migrate lockfile, update Dockerfile.
-- [ ] Frontend: Node 18 → 22 in Dockerfile + add `.nvmrc`.
-- [ ] Frontend: ESLint + Prettier → Biome. Replace configs, delete plugins, run `biome check --apply`.
-- [ ] Backend: Poetry → uv. Convert `pyproject.toml`, generate `uv.lock`, simplify Dockerfile (drop `curl … install.python-poetry.org`).
-- [ ] Backend: Python 3.11 → 3.12. Verify LangChain/asyncpg/aiosqlite compatibility.
-- [ ] Backend: add `ruff` for linting (complements `mypy` type checking).
-- [ ] Pre-commit hook (lefthook or pre-commit) running Biome + ruff + mypy on staged files.
+- [x] Frontend: `npm` → `pnpm` (`pnpm-lock.yaml`, Dockerfile w/ corepack)
+- [x] Frontend: Node 18 → 22 in Dockerfile + `.nvmrc`
+- [x] Frontend: ESLint + Prettier → Biome (biome.json)
+- [x] Backend: Poetry → uv (`uv.lock`, Dockerfile w/ `ghcr.io/astral-sh/uv`)
+- [x] Backend: Python 3.11 → 3.12, asyncpg 0.29 → 0.30
+- [x] Backend: ruff added (config in pyproject.toml)
+- [x] Pre-commit hook: lefthook (`lefthook.yml`)
 
 ## Phase 2 — Frontend modernization
 
+- [ ] **Atomic Design restructure** — introduce `components/{atoms,molecules,organisms,templates}/`. shadcn/ui stays at `components/ui/` (acts as atoms). Move the 6 top-level components (`ColorPalette`, `ConversationHistory`, `ConversationStatsChart`, `SceneInfo`, `SceneProposalForm`, `SceneProposalList`) into `organisms/`. Leave `atoms/` + `molecules/` empty until actual reuse appears (no premature abstraction).
+- [ ] Replace ad-hoc `Logger` utility with `pino` (browser bundle) for structured, level-filtered logs. Retire `chalk` dep.
+- [ ] Split `UIControlsManager.ts` (512 LOC, exceeds 500-LOC soft cap) into camera / overlay / input sub-managers.
 - [ ] React 18 → 19. Bump `@types/react` to 19, verify Phaser ref integration, `react-hook-form` compat.
 - [ ] Tailwind 3 → 4. Migrate to CSS-first config (`@theme`), replace `tailwindcss-animate` with `tw-animate-css`.
 - [ ] Re-init shadcn/ui with new CLI (`npx shadcn@latest init`), diff existing `components/ui/` against new baseline.
 - [ ] Confirm state strategy: `useState` + React Query only (Redux already dropped). Extract socket state into a single subscription hook if prop drilling grows.
-- [ ] Type Socket.IO events: `Socket<ServerToClientEvents, ClientToServerEvents>`, events codegenned from backend (see Phase 4).
-- [ ] Replace ad-hoc `Logger` utility with `pino` (browser bundle) for structured, level-filtered logs.
-- [ ] Split `UIControlsManager.ts` (512 LOC, exceeds 500-LOC soft cap) into camera / overlay / input sub-managers.
+- [ ] Type Socket.IO events: deferred to Phase 4 (handled as part of cross-stack codegen).
 
 ## Phase 3 — Backend modernization
 

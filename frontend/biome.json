@@ -52,7 +52,7 @@
   },
   "overrides": [
     {
-      "includes": ["src/main.tsx", "src/components/SceneProposalList.tsx"],
+      "includes": ["src/main.tsx", "src/components/organisms/SceneProposalList.tsx"],
       "linter": {
         "rules": {
           "style": {
@@ -75,7 +75,7 @@
       }
     },
     {
-      "includes": ["src/components/ConversationStatsChart.tsx"],
+      "includes": ["src/components/organisms/ConversationStatsChart.tsx"],
       "linter": {
         "rules": {
           "correctness": {

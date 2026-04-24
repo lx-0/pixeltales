@@ -1,10 +1,10 @@
 import { Brain, Clock, MessageSquare, Users2 } from 'lucide-react';
-import type { SceneState } from '../types/scene';
-import { formatDuration, formatTime } from '../utils/format';
+import { Button } from '@/components/ui/button';
+import type { SceneState } from '@/types/scene';
+import { formatDuration, formatTime } from '@/utils/format';
 import ConversationStatsChart from './ConversationStatsChart';
 import { SceneProposalForm } from './SceneProposalForm';
 import { SceneProposalList } from './SceneProposalList';
-import { Button } from './ui/button';
 
 interface SceneInfoProps {
   scene: SceneState;
