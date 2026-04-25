@@ -10,8 +10,9 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
+from app.agent.characters import load as load_character
 from app.agent.llm import LLMManager
-from app.harness.conversation import ConversationManager
+from app.harness.conversation import FALLBACK_TEMPLATES, ConversationManager
 from app.models.scene import Scene
 from tests.fixtures import make_message
 
@@ -159,13 +160,36 @@ class TestGenerateMessage:
         assert msg.character == "alice"
         assert mock_llm_manager.generate_response.call_count == 2
 
-    async def test_raises_after_max_retries(self, mock_llm_manager: LLMManager, scene: Scene):
+    async def test_returns_fallback_after_max_retries(
+        self, mock_llm_manager: LLMManager, scene: Scene
+    ):
         cm = ConversationManager(mock_llm_manager)
         cm.init_conversation()
+        cm.base_speaking_time = 0  # speed up backoff sleeps
         mock_llm_manager.generate_response = AsyncMock(  # type: ignore[method-assign]
             side_effect=RuntimeError("always fails")
         )
-        with pytest.raises(RuntimeError, match="Failed to generate message"):
-            await cm.generate_message(scene, "alice")
+        msg = await cm.generate_message(scene, "alice", recipient="bob")
         # 3 retries = 3 calls
         assert mock_llm_manager.generate_response.call_count == 3
+        # Fallback message keeps the scene alive
+        assert msg.character == "alice"
+        assert msg.recipient == "bob"
+        assert msg.end_conversation is False
+        assert msg.content is not None
+        # Content matches one of the templates, with the character's display name
+        alice_name = load_character("alice").name
+        expected = {tpl.format(name=alice_name) for tpl in FALLBACK_TEMPLATES}
+        assert msg.content in expected
+
+    async def test_fallback_message_recipient_defaults_to_empty(
+        self, mock_llm_manager: LLMManager, scene: Scene
+    ):
+        cm = ConversationManager(mock_llm_manager)
+        cm.init_conversation()
+        cm.base_speaking_time = 0
+        mock_llm_manager.generate_response = AsyncMock(  # type: ignore[method-assign]
+            side_effect=RuntimeError("always fails")
+        )
+        msg = await cm.generate_message(scene, "alice")
+        assert msg.recipient == ""

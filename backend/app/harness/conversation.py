@@ -20,6 +20,14 @@ from app.models.scene import Scene
 logger = structlog.get_logger(__name__)
 
 
+FALLBACK_TEMPLATES: tuple[str, ...] = (
+    "{name} nods silently.",
+    "{name} looks distracted.",
+    "{name} hesitates, lost in thought.",
+    "{name} stays quiet for a moment.",
+)
+
+
 class ConversationManager:
     """Conversation manager."""
 
@@ -161,16 +169,41 @@ class ConversationManager:
 
                 if retry_count >= max_retries:
                     logger.warning(
-                        "All retries failed",
+                        "All retries failed; emitting rule-based fallback",
                         character=characterId,
                         last_error=str(e),
                         last_raw_response=last_raw_response,
                     )
-                    break
+                    return self._build_fallback_message(characterId, recipient)
 
                 # Exponential backoff with jitter
                 jitter = random.uniform(0, 0.1)
                 await asyncio.sleep(backoff_time + jitter)
                 backoff_time *= 2  # Double the backoff time for next retry
 
-        raise RuntimeError(f"Failed to generate message after {max_retries} retries")
+        # Unreachable: loop either returns a Message or hits the fallback above.
+        raise RuntimeError("retry loop exited without producing a message")
+
+    def _build_fallback_message(self, characterId: str, recipient: str | None) -> Message:
+        """Template response when the Agent layer is unavailable.
+
+        Keeps the scene tick-loop alive instead of crashing on sustained
+        LLM outages. end_conversation stays False so the conversation
+        survives transient outages.
+        """
+        identity = load_character(characterId)
+        content = random.choice(FALLBACK_TEMPLATES).format(name=identity.name)
+        return Message(
+            character=characterId,
+            content=content,
+            recipient=recipient or "",
+            thoughts="",
+            mood="quiet",
+            mood_emoji="😶",
+            reaction_on_previous_message=None,
+            timestamp=datetime.now().isoformat(),
+            unix_timestamp=time.time(),
+            calculated_speaking_time=self._calculate_speaking_time(len(content)),
+            conversation_rating=None,
+            end_conversation=False,
+        )
