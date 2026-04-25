@@ -1,3 +1,5 @@
+from collections.abc import AsyncIterator
+
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from pydantic_ai.messages import ModelMessage
@@ -173,3 +175,38 @@ class LLMManager:
                 message_history=history,
             )
         return result.output
+
+    async def generate_response_stream(
+        self,
+        external_id: str,
+        system_vars: SystemPromptTemplateVars,
+        history: list[ModelMessage],
+    ) -> AsyncIterator[CharacterResponse]:
+        """Stream incremental CharacterResponse snapshots as the LLM generates.
+
+        Each yielded value is the cumulative best-guess of the response —
+        fields fill in as the JSON tool-call args parse via pydantic-ai's
+        partial-validation mode. Consumer must treat all fields as
+        potentially-incomplete (str fields may be empty, optionals None)
+        until iteration ends; the last yielded value is the complete
+        CharacterResponse.
+        """
+        if (
+            self.agents is None
+            or self.character_configs is None
+            or self.system_prompt_template is None
+        ):
+            raise ValueError("init_scene not called")
+
+        instructions = self.system_prompt_template.format(**system_vars)
+        user_prompt = system_vars["input"]
+        cfg = self.character_configs[external_id]
+
+        with llm_response_seconds.labels(provider=cfg.provider, model=cfg.model_name).time():
+            async with self.agents[external_id].run_stream(
+                user_prompt,
+                instructions=instructions,
+                message_history=history,
+            ) as result:
+                async for partial in result.stream_output(debounce_by=0.1):
+                    yield partial

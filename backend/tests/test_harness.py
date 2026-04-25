@@ -5,12 +5,15 @@ the socket server: visitor tracking, next-speaker selection, scene-state
 bookkeeping.
 """
 
+from collections.abc import AsyncIterator, Iterator
 from unittest.mock import AsyncMock
 
 import pytest
 
 from app.harness import Harness
+from app.models.conversation import Message
 from app.models.scene import Scene
+from app.world import CharacterActionChanged, WorldEvent
 from tests.fixtures import make_message
 
 
@@ -168,6 +171,86 @@ class TestSetVisitors:
         state = sm._set_visitors(0, sm.scene.state)
         assert state.visitor_count == 0
         assert state.conversation_active is False
+
+
+class TestSetCharacterSpeakingStreaming:
+    """End-to-end choreography for one streamed turn through the orchestrator."""
+
+    @pytest.fixture
+    def sm_no_sleep(self, sm: Harness) -> Iterator[Harness]:
+        """Harness with the read-time sleep stubbed out so tests don't hang."""
+
+        async def _no_sleep(_seconds: float) -> None:
+            return None
+
+        # Patch on the orchestrator module to avoid global asyncio.sleep collateral.
+        from app.harness import orchestrator as _orch
+
+        original = _orch.asyncio.sleep
+        _orch.asyncio.sleep = _no_sleep  # type: ignore[assignment]
+        try:
+            yield sm
+        finally:
+            _orch.asyncio.sleep = original
+
+    @staticmethod
+    def _stub_stream(partials: list[Message]):
+        async def _gen(*args: object, **kwargs: object) -> AsyncIterator[Message]:
+            for p in partials:
+                yield p
+
+        return _gen
+
+    async def test_choreography_emits_start_updates_complete(self, sm_no_sleep: Harness) -> None:
+        partials = [
+            make_message("alice", "Hel"),
+            make_message("alice", "Hello"),
+            make_message("alice", "Hello, Bob!"),
+        ]
+        sm_no_sleep.conversation_manager.generate_message_stream = (  # type: ignore[method-assign]
+            self._stub_stream(partials)
+        )
+
+        captured: list[WorldEvent] = []
+
+        async def _capture(event: WorldEvent) -> None:
+            captured.append(event)
+
+        sm_no_sleep.world.subscribe(_capture)
+
+        await sm_no_sleep._set_character_speaking("alice", recipient="bob")
+
+        types = [type(e).__name__ for e in captured]
+        # Sequence: thinking action → stream-started + speaking action → 3
+        # update events → completed + speaking-with-duration action → mood.
+        assert "MessageStreamStarted" in types
+        assert types.count("MessageStreamUpdated") == 3
+        assert "MessageStreamCompleted" in types
+
+        # streaming_message must be cleared, final lives in messages list
+        assert sm_no_sleep.scene is not None
+        assert sm_no_sleep.scene.state.streaming_message is None
+        assert sm_no_sleep.scene.state.messages[-1].content == "Hello, Bob!"
+
+    async def test_speaker_action_transitions(self, sm_no_sleep: Harness) -> None:
+        partials = [make_message("alice", "Hi")]
+        sm_no_sleep.conversation_manager.generate_message_stream = (  # type: ignore[method-assign]
+            self._stub_stream(partials)
+        )
+
+        action_changes: list[CharacterActionChanged] = []
+
+        async def _capture(event: WorldEvent) -> None:
+            if isinstance(event, CharacterActionChanged) and event.character_id == "alice":
+                action_changes.append(event)
+
+        sm_no_sleep.world.subscribe(_capture)
+        await sm_no_sleep._set_character_speaking("alice", recipient="bob")
+
+        # thinking → speaking(duration=None, stream start) → speaking(duration=read-time, stream end)
+        assert [e.action for e in action_changes] == ["thinking", "speaking", "speaking"]
+        assert action_changes[1].estimated_duration is None
+        assert action_changes[2].estimated_duration == partials[-1].calculated_speaking_time
 
 
 class TestStart:

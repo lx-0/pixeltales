@@ -143,7 +143,8 @@ class DBSceneStateSnapshot(Base):
 
     def __init__(self, state: SceneState, timestamp: float | None = None):
         super().__init__()
-        self.state = state.model_dump()
+        # streaming_message is ephemeral wire state — never snapshot it.
+        self.state = state.model_dump(exclude={"streaming_message"})
         self.timestamp = timestamp or time.time()
         self.config_id = state.scene_config_id
         self.scene_id = state.scene_id

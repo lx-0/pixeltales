@@ -1,5 +1,6 @@
 """ConversationManager unit tests (no DB, mocked LLM)."""
 
+from collections.abc import AsyncIterator, Callable
 from unittest.mock import AsyncMock
 
 import pytest
@@ -11,10 +12,36 @@ from pydantic_ai.messages import (
 )
 
 from app.agent.characters import load as load_character
-from app.agent.llm import LLMManager
+from app.agent.llm import CharacterResponse, LLMManager
 from app.harness.conversation import FALLBACK_TEMPLATES, ConversationManager
 from app.models.scene import Scene
 from tests.fixtures import make_message
+
+
+def _partial(content: str | None) -> CharacterResponse:
+    return CharacterResponse(
+        recipient="bob",
+        reaction_on_previous_message=None,
+        conversation_rating=None,
+        mood="curious",
+        mood_emoji="🙂",
+        thoughts="thinking...",
+        content=content,
+        end_conversation=False,
+    )
+
+
+StreamFn = Callable[..., AsyncIterator[CharacterResponse]]
+
+
+def _stream_factory(partials: list[CharacterResponse]) -> StreamFn:
+    """Build a callable matching LLMManager.generate_response_stream signature."""
+
+    async def _stream(*args: object, **kwargs: object) -> AsyncIterator[CharacterResponse]:
+        for p in partials:
+            yield p
+
+    return _stream
 
 
 def test_init_conversation_defaults_to_empty(mock_llm_manager: LLMManager):
@@ -193,3 +220,104 @@ class TestGenerateMessage:
         )
         msg = await cm.generate_message(scene, "alice")
         assert msg.recipient == ""
+
+
+class TestGenerateMessageStream:
+    async def test_yields_incremental_messages(self, mock_llm_manager: LLMManager, scene: Scene):
+        cm = ConversationManager(mock_llm_manager)
+        cm.init_conversation()
+        partials = [_partial("Hel"), _partial("Hello"), _partial("Hello, Bob!")]
+        mock_llm_manager.generate_response_stream = _stream_factory(partials)  # type: ignore[method-assign]
+
+        collected: list[str | None] = []
+        async for msg in cm.generate_message_stream(scene, "alice", recipient="bob"):
+            collected.append(msg.content)
+        assert collected == ["Hel", "Hello", "Hello, Bob!"]
+
+    async def test_last_yielded_is_complete(self, mock_llm_manager: LLMManager, scene: Scene):
+        cm = ConversationManager(mock_llm_manager)
+        cm.init_conversation()
+        partials = [_partial("Hel"), _partial("Hello, Bob!")]
+        mock_llm_manager.generate_response_stream = _stream_factory(partials)  # type: ignore[method-assign]
+
+        last = None
+        async for msg in cm.generate_message_stream(scene, "alice", recipient="bob"):
+            last = msg
+        assert last is not None
+        assert last.character == "alice"
+        assert last.content == "Hello, Bob!"
+        assert last.mood == "curious"
+        assert last.recipient == "bob"
+        assert last.calculated_speaking_time == pytest.approx(
+            cm._calculate_speaking_time(len("Hello, Bob!"))
+        )
+
+    async def test_pre_stream_failure_retries_then_falls_back(
+        self, mock_llm_manager: LLMManager, scene: Scene
+    ):
+        cm = ConversationManager(mock_llm_manager)
+        cm.init_conversation()
+        cm.base_speaking_time = 0  # speed up backoff sleeps
+        # Wrap the failing factory in a counter so we can assert retry count
+        call_count = {"n": 0}
+
+        async def _stream(*args: object, **kwargs: object) -> AsyncIterator[CharacterResponse]:
+            call_count["n"] += 1
+            raise RuntimeError("connect fails")
+            yield  # pragma: no cover
+
+        mock_llm_manager.generate_response_stream = _stream  # type: ignore[method-assign]
+
+        msgs = []
+        async for m in cm.generate_message_stream(scene, "alice", recipient="bob"):
+            msgs.append(m)
+
+        # 3 retries (no partials → full retry budget) + final fallback yield
+        assert call_count["n"] == 3
+        assert len(msgs) == 1
+        alice_name = load_character("alice").name
+        expected = {tpl.format(name=alice_name) for tpl in FALLBACK_TEMPLATES}
+        assert msgs[0].content in expected
+        assert msgs[0].end_conversation is False
+
+    async def test_mid_stream_failure_does_not_retry_emits_fallback(
+        self, mock_llm_manager: LLMManager, scene: Scene
+    ):
+        """Once a partial has been yielded, retrying would duplicate visible
+        bubble content. Mid-stream failure must emit the fallback message
+        without re-running the stream."""
+        cm = ConversationManager(mock_llm_manager)
+        cm.init_conversation()
+        cm.base_speaking_time = 0
+        call_count = {"n": 0}
+
+        async def _stream(*args: object, **kwargs: object) -> AsyncIterator[CharacterResponse]:
+            call_count["n"] += 1
+            yield _partial("Hel")
+            yield _partial("Hello")
+            raise RuntimeError("mid-stream boom")
+
+        mock_llm_manager.generate_response_stream = _stream  # type: ignore[method-assign]
+
+        msgs = []
+        async for m in cm.generate_message_stream(scene, "alice", recipient="bob"):
+            msgs.append(m)
+
+        # No retries — single stream attempt
+        assert call_count["n"] == 1
+        # 2 partials yielded, then 1 fallback message
+        assert len(msgs) == 3
+        assert msgs[0].content == "Hel"
+        assert msgs[1].content == "Hello"
+        alice_name = load_character("alice").name
+        expected = {tpl.format(name=alice_name) for tpl in FALLBACK_TEMPLATES}
+        assert msgs[2].content in expected
+
+    async def test_raises_without_init_conversation(
+        self, mock_llm_manager: LLMManager, scene: Scene
+    ):
+        cm = ConversationManager(mock_llm_manager)
+        # init_conversation NOT called
+        with pytest.raises(ValueError, match="Conversation not set"):
+            async for _ in cm.generate_message_stream(scene, "alice"):
+                pass

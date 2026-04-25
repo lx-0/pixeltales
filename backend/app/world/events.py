@@ -83,3 +83,37 @@ class VisitorCountChanged(WorldEvent):
 
     visitor_count: int
     conversation_active: bool
+
+
+@dataclass(frozen=True)
+class MessageStreamStarted(WorldEvent):
+    """A character started streaming an utterance.
+
+    Fired alongside :class:`CharacterActionChanged` (action=speaking,
+    estimated_duration=None) so the bubble can appear empty before any
+    content arrives.
+    """
+
+    character_id: str
+    recipient: str
+
+
+@dataclass(frozen=True)
+class MessageStreamUpdated(WorldEvent):
+    """A streaming utterance got more content. ``message`` is the cumulative
+    snapshot — frontend should replace, not append."""
+
+    character_id: str
+    message: Message
+
+
+@dataclass(frozen=True)
+class MessageStreamCompleted(WorldEvent):
+    """A streaming utterance finished. ``message`` is the canonical final
+    Message; it has also been appended to ``scene.state.messages`` and
+    ``scene.state.streaming_message`` cleared. The character action stays
+    speaking with a refreshed estimated_duration covering the read-time
+    portion."""
+
+    character_id: str
+    message: Message

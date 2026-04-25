@@ -128,6 +128,11 @@ class SceneState(BaseModel):
     conversation_ended: bool
     ended_at: float | None = None  # Unix timestamp (Epoch time)
     visitor_count: int  # number of current visitors in the scene
+    # In-progress message currently being streamed by the active speaker.
+    # Ephemeral: included in wire payloads (so late-joining viewers can render
+    # the partial bubble), excluded from DB snapshots (server crash/restart
+    # drops the in-flight stream — clients re-sync to the next completed turn).
+    streaming_message: Message | None = None
 
 
 class Scene(BaseModel):

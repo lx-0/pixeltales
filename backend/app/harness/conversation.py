@@ -1,6 +1,7 @@
 import asyncio
 import random
 import time
+from collections.abc import AsyncIterator
 from datetime import datetime
 
 import structlog
@@ -13,7 +14,7 @@ from pydantic_ai.messages import (
 )
 
 from app.agent.characters import load as load_character
-from app.agent.llm import LLMManager, SystemPromptTemplateVars
+from app.agent.llm import CharacterResponse, LLMManager, SystemPromptTemplateVars
 from app.models.conversation import Conversation, Message
 from app.models.scene import Scene
 
@@ -183,6 +184,106 @@ class ConversationManager:
 
         # Unreachable: loop either returns a Message or hits the fallback above.
         raise RuntimeError("retry loop exited without producing a message")
+
+    async def generate_message_stream(
+        self, scene: Scene, characterId: str, recipient: str | None = None
+    ) -> AsyncIterator[Message]:
+        """Stream incremental Message snapshots for the current speaker.
+
+        Each yielded Message is a snapshot of the current best-guess
+        response with content filling in over the stream. The last
+        yielded Message is the canonical, complete turn output.
+
+        Retry semantics differ from `generate_message`: retries only
+        cover the pre-stream phase (connect / first-token). Once any
+        partial has been yielded, mid-stream failures fall back to a
+        rule-based template instead of retrying — re-running would
+        produce duplicate/conflicting bubble content on the client.
+        """
+        if self.conversation is None:
+            raise ValueError("Conversation not set")
+
+        self.conversation.messages = scene.state.messages
+        system_vars = self._prepare_system_message(scene, characterId, recipient)
+        history = self._prepare_conversation_history(characterId)
+
+        max_retries = 3
+        retry_count = 0
+        backoff_time = 0.5
+        any_partial_yielded = False
+
+        while retry_count < max_retries:
+            try:
+                async for partial in self.llm_manager.generate_response_stream(
+                    characterId, system_vars, history
+                ):
+                    any_partial_yielded = True
+                    yield self._partial_to_message(characterId, recipient, partial)
+                return  # stream completed normally
+
+            except Exception as e:
+                retry_count += 1
+                logger.error(
+                    "Error streaming message",
+                    error_type=type(e).__name__,
+                    attempt=retry_count,
+                    max_retries=max_retries,
+                    character=characterId,
+                    error_details=str(e),
+                    any_partial_yielded=any_partial_yielded,
+                )
+
+                # Mid-stream failure: don't retry, would duplicate already-shown
+                # bubble content. Emit fallback so the turn still completes.
+                if any_partial_yielded:
+                    logger.warning(
+                        "Stream failed mid-flight; emitting rule-based fallback",
+                        character=characterId,
+                    )
+                    yield self._build_fallback_message(characterId, recipient)
+                    return
+
+                if retry_count >= max_retries:
+                    logger.warning(
+                        "All stream retries failed; emitting rule-based fallback",
+                        character=characterId,
+                    )
+                    yield self._build_fallback_message(characterId, recipient)
+                    return
+
+                jitter = random.uniform(0, 0.1)
+                await asyncio.sleep(backoff_time + jitter)
+                backoff_time *= 2
+
+    def _partial_to_message(
+        self,
+        characterId: str,
+        recipient: str | None,
+        partial: CharacterResponse,
+    ) -> Message:
+        """Map a (possibly partial) CharacterResponse onto the Message shape.
+
+        Pydantic-ai's partial-validation can yield CharacterResponse with
+        not-yet-materialized fields. The annotations claim `str` but at
+        runtime they may be empty / None until the JSON tool-call args
+        finish parsing — defensive `or`-fallbacks keep downstream consumers
+        from blowing up on the early partials.
+        """
+        content = partial.content or ""
+        return Message(
+            character=characterId,
+            content=content,
+            recipient=partial.recipient or recipient or "",
+            thoughts=partial.thoughts or "",
+            mood=partial.mood or "neutral",
+            mood_emoji=partial.mood_emoji or "",
+            reaction_on_previous_message=partial.reaction_on_previous_message,
+            timestamp=datetime.now().isoformat(),
+            unix_timestamp=time.time(),
+            calculated_speaking_time=self._calculate_speaking_time(len(content)),
+            conversation_rating=partial.conversation_rating,
+            end_conversation=partial.end_conversation,
+        )
 
     def _build_fallback_message(self, characterId: str, recipient: str | None) -> Message:
         """Template response when the Agent layer is unavailable.

@@ -192,45 +192,60 @@ class Harness:
         await self._persist_state()
 
     async def _set_character_speaking(self, characterId: str, recipient: str | None = None) -> None:
-        """Set the character to speaking."""
-        message = await self._generate_message(characterId, recipient)
+        """Stream one turn for the given speaker.
 
-        # SceneState.messages is the source of truth; ConversationManager
-        # reads it via `self.conversation.messages = scene.state.messages`
-        # at the top of generate_message() each turn, so appending here
-        # is fine. World.add_message also flips the speaker to "speaking".
-        await self.world.add_message(message)
-        messages_total.labels(character=characterId).inc()
-
-        await self._persist_state()
-
-        # Simulate speaking pause
-        await asyncio.sleep(message.calculated_speaking_time)
-
-    async def _generate_message(self, characterId: str, recipient: str | None = None) -> Message:
-        """Generate a message for the current speaker."""
+        Choreography:
+        1. Thinking pose during LLM connect / pre-first-token.
+        2. Open the streaming bubble (action=speaking, empty content).
+        3. Consume each partial from the Harness streamer; mirror it onto
+           the World as ``streaming_message`` so subscribers see deltas.
+        4. Last yielded Message is the canonical final — finalize on World
+           (move to ``messages`` list, refresh action with read-time duration).
+        5. Apply mood + end-conversation-request from the final.
+        6. Sleep ``calculated_speaking_time`` as the read-time pause before
+           the next speaker (orthogonal to stream duration — streaming is
+           live token arrival, sleep is "leave bubble visible after done").
+        """
         scene = self.world.require_scene()
 
-        # Set character to thinking
         await self._set_character_action(characterId, "thinking")
+        await self.world.start_streaming_message(characterId, recipient or "")
 
-        # Generate message
-        message = await self.conversation_manager.generate_message(scene, characterId, recipient)
+        final: Message | None = None
+        async for partial in self.conversation_manager.generate_message_stream(
+            scene, characterId, recipient
+        ):
+            await self.world.update_streaming_message(partial)
+            final = partial
 
-        # Update character's mood
-        await self.world.set_character_mood(characterId, message.mood)
+        if final is None:
+            # generate_message_stream guarantees ≥1 yield (real partials or
+            # the rule-based fallback), so this branch is purely defensive.
+            # Recover the placeholder seeded by start_streaming_message and
+            # complete with it so the bubble doesn't get stranded.
+            placeholder = scene.state.streaming_message
+            assert placeholder is not None  # start_streaming_message seeded it
+            logger.error(
+                "Stream produced no partials; completing with placeholder",
+                character=characterId,
+            )
+            final = placeholder
 
-        # Update character's end conversation request
-        if message.end_conversation:
+        await self.world.complete_streaming_message(final)
+        await self.world.set_character_mood(characterId, final.mood)
+        if final.end_conversation:
             await self.world.request_end_conversation(
                 characterId,
                 self.conversation_manager.get_end_conversation_request_validity(),
             )
 
-        # Simulate speaking pause
-        await asyncio.sleep(message.calculated_speaking_time)
+        messages_total.labels(character=characterId).inc()
+        await self._persist_state()
 
-        return message
+        # Read-time pause: bubble stays visible for `calculated_speaking_time`
+        # AFTER the stream has finished rendering. Stream duration was real
+        # LLM time and is not double-counted here.
+        await asyncio.sleep(final.calculated_speaking_time)
 
     def _speak_weight(self, character_id: str) -> float:
         """How likely a character is to speak next, for weighted-random pick.

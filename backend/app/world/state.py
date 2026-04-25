@@ -31,6 +31,9 @@ from app.world.events import (
     ConversationEnded,
     EndConversationRequested,
     EndConversationRequestsExpired,
+    MessageStreamCompleted,
+    MessageStreamStarted,
+    MessageStreamUpdated,
     VisitorCountChanged,
     WorldEvent,
 )
@@ -143,6 +146,94 @@ class World:
                 character_id=speaker_id,
                 action="speaking",
                 started_at=message.unix_timestamp,
+                estimated_duration=message.calculated_speaking_time,
+            )
+        )
+
+    async def start_streaming_message(self, character_id: str, recipient: str = "") -> None:
+        """Begin an in-progress streamed utterance.
+
+        Flips the speaker to ``speaking`` immediately (with unknown duration —
+        the read-time portion is not known until the stream completes) and
+        seeds ``scene.state.streaming_message`` with an empty placeholder so
+        late-joining viewers can render the bubble shell. Fires
+        :class:`MessageStreamStarted` and :class:`CharacterActionChanged`.
+        """
+        scene = self.require_scene()
+        ts = time.time()
+        char = scene.state.characters[character_id]
+        char.action = "speaking"
+        char.action_started_at = ts
+        char.action_estimated_duration = None
+        scene.state.streaming_message = Message(
+            character=character_id,
+            content="",
+            recipient=recipient,
+            thoughts="",
+            mood="neutral",
+            mood_emoji="",
+            reaction_on_previous_message=None,
+            timestamp=str(ts),
+            unix_timestamp=ts,
+            calculated_speaking_time=0.0,
+            conversation_rating=None,
+            end_conversation=False,
+        )
+        await self._emit(MessageStreamStarted(character_id=character_id, recipient=recipient))
+        await self._emit(
+            CharacterActionChanged(
+                character_id=character_id,
+                action="speaking",
+                started_at=ts,
+                estimated_duration=None,
+            )
+        )
+
+    async def update_streaming_message(self, message: Message) -> None:
+        """Replace the in-progress utterance snapshot with ``message``.
+
+        Fires :class:`MessageStreamUpdated`. Caller is the Harness — see
+        :meth:`ConversationManager._partial_to_message`.
+        """
+        scene = self.require_scene()
+        if scene.state.streaming_message is None:
+            raise ValueError("No streaming message in progress")
+        if message.character != scene.state.streaming_message.character:
+            raise ValueError(
+                f"Streaming message character mismatch: "
+                f"{message.character} vs {scene.state.streaming_message.character}"
+            )
+        scene.state.streaming_message = message
+        await self._emit(MessageStreamUpdated(character_id=message.character, message=message))
+
+    async def complete_streaming_message(self, message: Message) -> None:
+        """Finalize the in-progress utterance.
+
+        Appends ``message`` to ``scene.state.messages``, clears
+        ``streaming_message``, and refreshes the speaker's
+        :class:`CharacterActionChanged` with a new ``started_at`` (= now,
+        i.e. the start of the read-time window) and
+        ``estimated_duration`` = ``message.calculated_speaking_time``.
+        Fires :class:`MessageStreamCompleted` followed by
+        :class:`CharacterActionChanged`.
+        """
+        scene = self.require_scene()
+        if scene.state.streaming_message is None:
+            raise ValueError("No streaming message to complete")
+        speaker_id = message.character
+        ts = time.time()
+        char = scene.state.characters[speaker_id]
+        char.action = "speaking"
+        char.action_started_at = ts
+        char.action_estimated_duration = message.calculated_speaking_time
+        scene.state.messages.append(message)
+        scene.state.streaming_message = None
+        await self._emit(MessageStreamCompleted(character_id=speaker_id, message=message))
+        await self._emit(
+            CharacterActionChanged(
+                character_id=speaker_id,
+                action="speaking",
+                started_at=ts,
                 estimated_duration=message.calculated_speaking_time,
             )
         )
