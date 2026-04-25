@@ -45,39 +45,120 @@ export class SpeechBubbleManager {
   }
 
   updateBubbles(state: SceneState): void {
-    // Clear old bubbles first
-    this.clearBubbles();
-
     const sceneConfig = this.characterManager.getSceneConfig();
+    const speakingIds = new Set<string>();
 
-    // Create new bubble for current speaker
+    // Build the bubble per speaking character. The streaming_message field
+    // (when set and matching the speaker) is the authoritative source —
+    // its content fills incrementally during a stream and the canonical
+    // final value gets mirrored into messages[] only at completion.
     for (const [key, value] of Object.entries(state.characters)) {
-      if (value.action === 'speaking') {
-        const character = this.characterManager.getCharacter(key);
-        const message = state.messages.filter((m) => m.character === key).slice(-1)[0];
-        const characterName = sceneConfig?.characters_config[key]?.name ?? key;
-        if (character && message.content) {
-          Logger.info(
-            this.constructor.name,
-            `Creating speech bubble for ${key} with message ${message.content}`
-          );
-          this.createSpeechBubble(
-            character.sprite,
-            message.content,
-            key,
-            characterName,
-            message.calculated_speaking_time,
-            message.mood,
-            message.mood_emoji
-          );
-        } else {
-          Logger.info(this.constructor.name, `No character or message found for ${key}`, {
-            character,
-            message,
-          });
-        }
+      if (value.action !== 'speaking') continue;
+      speakingIds.add(key);
+
+      const message =
+        state.streaming_message?.character === key
+          ? state.streaming_message
+          : state.messages.filter((m) => m.character === key).slice(-1)[0];
+
+      // Empty content = streaming placeholder seeded by start_streaming_message;
+      // skip rendering until the first real partial arrives.
+      if (!message?.content) continue;
+
+      const character = this.characterManager.getCharacter(key);
+      if (!character) continue;
+
+      const characterName = sceneConfig?.characters_config[key]?.name ?? key;
+      this.upsertSpeechBubble(
+        character.sprite,
+        message.content,
+        key,
+        characterName,
+        message.calculated_speaking_time,
+        message.mood,
+        message.mood_emoji
+      );
+    }
+
+    // Remove bubbles for characters that stopped speaking this tick.
+    for (const [characterId, bubble] of this.activeBubbles.entries()) {
+      if (!speakingIds.has(characterId)) {
+        bubble.container.destroy();
+        this.activeBubbles.delete(characterId);
       }
     }
+  }
+
+  private upsertSpeechBubble(
+    speaker: Phaser.GameObjects.Sprite,
+    content: string,
+    characterId: string,
+    characterName: string,
+    speakingTime: number | undefined,
+    mood: string | null | undefined,
+    emoji: string | null | undefined
+  ): void {
+    const existing = this.activeBubbles.get(characterId);
+    if (existing) {
+      // In-place update: same character, content/emoji may have grown.
+      // Avoids destroy+recreate flicker during streaming (~10 Hz partials).
+      this.updateBubbleInPlace(existing, speaker, content, emoji);
+      return;
+    }
+    Logger.info(
+      this.constructor.name,
+      `Creating speech bubble for ${characterId} with message ${content}`
+    );
+    this.createSpeechBubble(
+      speaker,
+      content,
+      characterId,
+      characterName,
+      speakingTime,
+      mood ?? undefined,
+      emoji ?? undefined
+    );
+  }
+
+  private updateBubbleInPlace(
+    bubble: SpeechBubble,
+    speaker: Phaser.GameObjects.Sprite,
+    content: string,
+    emoji: string | null | undefined
+  ): void {
+    const newEmoji = emoji ?? '';
+    const contentChanged = bubble.text.text !== content;
+    const emojiChanged = bubble.moodText.text !== newEmoji;
+    if (!contentChanged && !emojiChanged) return;
+
+    if (contentChanged) bubble.text.setText(content);
+    if (emojiChanged) bubble.moodText.setText(newEmoji);
+
+    // Recompute layout from the new measurements and redraw the background
+    // graphic. Pointer height stays fixed; container repositions above the
+    // speaker so the bubble grows upward as content arrives.
+    const padding = this.BUBBLE_PADDING;
+    const pointerHeight = this.BUBBLE_POINTER_HEIGHT;
+    const bubbleWidth = Math.max(
+      this.MIN_BUBBLE_WIDTH,
+      Math.min(
+        Math.max(bubble.text.width, bubble.nameText.width + bubble.moodText.width + padding) +
+          padding * 2,
+        this.MAX_BUBBLE_WIDTH
+      )
+    );
+    const bubbleHeight = bubble.text.height + bubble.nameText.height + padding * 3;
+
+    bubble.background.clear();
+    bubble.background.lineStyle(2, 0x000000, 1);
+    bubble.background.fillStyle(0xffffff, 1);
+    this.drawBubbleBackground(bubble.background, bubbleWidth, bubbleHeight, pointerHeight);
+
+    bubble.moodText.setPosition(bubbleWidth - bubble.moodText.width - padding, padding);
+
+    const bubbleX = speaker.x - bubbleWidth / 2;
+    const bubbleY = speaker.y - speaker.height / 2 - bubbleHeight - pointerHeight;
+    bubble.container.setPosition(bubbleX, bubbleY);
   }
 
   private createSpeechBubble(

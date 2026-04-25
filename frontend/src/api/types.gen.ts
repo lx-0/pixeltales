@@ -243,6 +243,15 @@ export interface components {
              */
             role: string;
             /**
+             * Skills
+             * @description Names of agentskills.io SKILL.md folders the agent can invoke as tools. Resolved from app/agent/skills/<name>/.
+             * @example [
+             *       "recall_about_npc"
+             *     ]
+             * @example []
+             */
+            skills?: string[];
+            /**
              * Sprite Id
              * @description ID of a sprite from the backend asset catalog (GET /api/v1/config).
              * @default bob
@@ -262,8 +271,11 @@ export interface components {
         /**
          * CharacterIdentity
          * @description Library-level character identity — the part that travels with a
-         *     character across scenes. Lives on disk under app/characters/<id>/ or
+         *     character across scenes. Lives on disk under app/agent/characters/<id>/ or
          *     data/characters/<id>/ (AGENTS.md + .character.yaml).
+         *
+         *     Strict on unknown keys — typos in `.character.yaml` or in a
+         *     POST /api/v1/characters payload should fail loudly.
          */
         CharacterIdentity: {
             /**
@@ -296,6 +308,15 @@ export interface components {
              */
             role: string;
             /**
+             * Skills
+             * @description Names of agentskills.io SKILL.md folders the agent can invoke as tools. Resolved from app/agent/skills/<name>/.
+             * @example [
+             *       "recall_about_npc"
+             *     ]
+             * @example []
+             */
+            skills?: string[];
+            /**
              * Sprite Id
              * @description ID of a sprite from the backend asset catalog (GET /api/v1/config).
              * @default bob
@@ -317,6 +338,9 @@ export interface components {
          * @description Scene-level placement: which library character stands where, facing
          *     which way, doing what. Stored in SceneConfig.characters_config; the
          *     identity lives in the library and is joined on read.
+         *
+         *     Strict on unknown keys — POST /api/v1/scenes/propose should reject
+         *     typos and accidental identity-field bleed-through.
          */
         CharacterPlacement: {
             /**
@@ -430,6 +454,8 @@ export interface components {
          *     Character identity (name, color, role, visual, llm_config, sprite_id)
          *     must already exist in the library — POST /api/v1/characters to add a
          *     new one before proposing a scene that uses it.
+         *
+         *     Strict on unknown keys: API write boundary, typos should fail loud.
          */
         CreateSceneConfig: {
             /**
@@ -726,6 +752,7 @@ export interface components {
             scene_id: number;
             /** Started At */
             started_at: number;
+            streaming_message?: components["schemas"]["Message"] | null;
             /** Visitor Count */
             visitor_count: number;
         };

@@ -2,6 +2,7 @@
   "components": {
     "schemas": {
       "CharacterConfig": {
+        "additionalProperties": false,
         "description": "Wire shape returned by the scenes API: a CharacterIdentity merged\nwith a CharacterPlacement at serialize time. Frontend renders this.\n\nNOT used as the storage shape \u2014 SceneConfig stores CharacterPlacement\nand the identity is hydrated from the library before the API responds.",
         "properties": {
           "color": {
@@ -81,6 +82,20 @@
             "title": "Role",
             "type": "string"
           },
+          "skills": {
+            "description": "Names of agentskills.io SKILL.md folders the agent can invoke as tools. Resolved from app/agent/skills/<name>/.",
+            "examples": [
+              [
+                "recall_about_npc"
+              ],
+              []
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
           "sprite_id": {
             "default": "bob",
             "description": "ID of a sprite from the backend asset catalog (GET /api/v1/config).",
@@ -120,7 +135,8 @@
         "type": "object"
       },
       "CharacterIdentity": {
-        "description": "Library-level character identity \u2014 the part that travels with a\ncharacter across scenes. Lives on disk under app/characters/<id>/ or\ndata/characters/<id>/ (AGENTS.md + .character.yaml).",
+        "additionalProperties": false,
+        "description": "Library-level character identity \u2014 the part that travels with a\ncharacter across scenes. Lives on disk under app/agent/characters/<id>/ or\ndata/characters/<id>/ (AGENTS.md + .character.yaml).\n\nStrict on unknown keys \u2014 typos in `.character.yaml` or in a\nPOST /api/v1/characters payload should fail loudly.",
         "properties": {
           "color": {
             "description": "Character's color in hex format (e.g., #FF0000)",
@@ -168,6 +184,20 @@
             "title": "Role",
             "type": "string"
           },
+          "skills": {
+            "description": "Names of agentskills.io SKILL.md folders the agent can invoke as tools. Resolved from app/agent/skills/<name>/.",
+            "examples": [
+              [
+                "recall_about_npc"
+              ],
+              []
+            ],
+            "items": {
+              "type": "string"
+            },
+            "title": "Skills",
+            "type": "array"
+          },
           "sprite_id": {
             "default": "bob",
             "description": "ID of a sprite from the backend asset catalog (GET /api/v1/config).",
@@ -203,7 +233,8 @@
         "type": "object"
       },
       "CharacterPlacement": {
-        "description": "Scene-level placement: which library character stands where, facing\nwhich way, doing what. Stored in SceneConfig.characters_config; the\nidentity lives in the library and is joined on read.",
+        "additionalProperties": false,
+        "description": "Scene-level placement: which library character stands where, facing\nwhich way, doing what. Stored in SceneConfig.characters_config; the\nidentity lives in the library and is joined on read.\n\nStrict on unknown keys \u2014 POST /api/v1/scenes/propose should reject\ntypos and accidental identity-field bleed-through.",
         "properties": {
           "id": {
             "description": "Library character id; must exist in the character library.",
@@ -387,6 +418,7 @@
         "type": "object"
       },
       "Comment": {
+        "additionalProperties": false,
         "description": "Comment on a scene proposal.",
         "properties": {
           "comment": {
@@ -452,7 +484,8 @@
         "type": "object"
       },
       "CreateSceneConfig": {
-        "description": "Scene config WRITE shape: clients send placement-only entries.\nCharacter identity (name, color, role, visual, llm_config, sprite_id)\nmust already exist in the library \u2014 POST /api/v1/characters to add a\nnew one before proposing a scene that uses it.",
+        "additionalProperties": false,
+        "description": "Scene config WRITE shape: clients send placement-only entries.\nCharacter identity (name, color, role, visual, llm_config, sprite_id)\nmust already exist in the library \u2014 POST /api/v1/characters to add a\nnew one before proposing a scene that uses it.\n\nStrict on unknown keys: API write boundary, typos should fail loud.",
         "properties": {
           "characters_config": {
             "additionalProperties": {
@@ -590,6 +623,7 @@
         "type": "object"
       },
       "LLMConfig": {
+        "additionalProperties": false,
         "description": "LLM configuration for the character.",
         "properties": {
           "max_tokens": {
@@ -708,6 +742,7 @@
         "type": "object"
       },
       "Message": {
+        "additionalProperties": false,
         "description": "A message in the conversation.",
         "properties": {
           "calculated_speaking_time": {
@@ -795,6 +830,7 @@
         "type": "object"
       },
       "Position": {
+        "additionalProperties": false,
         "description": "A position in the scene.",
         "properties": {
           "x": {
@@ -1035,6 +1071,16 @@
           "started_at": {
             "title": "Started At",
             "type": "number"
+          },
+          "streaming_message": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Message"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "visitor_count": {
             "title": "Visitor Count",
